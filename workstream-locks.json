@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T11:43:57.710Z",
+  "updated_at": "2026-07-18T11:49:48.585Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -972,12 +972,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-code-web-session-35b05898",
       "branch": "feat/ws10-t2-curation-tooling",
-      "pr": null,
+      "pr": "https://github.com/suvarna4/Gambappe/pull/13",
       "claimed_at": "2026-07-18T11:18:27.361Z",
-      "updated_at": "2026-07-18T11:18:27.361Z"
+      "updated_at": "2026-07-18T11:49:48.584Z"
     },
     "WS10-T3": {
       "title": "Settlement/void/regrade",
