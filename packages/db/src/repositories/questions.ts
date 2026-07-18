@@ -309,3 +309,31 @@ export async function listDailyQuestionIdsBetween(db: Db, from: string, to: stri
   `);
   return rows.rows.map((r) => r['id'] as string);
 }
+
+/**
+ * `question:open` questions whose `lock_at` is still ahead of `at` but within `leadMinutes` —
+ * the `notify:pre-lock-reminder` (WS9-T4, §13.2) eligibility window. Effective-state rule
+ * (§5.7): this reads `status='open'` directly (not derived from timestamps) so a question whose
+ * lock job has already flipped it to `locked` is correctly excluded even if `lock_at` itself is
+ * still numerically inside the window (a late-running lock job racing this job is not this
+ * query's problem to solve — worst case the reminder is skipped for that tick, and dedupe means
+ * a skipped tick is never a double-send risk in the other direction either). Ordered by
+ * `lock_at` so the soonest-to-lock question is processed first.
+ */
+export async function listOpenQuestionsWithLockWithin(
+  db: Db,
+  at: Date,
+  leadMinutes: number,
+): Promise<QuestionRow[]> {
+  return db
+    .select()
+    .from(questions)
+    .where(
+      and(
+        eq(questions.status, 'open'),
+        gte(questions.lockAt, at),
+        lte(questions.lockAt, new Date(at.getTime() + leadMinutes * 60_000)),
+      ),
+    )
+    .orderBy(asc(questions.lockAt));
+}

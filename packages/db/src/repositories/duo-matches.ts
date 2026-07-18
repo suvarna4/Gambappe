@@ -11,6 +11,11 @@
  * completion, hooked from `grade:followup`/`reveal:fire`/`duo:window-roll`'s straggler
  * backstop) and `apps/web/lib/duo-match-lifecycle.ts` (mid-window exit on block/suspend/delete,
  * mirroring `apps/web/lib/moderation.ts`'s nemesis-pairing precedent) for the actual math.
+ *
+ * WS6-T3 addition (§8.10): `ActiveDuoForRoll.matchmakingPriority` +
+ * `setDuoMatchmakingPriority` below feed/maintain the ladder's odd-duo sit-out priority flag.
+ * Season-boundary standings/movement persistence lives in the sibling `duo-ladder.ts` file
+ * (kept separate so this file's WS6-T2 authorship/scope stays legible).
  */
 import { and, eq, gte, inArray, lte, or, sql } from 'drizzle-orm';
 import type { Db } from '../client.js';
@@ -344,13 +349,16 @@ export interface ActiveDuoForRoll {
   duoId: string;
   rating: number;
   tier: number;
+  /** §8.10 (WS6-T3): `duos.matchmaking_priority` — fed into `matchDuoVsDuo`'s odd-one-out
+   * selection so a duo that already sat out a window gets first claim on a spot this run. */
+  matchmakingPriority: boolean;
 }
 
 /** Active duos with no CURRENTLY `scheduled`/`active` match — the window-roll pairing pool
  * (§8.5). A duo already mid-match never gets double-booked into a second one. */
 export async function listEligibleDuosForWindowRoll(db: Db): Promise<ActiveDuoForRoll[]> {
   const rows = await db.execute(sql`
-    SELECT d.id, d.glicko_rating, d.tier
+    SELECT d.id, d.glicko_rating, d.tier, d.matchmaking_priority
     FROM duos d
     WHERE d.status = 'active'
       AND NOT EXISTS (
@@ -362,6 +370,7 @@ export async function listEligibleDuosForWindowRoll(db: Db): Promise<ActiveDuoFo
     duoId: r['id'] as string,
     rating: Number(r['glicko_rating']),
     tier: Number(r['tier']),
+    matchmakingPriority: r['matchmaking_priority'] === true,
   }));
 }
 
@@ -443,4 +452,18 @@ export async function findReusableDuoBonusQuestionForMarket(
     )
     .limit(1);
   return row ?? null;
+}
+
+/** §8.10 (WS6-T3): bulk-set/clear `duos.matchmaking_priority` (server-only column) — mirrors
+ * `nemesis.ts`'s `setMatchmakingPriority` for profiles exactly, one column over. Called every
+ * `duo:window-roll` run: clear for every duo considered this run (matched or not), then set
+ * true only for this run's actual `oddOneOut`. */
+export async function setDuoMatchmakingPriority(
+  db: Db,
+  duoIds: readonly string[],
+  value: boolean,
+  at: Date,
+): Promise<void> {
+  if (duoIds.length === 0) return;
+  await db.update(duos).set({ matchmakingPriority: value, updatedAt: at }).where(inArray(duos.id, duoIds));
 }

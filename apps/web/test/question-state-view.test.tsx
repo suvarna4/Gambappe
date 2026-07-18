@@ -77,6 +77,18 @@ describe('QuestionStateView — one render per §10.3 state', () => {
     expect(html).toContain('Yes');
   });
 
+  it('revealed: the outcome stamp and crowd bar carry the §10.3 reveal-moment motion classes', () => {
+    const html = renderState({
+      ...base,
+      status: 'revealed',
+      outcome: 'yes',
+      crowd: { yes: 70, no: 30, pct_yes: 70 },
+    });
+    expect(html).toContain('data-testid="reveal-outcome-stamp"');
+    expect(html).toContain('motion-safe:[animation:stamp-slam_450ms_ease-out_1]');
+    expect(html).toContain('motion-safe:[animation:crowd-fill_500ms_ease-out_200ms_1_both]');
+  });
+
   it('voided: shows the VOID stamp and streak-safe copy', () => {
     const html = renderState({ ...base, status: 'voided', void_reason: 'venue cancelled' });
     expect(html).toContain('data-testid="question-voided"');
@@ -115,11 +127,64 @@ describe('INV-10 — SSR is viewer-free', () => {
     }
   });
 
+  it("for a revealed question, ViewerStrip's server-rendered output is RevealSequence's own reserved loading skeleton — never the viewer's result/streak/percentile", () => {
+    const html = renderToStaticMarkup(
+      <ViewerStrip
+        question={{ ...base, status: 'revealed', outcome: 'yes', crowd: { yes: 70, no: 30, pct_yes: 70 } }}
+      />,
+    );
+    expect(html).toContain('data-testid="reveal-sequence-loading"');
+    for (const marker of [
+      'reveal-sequence-result',
+      'reveal-sequence-no-pick',
+      'reveal-sequence-percentile',
+      'reveal-sequence-streak',
+    ]) {
+      expect(html).not.toContain(marker);
+    }
+  });
+
+  it("for a revealed question, ViewerStrip also mounts QuestionThread (§10.3 thread) whose SSR output is its own reserved loading skeleton — never real posts, identity, or reaction counts (WS7-T8)", () => {
+    const html = renderToStaticMarkup(
+      <ViewerStrip
+        question={{ ...base, status: 'revealed', outcome: 'yes', crowd: { yes: 70, no: 30, pct_yes: 70 } }}
+      />,
+    );
+    expect(html).toContain('data-testid="question-thread"');
+    expect(html).toContain('data-testid="thread-loading"');
+    expect(html).toContain('data-testid="reaction-bar"');
+    expect(html).toContain('data-testid="post-composer"');
+    // The reaction bar renders unconditionally with count 0 for every visitor (a reserved,
+    // deterministic default — real counts only appear post-hydration once the thread fetch
+    // resolves) — never leaked posts/handles/real counts from any particular viewer's request.
+    for (const marker of ['data-testid="thread-post"', 'data-testid="thread-error"', 'data-testid="claim-sheet"']) {
+      expect(html).not.toContain(marker);
+    }
+  });
+
   it('the full page shell is identical whether or not a viewer identity would plausibly differ (simulated by rendering twice — nothing here reads request/cookie state)', () => {
     const question = {
       ...base,
       status: 'locked' as const,
       crowd: { yes: 40, no: 60, pct_yes: 40 },
+    };
+    const renderOnce = () =>
+      renderToStaticMarkup(
+        <QuestionStateView
+          question={question}
+          serverOffsetMs={0}
+          viewerSlot={<ViewerStrip question={question} />}
+        />,
+      );
+    expect(renderOnce()).toBe(renderOnce());
+  });
+
+  it('a revealed question (RevealSequence + QuestionThread together) also renders byte-identical HTML across two independent renders', () => {
+    const question = {
+      ...base,
+      status: 'revealed' as const,
+      outcome: 'yes' as const,
+      crowd: { yes: 70, no: 30, pct_yes: 70 },
     };
     const renderOnce = () =>
       renderToStaticMarkup(

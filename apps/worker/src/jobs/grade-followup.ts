@@ -4,17 +4,19 @@
  * (§8.6, WS3-T5) and reveal scheduling (§6.7, WS3-T4) — it does NOT touch streaks itself ("the
  * publication rule ... defers all streak/record mutation to reveal firing", §6.5).
  *
- * For `duo_bonus` (WS6-T2, §8.8.1 "bonus questions have no held reveal: grading publishes
- * immediately via grade:followup"): reveals immediately (no percentile/streak machinery — those
- * are daily-only, §6.6/§8.6) and checks completion for every `duo_matches` row that references
- * this question as a bonus question (`getOpenMatchIdsForBonusQuestion`,
- * `duo-match-completion.ts`). `nemesis_bonus` stays a documented no-op — that's WS5-T3 scope,
- * not built in this wave.
+ * For `nemesis_bonus` (WS5-T1) and `duo_bonus` (WS6-T2) — §8.8.1 "bonus questions have no held
+ * reveal — grading publishes immediately via `grade:followup`": both reveal immediately (no
+ * percentile/streak machinery — those are daily-only, §6.6/§8.6) via the same generic, idempotent
+ * `revealQuestionTx` the daily path eventually reaches through `reveal:fire`. `duo_bonus`
+ * additionally checks completion for every `duo_matches` row that references this question as a
+ * bonus question (`listOpenMatchIdsForBonusQuestion`, `duo-match-completion.ts`) — `nemesis_bonus`
+ * has no equivalent hook (nemesis week scoring, WS5-T3, reads shared-question picks directly
+ * rather than needing a per-question completion check).
  *
  * Idempotent: percentile computation is a pure overwrite (safe to re-run); reveal scheduling
  * just (re-)enqueues `reveal:fire`, which is itself idempotent (§5.7); `revealQuestionTx` and
- * `tryCompleteDuoMatch` are both status-guarded no-ops on a re-run — so a worker restart
- * anywhere in this job (daily or duo_bonus) always converges correctly on redelivery,
+ * `tryCompleteDuoMatch` are both status-guarded no-ops on a re-run — so a worker restart anywhere
+ * in this job (daily, nemesis_bonus, or duo_bonus) always converges correctly on redelivery,
  * satisfying the "kill-worker-between-grading-and-followup recovers" AC.
  */
 import type PgBoss from 'pg-boss';
@@ -58,16 +60,21 @@ export async function runGradeFollowup(
     return;
   }
 
+  if (question.kind === 'nemesis_bonus') {
+    const result = await revealQuestionTx(db, questionId, at);
+    logger.info({ questionId, ...result }, 'grade:followup — nemesis_bonus published immediately (§8.8.1)');
+    return;
+  }
+
   if (question.kind === 'duo_bonus') {
     await runDuoBonusFollowup(db, questionId, at);
     return;
   }
 
   if (question.kind !== 'daily') {
-    logger.info(
-      { questionId, kind: question.kind },
-      'SPEC-GAP(WS3-T3): nemesis_bonus grade:followup is a no-op — nemesis bonus questions are not yet created by any workstream this wave',
-    );
+    // Unreachable in practice — §5.1's question_kind enum is daily|nemesis_bonus|duo_bonus and
+    // all three are now handled above; kept as a defensive fallback rather than an assertion.
+    logger.warn({ questionId, kind: question.kind }, 'grade:followup — unrecognized question kind, no-op');
     return;
   }
 

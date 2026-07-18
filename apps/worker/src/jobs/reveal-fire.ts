@@ -25,6 +25,21 @@
  * channel dispatch (`notify:dispatch`, WS9-T1/T2) is not this task's scope — this only writes the
  * outbox row.
  *
+ * WS9-T4 (§13.2, "Reveal at 8"): the SAME per-participant loop also writes ONE general `reveal`
+ * beat (`../notifications/reveal-general-beat.js`, pure) per participant, distinct from the
+ * per-outcome beats above — every graded participant gets the "tonight's results are up"
+ * announcement regardless of how their day went. It goes out on BOTH email and push
+ * (`../notifications/write-multi-channel-outbox.js`), unlike WS9-T3's beats which were written
+ * email-only before push dispatch (WS9-T2) existed. Same transaction, same guarantee: this code
+ * is only reached after `revealQuestionTx` above has ACTUALLY flipped the row to `revealed` in
+ * this same transaction (guarded by `if (!revealResult.revealed) { ROLLBACK; return noop }`
+ * just above) — so "reveal notification never sent before question `revealed`" (§19.3 WS9-T4 AC)
+ * holds structurally, not by job-timing trust: there is no code path that reaches
+ * `deriveGeneralRevealBeat`/`writeBeatToOutboxAllChannels` without the DB having already
+ * committed (pending this transaction's COMMIT below) `status='revealed'`. See
+ * `reveal-beats-outbox.test.ts` for the integration test proving a still-`locked` re-arm writes
+ * zero `reveal` rows.
+ *
  * Daily ordering assert (§6.6: "reveal:fire for daily D never fires before D−1's daily is
  * revealed or voided"): if the prior calendar day's daily exists and hasn't settled into
  * revealed/voided yet, this run re-arms instead of proceeding — defensive; the structural
@@ -58,9 +73,12 @@ import {
 } from '@receipts/db';
 import type { JobHandler } from '../heartbeat.js';
 import { logger } from '../logger.js';
+import { buildQuestionUrl } from '../lib/question-url.js';
 import { tryCompleteDuoMatch } from './duo-match-completion.js';
 import { deriveRevealBeats } from '../notifications/reveal-beats.js';
 import { writeBeatsToOutbox } from '../notifications/write-outbox.js';
+import { deriveGeneralRevealBeat } from '../notifications/reveal-general-beat.js';
+import { writeBeatToOutboxAllChannels } from '../notifications/write-multi-channel-outbox.js';
 
 export interface RevealFireJobData {
   questionId: string;
@@ -133,6 +151,7 @@ export async function runRevealFire(
     if (question.questionDate) {
       const questionDate = question.questionDate;
       const dailyHistory = await listRevealedOrVoidedDailyThrough(tx, questionDate);
+      const ctaUrl = buildQuestionUrl(question.slug);
       for (const gp of gradedPicks) {
         const streakResult = await applyStreakForParticipant(tx, gp.profileId, dailyHistory, questionDate, at);
 
@@ -164,6 +183,13 @@ export async function runRevealFire(
         });
         const outboxReport = await writeBeatsToOutbox(tx, beats, at);
         beatsWritten += outboxReport.written;
+
+        // WS9-T4 (§13.2 "Reveal at 8"): every graded participant also gets the general reveal
+        // announcement, on both channels — see header comment for the "never before revealed"
+        // AC's structural guarantee.
+        const generalBeat = deriveGeneralRevealBeat({ profileId: gp.profileId, questionDate, ctaUrl });
+        const generalReport = await writeBeatToOutboxAllChannels(tx, generalBeat, at);
+        beatsWritten += generalReport.written;
       }
     }
 

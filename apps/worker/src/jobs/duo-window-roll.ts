@@ -1,5 +1,6 @@
 /**
- * `duo:window-roll` (Tue/Fri 09:00 ET, WS6-T2, §8.5). Two responsibilities each run:
+ * `duo:window-roll` (Tue/Fri 09:00 ET, WS6-T2 + WS6-T3, §8.5, §8.10). Three responsibilities
+ * each run:
  *
  * 1. STRAGGLER BACKSTOP (§8.5: "a match transitions to completed by grade:followup when its
  *    last question grades, or by the next window-roll as a backstop for stragglers, excluding
@@ -7,47 +8,62 @@
  *    already fully elapsed gets force-completed on whatever graded — `scoreDuoMatch`'s existing
  *    exclusion handling degrades an all-excluded match to a 0-0 draw, so this never needs a
  *    separate "give up" branch. Runs FIRST so any duo stuck in a straggling prior-window match
- *    is free to be paired again below.
+ *    is free to be paired again below, and so its result counts toward that duo's win tally if
+ *    step 2 below happens to conclude a season this same run.
  *
- * 2. WINDOW CREATION: pairs `active` duos with no current match, within tier, by closest team
+ * 2. SEASON BOUNDARY + LADDER (§8.10, WS6-T3): if no `duo` season covers this window's start
+ *    date, the PREVIOUS `duo` season (if any) just ended — `resolveDuoSeason` computes
+ *    promotion/relegation (`@receipts/engine`'s `computeLadderMovements`) from that season's
+ *    standings, persists the tier moves, and creates the next `DUO_SEASON_WEEKS`-week season, all
+ *    in one transaction (mirrors `nemesis:assign`'s step-0 season check, one level more involved
+ *    since a duo season boundary also has ladder state to move atomically with the season row —
+ *    see `resolveDuoSeason`'s own doc comment for the idempotency argument). Runs BEFORE window
+ *    creation so step 3's tier-local pairing sees any just-applied tier moves.
+ *
+ * 3. WINDOW CREATION: pairs `active` duos with no current match, within tier, by closest team
  *    rating (`matchDuoVsDuo` — WS4-T5's pure function, `packages/engine/src/duo-matcher.ts`;
  *    this job does NOT reimplement that algorithm, only the DB-facing wiring around it — same
  *    division of labor as `duo:matchmaker`'s partner-matching, WS6-T1). Each new match gets the
  *    window's 3 daily questions (derived by date, never stored — §5.5) plus up to 3 curated
  *    `duo_bonus` questions (§8.8.1 authoring; 0-bonus is valid if no eligible market pool
- *    exists, mirroring nemesis's bonus rule).
+ *    exists, mirroring nemesis's bonus rule). The odd-duo-out mechanic now carries real priority
+ *    (§8.10, WS6-T3 resolves the SPEC-GAP(ws6-t2) this file used to note here): every duo
+ *    considered this run has its `matchmaking_priority` cleared first, then this run's actual
+ *    `oddOneOut` set gets flagged true for the NEXT run — `matchDuoVsDuo` reads that flag back in
+ *    to avoid sitting the same duo out twice in a row when an alternative exists.
  *
  * Windows are fixed calendar (§8.5): Tue–Thu (dailies of Tue/Wed/Thu) or Fri–Sun (Fri/Sat/Sun);
  * Monday's daily belongs to no duo window. This job only ever fires on Tue or Fri (cron `0 9 *
  * * 2,5`, `registry.ts`), so `computeWindow` derives the 3-day span from whichever of those two
  * days `at` falls on.
- *
- * SPEC-GAP(ws6-t2): §8.5 says the odd duo out (an odd-sized tier) "sits the window and gets
- * priority next roll" — `matchDuoVsDuo`'s own doc comment: "caller flags priority-next". Unlike
- * nemesis's leftover mechanic (`profiles.matchmaking_priority`, a real column consumed as an
- * edge-score bonus by `matchNemeses`), `duos` (§5.5) has NO equivalent column, and
- * `matchDuoVsDuo` takes no priority input at all (unlike `matchNemeses`'s `constraints` param) —
- * adding one is a `packages/db` schema change this task's rules bar. §19.3 also assigns
- * "odd-duo sit-out priority" testing to WS6-T3 ("Ladder + windows"), which depends on this task
- * — so the actual priority mechanic (most likely a contract-change adding a `duos` column) is
- * left for that PR rather than inventing a heuristic here that might conflict with it. This job
- * still correctly computes and logs `oddOneOut` every run, so WS6-T3 has the observable signal
- * to build on.
  */
 import { uuidv7 } from 'uuidv7';
 import type PgBoss from 'pg-boss';
-import { addDaysToDateString, etDateString, isFlagEnabled, now, SCHEDULE_TZ } from '@receipts/core';
 import {
+  addDaysToDateString,
+  DUO_SEASON_WEEKS,
+  etDateString,
+  isFlagEnabled,
+  now,
+  SCHEDULE_TZ,
+} from '@receipts/core';
+import {
+  applyDuoTierMovements,
   createDuoMatch,
   findReusableDuoBonusQuestionForMarket,
+  getDuoSeasonCoveringDate,
+  getMostRecentDuoSeason,
   insertDuoMatchQuestion,
   insertQuestion,
+  insertSeason,
   listDuoBonusCandidateMarkets,
+  listDuoSeasonStandings,
   listEligibleDuosForWindowRoll,
   listOverdueOpenMatches,
+  setDuoMatchmakingPriority,
   type Db,
 } from '@receipts/db';
-import { matchDuoVsDuo, type DuoTeam } from '@receipts/engine';
+import { computeLadderMovements, matchDuoVsDuo, type DuoTeam } from '@receipts/engine';
 import type { JobHandler } from '../heartbeat.js';
 import { logger } from '../logger.js';
 import { tryCompleteDuoMatch } from './duo-match-completion.js';
@@ -167,6 +183,84 @@ export interface DuoWindowRollReport {
   matchesCreated: number;
   oddOneOut: string[];
   bonusQuestionsAttached: number;
+  seasonId: string;
+  /** True the one run per `DUO_SEASON_WEEKS` where a new `duo` season was created (§8.10). */
+  seasonRolled: boolean;
+  ladderPromoted: number;
+  ladderRelegated: number;
+}
+
+export interface DuoSeasonRollResult {
+  seasonId: string;
+  seasonRolled: boolean;
+  ladderPromoted: number;
+  ladderRelegated: number;
+}
+
+/**
+ * §8.10 season-boundary check, mirroring `nemesis:assign`'s step-0 pattern one level deeper: a
+ * duo season boundary has ladder state (tier moves) that must land atomically WITH the new
+ * season row, not just the row itself. If a crash happened between "tier moves applied" and
+ * "new season inserted", a naive retry would re-run `getDuoSeasonCoveringDate` for the same
+ * `window.windowStart`, still find nothing covering it, and re-derive + re-apply the SAME
+ * movements against the (already-moved) `duos.tier` values a second time — silently wrong, not
+ * just redundant, since `computeLadderMovements` isn't idempotent against its own output. Wrapping
+ * standings-read → movements → tier UPDATEs → season INSERT in one transaction closes that
+ * window: a crash mid-way rolls everything back, so a retry sees the prior season still
+ * uncovering `window.windowStart` and correctly starts over from unmoved tiers.
+ *
+ * No-op (fast path, no transaction) when a `duo` season already covers `window.windowStart` —
+ * the common case, true on every run except the ~1-in-8 (`DUO_SEASON_WEEKS`=4 weeks × 2
+ * windows/week) run that actually crosses a boundary.
+ */
+export async function resolveDuoSeason(db: Db, window: DuoWindow, at: Date): Promise<DuoSeasonRollResult> {
+  const current = await getDuoSeasonCoveringDate(db, window.windowStart);
+  if (current) {
+    return { seasonId: current.id, seasonRolled: false, ladderPromoted: 0, ladderRelegated: 0 };
+  }
+
+  return db.transaction(async (tx) => {
+    // Re-check inside the transaction — pg-boss's singleton cron (§7.6 header) is the primary
+    // guard against a concurrent duplicate run; this is defense-in-depth, same posture as
+    // `ratings:weekly`'s per-item re-check-after-lock.
+    const stillNone = await getDuoSeasonCoveringDate(tx, window.windowStart);
+    if (stillNone) {
+      return { seasonId: stillNone.id, seasonRolled: false, ladderPromoted: 0, ladderRelegated: 0 };
+    }
+
+    let ladderPromoted = 0;
+    let ladderRelegated = 0;
+    const previousSeason = await getMostRecentDuoSeason(tx);
+    if (previousSeason) {
+      const standings = await listDuoSeasonStandings(tx, previousSeason.startsOn, previousSeason.endsOn);
+      const movements = computeLadderMovements(standings);
+      if (movements.length > 0) {
+        await applyDuoTierMovements(tx, movements, at);
+        ladderPromoted = movements.filter((m) => m.direction === 'promoted').length;
+        ladderRelegated = movements.filter((m) => m.direction === 'relegated').length;
+        logger.info(
+          { seasonId: previousSeason.id, ladderPromoted, ladderRelegated },
+          'duo:window-roll — ladder promotion/relegation applied at duo-season end (§8.10)',
+        );
+      }
+    }
+    // Bootstrap (no previous `duo` season at all yet): nothing to conclude — every duo is
+    // already tier 1 by schema default (§8.10 "new duos enter tier 1"), so 0 movements is
+    // correct, not a gap.
+
+    const startsOn = window.windowStart;
+    const endsOn = addDaysToDateString(startsOn, DUO_SEASON_WEEKS * 7 - 1);
+    const season = await insertSeason(tx, {
+      id: uuidv7(),
+      kind: 'duo',
+      startsOn,
+      endsOn,
+      name: `Duo Season (${startsOn})`,
+    });
+    logger.info({ seasonId: season.id, startsOn, endsOn }, 'duo:window-roll — started next duo season');
+
+    return { seasonId: season.id, seasonRolled: true, ladderPromoted, ladderRelegated };
+  });
 }
 
 export async function runDuoWindowRoll(db: Db, boss: PgBoss, at: Date = now()): Promise<DuoWindowRollReport | null> {
@@ -177,7 +271,8 @@ export async function runDuoWindowRoll(db: Db, boss: PgBoss, at: Date = now()): 
   }
 
   // 1. Straggler backstop (§8.5) — force-completes any match whose window already elapsed,
-  // freeing its duos to be re-paired below.
+  // freeing its duos to be re-paired below (and counting toward its win tally if step 2 below
+  // concludes a season this same run).
   const todayEtDate = etDateString(at);
   const overdue = await listOverdueOpenMatches(db, todayEtDate);
   let backstopCompleted = 0;
@@ -186,9 +281,19 @@ export async function runDuoWindowRoll(db: Db, boss: PgBoss, at: Date = now()): 
     if (result.completed) backstopCompleted++;
   }
 
-  // 2. Window creation: tier-local closest-rating pairing (WS4-T5 pure function).
+  // 2. Season boundary + ladder promotion/relegation (§8.10, WS6-T3) — before window creation
+  // so step 3's tier-local pairing sees any tier moves just applied.
+  const seasonRoll = await resolveDuoSeason(db, window, at);
+
+  // 3. Window creation: tier-local closest-rating pairing (WS4-T5 pure function), now priority-
+  // aware (§8.10 odd-duo sit-out priority, WS6-T3).
   const eligible = await listEligibleDuosForWindowRoll(db);
-  const teams: DuoTeam[] = eligible.map((d) => ({ duoId: d.duoId, rating: d.rating, tier: d.tier }));
+  const teams: DuoTeam[] = eligible.map((d) => ({
+    duoId: d.duoId,
+    rating: d.rating,
+    tier: d.tier,
+    matchmakingPriority: d.matchmakingPriority,
+  }));
   const { pairings, oddOneOut } = matchDuoVsDuo(teams);
 
   const bonusQuestionIds = pairings.length > 0 ? await resolveBonusQuestionIds(db, boss, window, at) : [];
@@ -206,10 +311,16 @@ export async function runDuoWindowRoll(db: Db, boss: PgBoss, at: Date = now()): 
     }
   }
 
+  // Everyone considered this run (matched or sat out) gets their PRIOR priority cleared first —
+  // then this run's actual leftover(s) alone get flagged true for next run (mirrors
+  // `nemesis:assign`'s step-4 leftover bookkeeping exactly, one table over).
+  await setDuoMatchmakingPriority(db, eligible.map((d) => d.duoId), false, at);
+  await setDuoMatchmakingPriority(db, oddOneOut, true, at);
+
   if (oddOneOut.length > 0) {
     logger.info(
       { oddOneOut, windowStart: window.windowStart },
-      'duo:window-roll — odd duo(s) sat out this window (SPEC-GAP(ws6-t2): priority-next not persisted, see file header)',
+      'duo:window-roll — odd duo(s) sat out this window, flagged matchmaking_priority for next run (§8.10)',
     );
   }
 
@@ -220,6 +331,10 @@ export async function runDuoWindowRoll(db: Db, boss: PgBoss, at: Date = now()): 
     matchesCreated: pairings.length,
     oddOneOut,
     bonusQuestionsAttached: bonusQuestionIds.length,
+    seasonId: seasonRoll.seasonId,
+    seasonRolled: seasonRoll.seasonRolled,
+    ladderPromoted: seasonRoll.ladderPromoted,
+    ladderRelegated: seasonRoll.ladderRelegated,
   };
 }
 

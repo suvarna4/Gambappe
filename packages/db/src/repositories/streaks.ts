@@ -217,6 +217,40 @@ export async function listStreakSweepCandidates(
   return rows.rows.map((r) => ({ profileId: r['profile_id'] as string }));
 }
 
+export interface PreLockReminderCandidate {
+  profileId: string;
+  currentStreak: number;
+}
+
+/**
+ * Profiles eligible for the `notify:pre-lock-reminder` beat (WS9-T4, §13.2/§6.6): a "streak
+ * holder" — same `current_streak > 0` criterion `listStreakSweepCandidates` above uses to
+ * identify who has something to lose from a gap day — who has NOT yet placed a (non-void) pick
+ * on `dailyQuestionId`. Unlike the sweep candidates query, this has no `last_counted_date`
+ * filter: it's a pre-lock nudge, not a streak-state mutation, so there's nothing to
+ * self-exclude on beyond "already picked" (the picks join) and dedupe_key at the outbox layer
+ * (§5.6) handles re-evaluating the same still-open window on every 5-minute tick.
+ */
+export async function listPreLockReminderCandidates(
+  db: Db,
+  dailyQuestionId: string,
+): Promise<PreLockReminderCandidate[]> {
+  const rows = await db.execute(sql`
+    SELECT p.id AS profile_id, p.current_streak AS current_streak
+    FROM profiles p
+    WHERE p.current_streak > 0
+      AND p.status != 'deleted'
+      AND NOT EXISTS (
+        SELECT 1 FROM picks pk
+        WHERE pk.profile_id = p.id AND pk.question_id = ${dailyQuestionId} AND pk.result != 'void'
+      )
+  `);
+  return rows.rows.map((r) => ({
+    profileId: r['profile_id'] as string,
+    currentStreak: Number(r['current_streak']),
+  }));
+}
+
 /**
  * Profiles earning a freeze this week (§6.6 `streak:freeze-grant`, Mondays 00:05 ET):
  * answered >= FREEZE_EARN_MIN_DAYS of the prior 7 dailies (`dailyQuestionIds`), are below

@@ -3,10 +3,11 @@
  * lives in `apps/web/lib/copy.ts` (single reviewable file; no scattered literals) including
  * narration templates' rendered strings (§13.3)." — WS14-T3 scans this file for money words).
  *
- * Seeded independently by WS7-T2 (the `copy` object below, home + question page), WS7-T5
- * (the flat `CLAIM_*` exports, claim flow UI), WS7-T6 (`nemesisCopy`, nemesis UI), and WS8-T2
- * (`shareCopy`, share sheet) before any had landed on `main` — merged here on rebase. Later
- * tasks should add their own section to this file rather than starting a second copy file.
+ * Seeded independently by WS7-T2 (the `copy.question`/`copy.errors` sections), WS7-T5 (the
+ * flat `CLAIM_*` exports, claim flow UI), WS7-T6 (`nemesisCopy`, nemesis UI), WS7-T10
+ * (`copy.placement`), WS7-T8 (`threadCopy`, threads + reactions UI), and WS8-T2 (`shareCopy`,
+ * share sheet) before any had landed on `main` — merged here on rebase. Later tasks should add
+ * their own section to this file rather than starting a second copy file.
  *
  * Rules enforced in review (§10.6):
  *  - No money amounts, "bets", stake sizes, or venue balances (INV-8) — say "pick"/"call".
@@ -105,6 +106,11 @@ export const copy = {
       "Voided by the venue — this one's streak-safe, it won't count for or against you.",
     revealedNoPickLabel: "You didn't pick this one.",
     calledItBadge: 'Called it',
+    /** WS7-T3 reveal sequence (§10.3): the percentile/streak count-up block. `topPercent` is
+     * already the §8.6 "Top X%" convention (100 − percentile, clamped to a 1% floor) — see
+     * `@receipts/core`'s `topPercentDisplay`, the same helper `/p/[slug]` uses for this stat. */
+    percentileLabel: (topPercent: number) => `Top ${topPercent}%`,
+    freezeUsedNote: 'Freeze used — streak safe.',
     tomorrowTeaser: "Tomorrow's question lands at 9:00 ET.",
     noQuestionToday: "There's no daily question live right now — check back at 9:00 ET.",
     priceStaleNotice: 'Prices are catching up — try again in a minute.',
@@ -117,6 +123,30 @@ export const copy = {
     AGE_ATTESTATION_REQUIRED: "Confirm you're 18+ to place a pick.",
     RATE_LIMITED: 'Too many attempts — try again shortly.',
     generic: 'Something went wrong. Try again.',
+  },
+  /** WS7-T10 (placement flow UI) section. */
+  placement: {
+    intro:
+      "Five quick calls on real historical questions — see how you'd have done, tap by tap.",
+    progressLabel: (index: number, total: number) => `Item ${index} of ${total}`,
+    loading: 'Loading your 5 items…',
+    loadErrorTitle: "Couldn't load placement",
+    emptyPoolMessage: 'No placement items are available right now.',
+    retry: 'Try again',
+    needsIdentityTitle: 'Make a pick first',
+    needsIdentityBody:
+      "Placement needs an existing pick on this device before it can start — answer today's question, then come back here.",
+    needsIdentityCta: "Go to today's question",
+    yourCallPrefix: 'You called',
+    resolvedPrefix: 'it resolved',
+    resolvedOnPrefix: 'Resolved',
+    nextButton: 'Next',
+    finishButton: 'See your results',
+    submitErrorFallback: 'Something went wrong. Please try again.',
+    completeTitle: 'Your starting profile is ready',
+    completeBody: (correct: number, total: number) =>
+      `You called ${correct} of ${total} right. Those answers just seeded your starting profile.`,
+    completeCta: "Go to today's question",
   },
 } as const;
 
@@ -154,4 +184,28 @@ export const shareCopy = {
   copyLinkCopiedLabel: 'Copied!',
   closeLabel: 'Close',
   genericError: 'Something went wrong preparing your share card. Try again.',
+} as const;
+
+/** WS7-T8 (threads + reactions UI) section. */
+export const threadCopy = {
+  heading: 'Thread',
+  empty: 'No posts yet — be the first to say something.',
+  loadMore: 'Load more',
+  /** Textarea placeholder — the post box itself (§9.2 AC: "post box gated with claim prompt";
+   * the box is always visible, only submitting/focusing it while unclaimed opens the prompt). */
+  postPlaceholder: 'Add to the thread…',
+  postSubmit: 'Post',
+  postClaimGateCta: 'Claim your account to post',
+  postError: 'Could not post that — try again.',
+  reactionError: 'Could not react — try again.',
+  loadError: 'Could not load the thread — try again.',
+  /** Accessible labels for the four `REACTION_SET` emoji (§5.6/Appendix D) — plain-word
+   * descriptions rather than the raw glyph, so a screen reader announces something meaningful
+   * (mirrors §10.4's "never color alone" ethos: an emoji alone isn't a sufficient label). */
+  reactionLabels: {
+    '🔥': 'Fire',
+    '💀': 'Skull',
+    '🧾': 'Receipt',
+    '🫡': 'Salute',
+  } as const,
 } as const;

@@ -152,6 +152,19 @@ describe('streak_freeze_used', () => {
   });
 });
 
+describe('reveal_reminder (WS9-T4, §13.3)', () => {
+  it('golden string with the streak length interpolated', () => {
+    const result = narrate({ beat: 'reveal_reminder', data: { n: 5 } });
+    expect(result.line).toBe("Your 5-day streak is on the line. Pick before it locks.");
+    expect(result.emphasis).toBe('5');
+  });
+
+  it('a different streak length golden string', () => {
+    const result = narrate({ beat: 'reveal_reminder', data: { n: 1 } });
+    expect(result.line).toBe("Your 1-day streak is on the line. Pick before it locks.");
+  });
+});
+
 describe('called_it', () => {
   it('win-side golden string', () => {
     const result = narrate({ beat: 'called_it', data: { impliedProbability: 0.15, handle: 'Ibis #6' } });

@@ -68,6 +68,13 @@ export interface DuoTeam {
   duoId: string;
   rating: number;
   tier: number;
+  /**
+   * §8.10 (WS6-T3): `duos.matchmaking_priority` — true when this duo sat out the previous
+   * window and should get first claim on a spot this run. Optional/defaults to falsy so every
+   * pre-WS6-T3 caller (and this file's own pre-existing tests) keeps its exact prior behavior
+   * unchanged when the field is simply omitted.
+   */
+  matchmakingPriority?: boolean;
 }
 
 export interface DuoVsDuoPairing {
@@ -82,8 +89,24 @@ export interface DuoVsDuoResult {
 }
 
 /**
+ * Odd-duo-out selection for one tier's rating-sorted list (§8.10 "odd-duo sit-out priority"):
+ * prefers to sit out a duo that does NOT carry `matchmakingPriority` (i.e., didn't already sit
+ * out last time) — among those, the highest-rated, mirroring the plain-adjacent-pairing rule
+ * this replaces (SPEC-GAP(ws6-t2) in `apps/worker/src/jobs/duo-window-roll.ts`'s file header:
+ * "the actual priority mechanic ... left for that [WS6-T3] PR"). If every duo in the tier
+ * already carries priority (every one sat out before — the leftover-of-leftovers edge case),
+ * falls back to the same highest-rated rule since there's no way to satisfy everyone.
+ */
+function selectSitOut(sorted: readonly DuoTeam[]): DuoTeam {
+  const nonPriority = sorted.filter((d) => !d.matchmakingPriority);
+  const pool = nonPriority.length > 0 ? nonPriority : sorted;
+  return pool.reduce((highest, candidate) => (candidate.rating > highest.rating ? candidate : highest));
+}
+
+/**
  * Duo-vs-duo pairing at window roll (§8.5): within each tier, sort by team rating and pair
- * adjacent entries (closest-rating greedy); an odd tier size sits one duo out.
+ * adjacent entries (closest-rating greedy); an odd tier size sits one duo out, preferring a duo
+ * without §8.10's sit-out priority flag (`selectSitOut` above).
  */
 export function matchDuoVsDuo(duos: readonly DuoTeam[]): DuoVsDuoResult {
   const byTier = new Map<number, DuoTeam[]>();
@@ -100,9 +123,15 @@ export function matchDuoVsDuo(duos: readonly DuoTeam[]): DuoVsDuoResult {
   for (const tier of tiers) {
     const list = byTier.get(tier);
     if (!list) continue;
-    const sorted = list
+    let sorted = list
       .slice()
       .sort((x, y) => (x.rating !== y.rating ? x.rating - y.rating : x.duoId < y.duoId ? -1 : x.duoId > y.duoId ? 1 : 0));
+
+    if (sorted.length % 2 === 1) {
+      const sitOut = selectSitOut(sorted);
+      oddOneOut.push(sitOut.duoId);
+      sorted = sorted.filter((d) => d.duoId !== sitOut.duoId);
+    }
 
     for (let i = 0; i + 1 < sorted.length; i += 2) {
       const a = sorted[i];
@@ -110,10 +139,6 @@ export function matchDuoVsDuo(duos: readonly DuoTeam[]): DuoVsDuoResult {
       if (!a || !b) continue;
       const [duoAId, duoBId] = a.duoId < b.duoId ? [a.duoId, b.duoId] : [b.duoId, a.duoId];
       pairings.push({ duoAId, duoBId });
-    }
-    if (sorted.length % 2 === 1) {
-      const last = sorted[sorted.length - 1];
-      if (last) oddOneOut.push(last.duoId);
     }
   }
 

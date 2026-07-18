@@ -7,3 +7,52 @@
 :root {
   color-scheme: dark;
 }
+
+/* WS7-T3 reveal-moment choreography (§10.3) — the product's only motion budget (PRD §8).
+   Applied via `motion-safe:[animation:...]` Tailwind arbitrary utilities (packages/ui's
+   Stamp/CrowdBar `animated` props, apps/web's RevealSequence) — plain @keyframes since
+   Tailwind has no build-time knowledge of these app-specific effects.
+
+   `stamp-slam` animates ONLY `scale`/`opacity` via the `transform` property — never `rotate`.
+   Tailwind v4 emits `-rotate-6`/`-rotate-3` as the standalone CSS `rotate` property (not
+   `transform: rotate(...)`, v3's behavior), and standalone `rotate`/`scale`/`translate`
+   COMPOSE with `transform` rather than being replaced by it (CSS Transforms Level 2) — baking
+   `rotate(-6deg)` into these keyframes on an element that already has a `-rotate-*` utility
+   class doubled the tilt during the animation and then visibly snapped back by that same
+   amount once the animation ended and `transform` reverted to its unanimated value. Leaving
+   rotation to the persistent `rotate` utility class means it never moves, so there's nothing
+   to snap. */
+@keyframes stamp-slam {
+  0% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(0.92);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes crowd-fill {
+  from {
+    width: 0%;
+  }
+  to {
+    width: var(--crowd-fill-target);
+  }
+}
+
+@keyframes result-flip {
+  from {
+    transform: rotateY(90deg);
+    opacity: 0;
+  }
+  to {
+    transform: rotateY(0deg);
+    opacity: 1;
+  }
+}

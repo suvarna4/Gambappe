@@ -54,6 +54,7 @@ describe('Appendix D constants', () => {
         "OVERLAP_FLOOR": 0.25,
         "PAGINATION_MAX_LIMIT": 50,
         "POST_MAX_CHARS": 500,
+        "PRE_LOCK_REMINDER_LEAD_MIN": 60,
         "PRICE_FALLBACK_STALENESS_S": 300,
         "PRICE_MAX_STALENESS_S": 60,
         "PRIORITY_BONUS": 0.1,

@@ -119,7 +119,8 @@ export type NarrationInput =
   | { beat: 'duo_promoted'; data: { tier: number } }
   | { beat: 'duo_relegated'; data: { tier: number } }
   | { beat: 'claim_nudge_streak'; data?: Record<string, never> }
-  | { beat: 'claim_nudge_fingerprint'; data?: Record<string, never> };
+  | { beat: 'claim_nudge_fingerprint'; data?: Record<string, never> }
+  | { beat: 'reveal_reminder'; data: { n: number } };
 
 function pct(fraction: number): number {
   return Math.round(fraction * 100);
@@ -237,6 +238,13 @@ export function narrate(input: NarrationInput): NarrationLine {
 
     case 'claim_nudge_fingerprint': {
       return { line: 'Your fingerprint is ready. Claim your record to get assigned your nemesis.' };
+    }
+
+    case 'reveal_reminder': {
+      return {
+        line: `Your ${input.data.n}-day streak is on the line. Pick before it locks.`,
+        emphasis: String(input.data.n),
+      };
     }
   }
 }

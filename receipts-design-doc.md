@@ -791,7 +791,8 @@ A `MockVenueAdapter` (WS1-T1) with scriptable fixtures ships first; all downstre
 | `grade:followup` | enqueued transactionally by grading (§6.5) | WS3-T3 |
 | `question:open` | per-question at `open_at` | WS3-T1 |
 | `question:lock` | per-question at `lock_at` | WS3-T1 |
-| `reveal:fire` | per-question at `reveal_at` (+30min re-arm) | WS3-T4 |
+| `notify:pre-lock-reminder` | every 5 min (scans `open` questions inside `PRE_LOCK_REMINDER_LEAD_MIN` of `lock_at`, §13.2) — added WS9-T4, not in the original table | WS9-T4 |
+| `reveal:fire` | per-question at `reveal_at` (+30min re-arm); also fires the `reveal` beat (§13.2/§13.3, WS9-T4) alongside WS9-T3's per-outcome beats | WS3-T4 |
 | `streak:sweep` | daily 03:30 | WS3-T3 |
 | `streak:freeze-grant` | Mon 00:05 | WS3-T3 |
 | `fingerprint:nightly` | daily 03:00 | WS4-T7 |
@@ -1172,6 +1173,9 @@ Pure function `narrate(beat, data) → {line, emphasis?}` in `packages/engine/na
 | `called_it` | longshot win | "{pct}% said no chance. {handle} said otherwise." |
 | `duo_formed`, `duo_synergy_up`, `duo_promoted`, `duo_relegated` | duo events | … |
 | `claim_nudge_streak`, `claim_nudge_fingerprint` | §11.3 | pinned strings in §10.6 |
+| `reveal_reminder` | added WS9-T4: `notify:pre-lock-reminder` (§13.2), a streak holder (`current_streak > 0`, mirrors `streak:sweep`'s own eligibility criterion) hasn't picked today's daily and `lock_at` is within `PRE_LOCK_REMINDER_LEAD_MIN` | "Your {n}-day streak is on the line. Pick before it locks." |
+
+`reveal` (the "Reveal at 8" beat, added WS9-T4, `reveal:fire` per participant — §13.2/§19.3 WS9-T4) is deliberately **not** routed through `narrate()`: it carries no per-user trigger data (every participant gets the same announcement), so it uses the category-level fallback line/subject `notify:dispatch`'s templates already define for the `reveal` category ("Tonight's reveal is in" / "The reveal is ready. Come see how it landed.", `apps/worker/src/lib/notification-email-template.ts`) rather than a beat-specific template that would just duplicate that string.
 
 Style clauses derive from fingerprint deltas (e.g., opp chalk ≪ you → "They chase longshots you'd never touch"). All template strings live in `copy.ts` with slot types; `narrate` is deterministic and unit-tested per beat (each beat: ≥1 win-side and ≥1 loss-side golden string). Notifications = beat + channel + dedupe_key rows in the outbox; `notify:dispatch` sends.
 
@@ -1620,6 +1624,7 @@ The P0 (48-hour) cut is the subset tagged P0 below, in the same wave order — s
 | `VENUE_RATE_LIMIT_RPS` | 4 per venue | §7.2 |
 | `QUIET_HOURS_START_LOCAL` / `QUIET_HOURS_END_LOCAL` | 22:00 / 08:00 (profile.timezone, default `SCHEDULE_TZ`) — added WS9-T1, not in the original table | §13.2 |
 | `MARKETING_EMAIL_DAILY_CAP` | 1 per profile per local day (reveal/nemesis/duo exempt) — added WS9-T1, not in the original table | §13.2 |
+| `PRE_LOCK_REMINDER_LEAD_MIN` | 60 minutes before `lock_at` — added WS9-T4, not in the original table | §13.2 |
 | `HOUSE_MIN_PROFILES` | 500 | §8.11 |
 | `OG_CACHE_S_MAXAGE_S` | 86400 | §10.5 (WS8-T1 contract-change) |
 | `PUBLIC_GET_S_MAXAGE_S` / `PUBLIC_GET_SWR_S` | 30 / 300 | §9.1 (WS8-T1 contract-change; names the §9.1 convention text's literal values) |

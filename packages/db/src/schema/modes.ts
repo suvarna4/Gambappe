@@ -133,6 +133,15 @@ export const duos = pgTable(
     jointHitRate: real('joint_hit_rate'),
     /** Realized − expected; null until ≥ SYNERGY_MIN_PICKS graded slots. */
     synergy: real('synergy'),
+    /**
+     * server-only: §8.10 ladder addition (WS6-T3, additive migration — not in the design doc's
+     * §5.5 literal column list, mirrors `profiles.matchmaking_priority`'s §8.4 leftover-priority
+     * precedent). Set true for the duo left sitting out an odd-sized tier at `duo:window-roll`;
+     * cleared for every duo considered that same run (matched or not). Consumed by
+     * `matchDuoVsDuo`'s odd-one-out selection so a duo that already sat out isn't the one to sit
+     * out again when an alternative exists. Never client-writable.
+     */
+    matchmakingPriority: boolean('matchmaking_priority').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

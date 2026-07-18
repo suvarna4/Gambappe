@@ -14,6 +14,8 @@ import {
 } from '@/lib/pick-storage';
 import ShareSheet from './share/ShareSheet';
 import { PickButtons } from './PickButtons';
+import { QuestionThread } from './QuestionThread';
+import { RevealSequence } from './RevealSequence';
 
 export interface ViewerStripProps {
   question: QuestionPublic;
@@ -44,6 +46,9 @@ export function ViewerStrip({ question }: ViewerStripProps) {
   const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
+    // `RevealSequence` (below) owns its own identity fetch (the reveal endpoint resolves the
+    // viewer server-side) — skip the unrelated `/me` round trip once a question is revealed.
+    if (question.status === 'revealed') return;
     let cancelled = false;
     fetchMe()
       .then(({ data }) => {
@@ -55,7 +60,7 @@ export function ViewerStrip({ question }: ViewerStripProps) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [question.status]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -63,11 +68,13 @@ export function ViewerStrip({ question }: ViewerStripProps) {
   }, [question.id]);
 
   // Ticks the undo countdown; also doubles as the local expiry check driving `canUndo` below.
+  // Pointless once revealed — `RevealSequence` (below) owns rendering then, and undo/pick UI
+  // never shows again — so this would otherwise re-render every second forever for no reason.
   useEffect(() => {
-    if (!pick) return;
+    if (!pick || question.status === 'revealed') return;
     const id = setInterval(() => setNowMs(Date.now()), 1000);
     return () => clearInterval(id);
-  }, [pick]);
+  }, [pick, question.status]);
 
   const handlePick = useCallback(
     async (side: MarketSide, ageAttested: boolean) => {
@@ -117,6 +124,19 @@ export function ViewerStrip({ question }: ViewerStripProps) {
       setBusy(false);
     }
   }, [pick, question.id]);
+
+  if (question.status === 'revealed') {
+    return (
+      <div className="space-y-4">
+        {/* WS7-T3: the choreographed reveal sequence replaces the generic pick-cache view — a
+            revealed question's "your pick" is a result (win/loss/streak/percentile), not a
+            still-pending receipt with a now-meaningless undo control. */}
+        <RevealSequence question={question} />
+        {/* WS7-T8 (§10.3 `revealed` state: "thread"): the post-reveal discussion + reactions. */}
+        <QuestionThread questionId={question.id} questionSlug={question.slug} />
+      </div>
+    );
+  }
 
   if (me.status === 'loading') {
     // Reserved slot (§10.1: "no layout shift on hydration") — identical for every visitor.

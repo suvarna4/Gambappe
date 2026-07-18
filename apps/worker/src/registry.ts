@@ -35,8 +35,10 @@ import { duoWindowRollHandler } from './jobs/duo-window-roll.js';
 import { fingerprintNightlyHandler } from './jobs/fingerprint-nightly.js';
 import { gradeFollowupHandler } from './jobs/grade-followup.js';
 import { maintenancePruneHandler } from './jobs/maintenance-prune.js';
+import { nemesisAssignHandler } from './jobs/nemesis-assign.js';
 import { nemesisLastdayHandler } from './jobs/nemesis-lastday.js';
 import { notifyDispatchHandler } from './jobs/notify-dispatch.js';
+import { preLockReminderHandler } from './jobs/pre-lock-reminder.js';
 import { questionLockHandler } from './jobs/question-lock.js';
 import { questionOpenHandler } from './jobs/question-open.js';
 import { ratingsWeeklyHandler } from './jobs/ratings-weekly.js';
@@ -98,6 +100,12 @@ export const JOB_REGISTRY: readonly JobDefinition[] = [
     handler: questionLockHandler,
   },
   {
+    name: 'notify:pre-lock-reminder',
+    owner: 'WS9-T4',
+    cron: '*/5 * * * *', // every 5 min; PRE_LOCK_REMINDER_LEAD_MIN + dedupe_key make the exact tick harmless
+    handler: preLockReminderHandler,
+  },
+  {
     name: 'reveal:fire',
     owner: 'WS3-T4',
     // Per-question at reveal_at (+30min re-arm, §6.7).
@@ -143,7 +151,7 @@ export const JOB_REGISTRY: readonly JobDefinition[] = [
     name: 'nemesis:assign',
     owner: 'WS5-T1',
     cron: '0 9 * * 1', // Mon 09:00 ET
-    handler: stubHandler('nemesis:assign', 'WS5-T1'),
+    handler: nemesisAssignHandler,
   },
   {
     name: 'wallet:ingest',

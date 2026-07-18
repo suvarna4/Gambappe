@@ -23,8 +23,10 @@ import {
   errorEnvelopeSchema,
   getMeResponseSchema,
   getQuestionResponseSchema,
+  getRevealResponseSchema,
   type ErrorCode,
   type QuestionPublic,
+  type RevealPayload,
 } from '@receipts/core';
 import type { z } from 'zod';
 
@@ -61,7 +63,9 @@ export interface ApiResult<T> {
  * produces a spurious "two different types with this name exist" error under `tsc` once that
  * assumption breaks.
  */
-async function request<S extends z.ZodTypeAny>(
+/** Exported for reuse by other client-side typed fetch wrappers (e.g. `thread-client.ts`) that
+ * want the same envelope-unwrap/error-mapping behavior without duplicating it. */
+export async function request<S extends z.ZodTypeAny>(
   input: string,
   init: RequestInit,
   schema: S,
@@ -157,5 +161,19 @@ export function undoPick(pickId: string): Promise<ApiResult<{ deleted: true }>> 
     `/api/v1/picks/${encodeURIComponent(pickId)}`,
     { method: 'DELETE' },
     deletePickResponseSchema,
+  );
+}
+
+/** `GET /api/v1/questions/:slug/reveal` (§6.7, WS7-T3's reveal sequence). Requires ghost+
+ * identity (`UNAUTHENTICATED` for a caller with no ghost/claimed cookie at all — the caller
+ * treats that the same as "didn't pick this one") and 423s `REVEAL_NOT_READY` until the
+ * question's raw status has actually flipped (§6.5 publication rule); `RevealSequence` only
+ * calls this once `question.status === 'revealed'` already, so a 423 there means replication
+ * lag, not a real not-yet-revealed state — it retries briefly rather than treating it as fatal. */
+export function fetchReveal(slug: string): Promise<ApiResult<RevealPayload>> {
+  return request(
+    `/api/v1/questions/${encodeURIComponent(slug)}/reveal`,
+    { method: 'GET' },
+    getRevealResponseSchema,
   );
 }

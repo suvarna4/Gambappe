@@ -131,11 +131,48 @@ describe('grade:followup (§6.5, §8.6)', () => {
     expect(jobs.rows.length).toBeGreaterThanOrEqual(1); // both runs enqueue; reveal:fire itself is idempotent
   });
 
-  it('is a documented no-op for non-daily kinds (SPEC-GAP: no nemesis/duo bonus questions exist yet)', async () => {
+  it('publishes a nemesis_bonus question immediately on grading — no held reveal (§8.8.1, WS5-T1)', async () => {
+    const market = buildMarket({ status: 'resolved', outcome: 'yes' });
+    await db.insert(markets).values(market);
+    const settledAt = new Date('2026-08-05T10:00:00Z');
+    const bonusQuestion = buildQuestion(market.id as string, {
+      kind: 'nemesis_bonus',
+      questionDate: null,
+      status: 'locked',
+      settledAt,
+      // §8.8.1: reveal_at = lock_at for bonus questions — no held-reveal wait (authoring detail;
+      // this test only checks the actual `revealed_at`/`status` the grade:followup transition
+      // writes, which is independent of this pre-set field).
+      revealAt: settledAt,
+    });
+    await db.insert(questions).values(bonusQuestion);
+
+    const at = new Date('2026-08-05T10:00:01Z');
+    await runGradeFollowup(db, redis, boss, bonusQuestion.id as string, at);
+
+    const [row] = await db.select().from(questions).where(eq(questions.id, bonusQuestion.id as string));
+    expect(row!.status).toBe('revealed');
+    expect(row!.revealedAt).toEqual(at);
+    // No percentile computation / reveal:fire scheduling for bonus questions (§8.8.1: "no held reveal").
+    const hash = await redis.hgetall(revealHashKey(bonusQuestion.id as string));
+    expect(hash).toEqual({});
+
+    // Idempotent re-run: revealQuestionTx only transitions from `locked` — a redelivered job is a no-op.
+    await runGradeFollowup(db, redis, boss, bonusQuestion.id as string, at);
+    const [rowAgain] = await db.select().from(questions).where(eq(questions.id, bonusQuestion.id as string));
+    expect(rowAgain!.status).toBe('revealed');
+    expect(rowAgain!.revealedAt).toEqual(at); // unchanged by the second run
+  });
+
+  it('reveals a duo_bonus question immediately (§8.8.1) without touching percentiles/streaks (WS6-T2)', async () => {
+    // Was a documented no-op (SPEC-GAP: WS6/duo didn't create these questions yet) — WS6-T2 has
+    // since landed real duo_bonus completion handling in grade:followup itself; percentiles and
+    // streaks remain daily-only regardless (§6.6/§8.6), which is the part still worth asserting
+    // here (WS6-T2's own duo-match-lifecycle.test.ts covers the match-completion side in depth).
     const market = buildMarket({ status: 'resolved', outcome: 'yes' });
     await db.insert(markets).values(market);
     const bonusQuestion = buildQuestion(market.id as string, {
-      kind: 'nemesis_bonus',
+      kind: 'duo_bonus',
       questionDate: null,
       status: 'locked',
       settledAt: new Date(),
@@ -143,8 +180,10 @@ describe('grade:followup (§6.5, §8.6)', () => {
     await db.insert(questions).values(bonusQuestion);
 
     await expect(runGradeFollowup(db, redis, boss, bonusQuestion.id as string, new Date())).resolves.toBeUndefined();
+    const [row] = await db.select().from(questions).where(eq(questions.id, bonusQuestion.id as string));
+    expect(row!.status).toBe('revealed'); // §8.8.1: no held reveal — immediate, unlike daily
     const hash = await redis.hgetall(revealHashKey(bonusQuestion.id as string));
-    expect(hash).toEqual({});
+    expect(hash).toEqual({}); // percentiles are daily-only — untouched either way
   });
 });
 

@@ -207,6 +207,18 @@ export const QUIET_HOURS_END_LOCAL = '08:00';
  */
 export const MARKETING_EMAIL_DAILY_CAP = 1;
 
+/**
+ * Minutes before a daily's `lock_at` that the pre-lock reminder job's eligibility window opens
+ * for streak holders who haven't picked yet (§13.2/§19.3 WS9-T4: "pre-lock reminder for streak
+ * holders"). Not pinned by the design doc — SPEC-GAP(WS9-T4): the doc names the feature but not
+ * an exact lead time; 60 minutes lands comfortably inside the default
+ * DAILY_OPEN_LOCAL(09:00)-DAILY_LOCK_LOCAL(12:00) window with enough runway to act, without
+ * firing so early it reads as noise. `notify:pre-lock-reminder` runs every 5 minutes and
+ * dedupe_key makes re-evaluating the same still-open window on every tick safe (§5.6) — this
+ * constant only controls how early the reminder CAN land, never whether it double-sends.
+ */
+export const PRE_LOCK_REMINDER_LEAD_MIN = 60;
+
 // --- Houses (P2 stretch, §8.11) --------------------------------------------------------------
 
 export const HOUSE_MIN_PROFILES = 500;
@@ -382,6 +394,7 @@ export const CONFIG = {
   QUIET_HOURS_START_LOCAL,
   QUIET_HOURS_END_LOCAL,
   MARKETING_EMAIL_DAILY_CAP,
+  PRE_LOCK_REMINDER_LEAD_MIN,
   HOUSE_MIN_PROFILES,
   RL_GHOST_MINT_IP_DAY,
   RL_PICK_PROFILE_H,

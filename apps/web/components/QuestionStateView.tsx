@@ -99,9 +99,16 @@ export function QuestionStateView({
                   noCount={question.crowd.no}
                   yesLabel={question.yes_label}
                   noLabel={question.no_label}
+                  animated
                 />
               ) : null}
-              <p className="font-mono text-sm">
+              {/* The reveal-moment "outcome stamp" (§10.3) — viewer-free (outcome is public
+                  once revealed), so this can animate here in the SSR shell rather than waiting
+                  on the client island. */}
+              <p
+                className="border-win text-win motion-safe:[animation:stamp-slam_450ms_ease-out_1] inline-block -rotate-3 rounded border-2 px-3 py-1 font-mono text-sm font-bold tracking-wide uppercase"
+                data-testid="reveal-outcome-stamp"
+              >
                 {question.outcome === 'yes' ? question.yes_label : question.no_label}
                 <span aria-hidden="true"> ✓</span>
               </p>

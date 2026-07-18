@@ -1,12 +1,16 @@
 /**
  * WS0-T4 AC: the job registry contains a stub (or implementation) for EVERY §7.6 job — PLUS
- * `bot:score` (WS11-T2), a deliberate addition beyond the doc's literal table (see the
- * registry.ts header comment for why the §14.2 bot-scoring heuristic needed its own slot).
+ * `bot:score` (WS11-T2) and `notify:pre-lock-reminder` (WS9-T4), deliberate additions beyond
+ * the doc's literal table (see the registry.ts header comment for why the §14.2 bot-scoring
+ * heuristic needed its own slot; `notify:pre-lock-reminder`'s own header explains the
+ * pre-lock-reminder job similarly — added by the WS9-T4 task itself, also captured in the
+ * design doc's §7.6 table in this same PR).
  */
 import { describe, expect, it } from 'vitest';
 import { JOB_NAMES, JOB_REGISTRY, SCHEDULE_TIMEZONE } from '../src/registry.js';
 
-/** The §7.6 job table, verbatim, plus `bot:score` (WS11-T2). */
+/** The §7.6 job table, verbatim, plus `bot:score` (WS11-T2) and `notify:pre-lock-reminder`
+ * (WS9-T4). */
 const SPEC_JOBS = [
   'venue:sync-catalog',
   'venue:price-tick',
@@ -14,6 +18,7 @@ const SPEC_JOBS = [
   'grade:followup',
   'question:open',
   'question:lock',
+  'notify:pre-lock-reminder',
   'reveal:fire',
   'streak:sweep',
   'streak:freeze-grant',
@@ -77,5 +82,6 @@ describe('job registry (§7.6)', () => {
     expect(byName['bot:score']).toBe('15 3 * * *');
     expect(byName['analytics:rollup']).toBe('0 4 * * *');
     expect(byName['maintenance:prune']).toBe('30 4 * * *');
+    expect(byName['notify:pre-lock-reminder']).toBe('*/5 * * * *');
   });
 });
