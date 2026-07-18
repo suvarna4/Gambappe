@@ -377,6 +377,17 @@ test.describe('reveal sequence (§10.3, WS7-T3)', () => {
     // §8.6 "Top X%" display convention: X = 100 − percentile, so raw 82 → "Top 18%".
     await expect(page.getByTestId('reveal-sequence-percentile')).toContainText('Top 18%');
     await expect(page.getByTestId('reveal-sequence-streak')).toContainText('4');
+
+    // §10.5 WS8-T2: a graded win offers the share sheet right here — `RevealSequence` (WS7-T3)
+    // owns the whole `revealed` state, so this is the only place a revealed question's share
+    // button can live; wired against the mocked reveal's `pick.id` as the receipt card target.
+    await page.getByTestId('share-receipt-button').click();
+    const sheet = page.getByTestId('share-sheet');
+    await expect(sheet).toBeVisible();
+    await expect(sheet.getByTestId('share-preview-image')).toHaveAttribute(
+      'src',
+      /\/api\/cards\/receipt\/018f1e2b-0000-7000-8000-0000000000f9\?format=square/,
+    );
   });
 
   test("no viewer pick: shows the \"didn't pick this one\" copy, no result stamp", async ({

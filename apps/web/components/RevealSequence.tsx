@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { topPercentDisplay, type QuestionPublic, type RevealPayload } from '@receipts/core';
 import { Stamp, StreakFlame, prefersReducedMotion } from '@receipts/ui';
-import { copy } from '@/lib/copy';
+import { copy, shareCopy } from '@/lib/copy';
 import { ApiClientError, fetchReveal } from '@/lib/pick-client';
+import ShareSheet from './share/ShareSheet';
 
 export interface RevealSequenceProps {
   question: QuestionPublic;
@@ -67,6 +68,11 @@ export function RevealSequence({ question }: RevealSequenceProps) {
   const [payload, setPayload] = useState<RevealPayload | null>(null);
   const [play, setPlay] = useState(false);
   const [countUp, setCountUp] = useState(false);
+  // §10.5/WS8-T2: the receipt card only has a real win/loss/void/busted-streak result once
+  // this phase is reached (`viewer.pick` exists and is graded) — this is the only place a
+  // revealed question's share affordance can live now that `RevealSequence` (WS7-T3) owns
+  // rendering the whole `revealed` state instead of `ViewerStrip`'s old generic pick view.
+  const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -167,6 +173,22 @@ export function RevealSequence({ question }: RevealSequenceProps) {
           <span className="text-muted text-xs">{copy.question.freezeUsedNote}</span>
         ) : null}
       </div>
+      <button
+        type="button"
+        onClick={() => setShareOpen(true)}
+        data-testid="share-receipt-button"
+        className="bg-side-a min-h-11 rounded px-3 py-1.5 text-xs font-semibold text-white"
+      >
+        {shareCopy.shareButtonLabel}
+      </button>
+      <ShareSheet
+        kind="receipt"
+        targetId={viewer.pick.id}
+        pagePath={`/q/${question.slug}`}
+        title={question.headline}
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+      />
     </div>
   );
 }

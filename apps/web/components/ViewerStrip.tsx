@@ -151,8 +151,11 @@ export function ViewerStrip({ question }: ViewerStripProps) {
     // "your pick" doesn't fit the receipt template's stamp). The `/api/cards/receipt/:pickId`
     // route re-derives the exact variant server-side from live pick/profile state (§10.5's
     // "busted-streak" SPEC-GAP note in `lib/og/entities.ts`) — this component just decides
-    // WHEN to offer sharing, never which variant renders.
-    const settled = question.status === 'revealed' || question.status === 'voided';
+    // WHEN to offer sharing, never which variant renders. `revealed` never reaches this branch
+    // (the early return above hands that state to `RevealSequence`, which offers its own share
+    // button off `viewer.pick` once grading is confirmed) — only `voided` still falls through
+    // to this generic pick view.
+    const settled = question.status === 'voided';
     return (
       <div className="space-y-2" data-testid="viewer-strip-pick">
         <p className="font-mono text-sm">
