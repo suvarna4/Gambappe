@@ -6,7 +6,7 @@
  * what makes a plain server-render string comparison a meaningful test here). Interactive
  * behavior (tapping buttons, the pick/undo round trip) is covered by `e2e/question-page.spec.ts`.
  */
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { QuestionPublic } from '@receipts/core';
 import { QuestionStateView } from '@/components/QuestionStateView';
@@ -98,6 +98,20 @@ describe('QuestionStateView — one render per §10.3 state', () => {
 });
 
 describe('INV-10 — SSR is viewer-free', () => {
+  // `CountdownTicker` (open→locksIn, locked→revealIn) reads `Date.now()` directly in its
+  // initial-render `useState` — two back-to-back `renderToStaticMarkup` calls that happen to
+  // straddle a real wall-clock second produce a genuinely different countdown string ("17:14:20"
+  // vs "17:14:21"), which is a false-positive INV-10 failure, not a real viewer-data leak.
+  // Freezing the clock for this describe block makes both renders read the exact same instant.
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-19T14:00:00Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('QuestionStateView + ViewerStrip render byte-identical HTML across two independent renders of the same question (no hidden per-request/per-viewer variance)', () => {
     const question = { ...base, status: 'open' as const };
     const first = renderToStaticMarkup(
