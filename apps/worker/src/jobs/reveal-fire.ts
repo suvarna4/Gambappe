@@ -14,8 +14,16 @@
  * single transaction so a crash mid-run rolls back cleanly and a redelivery reprocesses from
  * scratch (never a partially-applied reveal). "Called it" badge (§6.7: win AND implied entry
  * probability ≤ `LONGSHOT_THRESHOLD`) is detected here and written to `analytics_events`
- * (WS3-T6) — notification DISPATCH is WS9 scope (SPEC-GAP, logged only). Revalidation is
- * SPEC-GAP(WS3-T4): `/internal/revalidate` is WS8-T3 scope.
+ * (WS3-T6). Revalidation is SPEC-GAP(WS3-T4): `/internal/revalidate` is WS8-T3 scope.
+ *
+ * WS9-T3 (§13.3): per participating profile, `streak_milestone`/`streak_busted`/
+ * `streak_freeze_used`/`called_it` beats are derived (`../notifications/reveal-beats.js`, pure)
+ * from the same streak-apply result and "called it" check already computed here, then written to
+ * the `notifications` outbox (`../notifications/write-outbox.js`) INSIDE this same transaction —
+ * so a rollback (lost the `revealQuestionTx` race) never leaves an orphaned beat, and the
+ * `dedupe_key` unique constraint makes a genuine re-fire a safe no-op. SPEC-GAP(WS9-T3): actual
+ * channel dispatch (`notify:dispatch`, WS9-T1/T2) is not this task's scope — this only writes the
+ * outbox row.
  *
  * Daily ordering assert (§6.6: "reveal:fire for daily D never fires before D−1's daily is
  * revealed or voided"): if the prior calendar day's daily exists and hasn't settled into
@@ -40,6 +48,7 @@ import {
   createDb,
   getGradedPicksForQuestion,
   getPriorDayDailyQuestion,
+  getProfileById,
   getQuestionById,
   insertAnalyticsEvent,
   listOpenMatchIdsForWindowDate,
@@ -50,6 +59,8 @@ import {
 import type { JobHandler } from '../heartbeat.js';
 import { logger } from '../logger.js';
 import { tryCompleteDuoMatch } from './duo-match-completion.js';
+import { deriveRevealBeats } from '../notifications/reveal-beats.js';
+import { writeBeatsToOutbox } from '../notifications/write-outbox.js';
 
 export interface RevealFireJobData {
   questionId: string;
@@ -63,7 +74,7 @@ export type RevealFireOutcome =
   | { status: 'not_found' }
   | { status: 'noop' } // already revealed/voided/otherwise not eligible
   | { status: 're_armed'; nextAttemptAt: Date }
-  | { status: 'revealed'; participantCount: number; calledItCount: number };
+  | { status: 'revealed'; participantCount: number; calledItCount: number; beatsWritten: number };
 
 export async function runRevealFire(
   db: Db,
@@ -118,12 +129,15 @@ export async function runRevealFire(
     }
 
     let calledItCount = 0;
+    let beatsWritten = 0;
     if (question.questionDate) {
-      const dailyHistory = await listRevealedOrVoidedDailyThrough(tx, question.questionDate);
+      const questionDate = question.questionDate;
+      const dailyHistory = await listRevealedOrVoidedDailyThrough(tx, questionDate);
       for (const gp of gradedPicks) {
-        await applyStreakForParticipant(tx, gp.profileId, dailyHistory, question.questionDate, at);
+        const streakResult = await applyStreakForParticipant(tx, gp.profileId, dailyHistory, questionDate, at);
 
-        const calledIt = gp.result === 'win' && isCalledIt(impliedEntryProb(gp.side, gp.yesPriceAtEntry));
+        const impliedProbability = impliedEntryProb(gp.side, gp.yesPriceAtEntry);
+        const calledIt = gp.result === 'win' && isCalledIt(impliedProbability);
         if (calledIt) {
           calledItCount += 1;
           await insertAnalyticsEvent(tx, {
@@ -133,6 +147,23 @@ export async function runRevealFire(
             props: { question_id: questionId, side: gp.side, yes_price_at_entry: gp.yesPriceAtEntry },
           });
         }
+
+        // WS9-T3 (§13.3): derive + write this participant's reveal beats in the same transaction
+        // as the reveal + streak mutation above (see header comment).
+        const profile = await getProfileById(tx, gp.profileId);
+        const beats = deriveRevealBeats({
+          profileId: gp.profileId,
+          handle: profile?.handle ?? gp.profileId,
+          questionDate,
+          previousStreak: streakResult.previousStreak,
+          currentStreak: streakResult.currentStreak,
+          freezeUsedForGap: streakResult.freezeUsedForGap,
+          freezeBankAfter: streakResult.freezeBankAfter,
+          calledIt,
+          impliedProbability,
+        });
+        const outboxReport = await writeBeatsToOutbox(tx, beats, at);
+        beatsWritten += outboxReport.written;
       }
     }
 
@@ -145,11 +176,12 @@ export async function runRevealFire(
 
     await client.query('COMMIT');
 
-    // SPEC-GAP(WS3-T4): reveal notifications (§13) are WS9 scope — not dispatched here.
     // SPEC-GAP(WS3-T4): POST /internal/revalidate for the question/spectator pages is WS8-T3
     // scope (the endpoint doesn't exist yet) — skip the HTTP call.
+    // SPEC-GAP(WS9-T3): notification DISPATCH (notify:dispatch, actually sending email/push) is
+    // WS9-T1/T2 scope — beats above are written to the outbox only.
 
-    return { status: 'revealed', participantCount: gradedPicks.length, calledItCount };
+    return { status: 'revealed', participantCount: gradedPicks.length, calledItCount, beatsWritten };
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     throw err;

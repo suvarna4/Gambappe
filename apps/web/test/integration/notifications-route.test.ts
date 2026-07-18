@@ -11,7 +11,7 @@ import { sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { uuidv7 } from 'uuidv7';
 import type pg from 'pg';
-import { signUnsubscribeToken } from '@receipts/core';
+import { signUnsubscribeToken } from '@receipts/core/server';
 import { connect, profiles, users, type Db } from '@receipts/db';
 import { buildProfile } from '@receipts/db/testing';
 

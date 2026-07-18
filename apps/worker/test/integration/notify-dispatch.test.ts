@@ -1,5 +1,5 @@
 /**
- * WS9-T1 integration ACs (§19.3): `notify:dispatch` against a real Postgres.
+ * WS9-T1/WS9-T2 integration ACs (§19.3): `notify:dispatch` against a real Postgres.
  *
  *  - dedupe_key prevents double-send: two `sendNotification` calls with the same key leave one
  *    row, so at most one send happens (repo-layer dedupe is covered in depth by
@@ -8,6 +8,8 @@
  *  - opt-out honored: a profile with `email_nemesis: false` never gets a nemesis-kind email.
  *  - quiet-hours deferral: a notification scheduled at 23:00 local is deferred to 08:00, not
  *    sent immediately.
+ *  - (WS9-T2) push: no-subscription cancellation, opt-out, multi-device fan-out, and
+ *    revocation-on-410 all run through `runPushNotifyDispatch` against real subscription rows.
  */
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -18,11 +20,20 @@ import { Redis } from 'ioredis';
 import PgBoss from 'pg-boss';
 import { uuidv7 } from 'uuidv7';
 import type pg from 'pg';
-import { connect, profiles, sendNotification, users, type Db } from '@receipts/db';
+import {
+  connect,
+  listActivePushSubscriptionsForProfile,
+  profiles,
+  sendNotification,
+  upsertPushSubscription,
+  users,
+  type Db,
+} from '@receipts/db';
 import { buildProfile } from '@receipts/db/testing';
 import type { JobContext } from '../../src/context.js';
 import { LoggingEmailTransport } from '../../src/lib/email-transport.js';
-import { notifyDispatchHandler, runNotifyDispatch } from '../../src/jobs/notify-dispatch.js';
+import { LoggingPushTransport, type PushTransport, type PushSendResult } from '../../src/lib/push-transport.js';
+import { notifyDispatchHandler, runNotifyDispatch, runPushNotifyDispatch } from '../../src/jobs/notify-dispatch.js';
 
 const url =
   process.env.TEST_DATABASE_URL ?? 'postgres://receipts:receipts@localhost:5432/receipts_test';
@@ -62,7 +73,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  await db.execute(sql`TRUNCATE notifications, profiles, users RESTART IDENTITY CASCADE`);
+  await db.execute(sql`TRUNCATE notifications, push_subscriptions, profiles, users RESTART IDENTITY CASCADE`);
 });
 
 async function makeClaimedProfile(opts: {
@@ -246,6 +257,141 @@ describe('runNotifyDispatch — no recipient', () => {
     expect(report.failed).toBe(1);
 
     const rows = await db.execute(sql`SELECT status FROM notifications WHERE dedupe_key = 'g1'`);
+    expect(rows.rows[0]!['status']).toBe('failed');
+  });
+});
+
+describe('runPushNotifyDispatch — no subscription (§19.3, WS9-T2)', () => {
+  it('a profile with no active push subscription is cancelled, not failed', async () => {
+    const { profileId } = await makeClaimedProfile();
+    const at = new Date('2026-07-19T15:00:00Z');
+    await sendNotification(db, profileId, 'reveal', { line: 'x' }, 'push', 'p1', at);
+
+    const transport = new LoggingPushTransport();
+    const report = await runPushNotifyDispatch(db, transport, at);
+
+    expect(report.sent).toBe(0);
+    expect(report.cancelledNoSubscription).toBe(1);
+    const rows = await db.execute(sql`SELECT status FROM notifications WHERE dedupe_key = 'p1'`);
+    expect(rows.rows[0]!['status']).toBe('cancelled');
+  });
+});
+
+describe('runPushNotifyDispatch — opt-out AC (§19.3, §9.4)', () => {
+  it('a profile with push_nemesis=false never gets a nemesis-kind push', async () => {
+    const { profileId } = await makeClaimedProfile({
+      settings: { notifications: { push_nemesis: false } },
+    });
+    await upsertPushSubscription(db, profileId, 'https://push.example/opt-out', { p256dh: 'p', auth: 'a' });
+    const at = new Date('2026-07-19T15:00:00Z');
+    await sendNotification(db, profileId, 'nemesis_lead_taken', { line: 'x' }, 'push', 'p2', at);
+
+    const transport = new LoggingPushTransport();
+    const report = await runPushNotifyDispatch(db, transport, at);
+
+    expect(report.sent).toBe(0);
+    expect(report.cancelledOptOut).toBe(1);
+    expect(transport.getLastPush('https://push.example/opt-out')).toBeUndefined();
+  });
+
+  it('the product category (no push_product setting) never sends', async () => {
+    const { profileId } = await makeClaimedProfile();
+    await upsertPushSubscription(db, profileId, 'https://push.example/product', { p256dh: 'p', auth: 'a' });
+    const at = new Date('2026-07-19T15:00:00Z');
+    await sendNotification(db, profileId, 'streak_milestone', { line: 'x' }, 'push', 'p3', at);
+
+    const transport = new LoggingPushTransport();
+    const report = await runPushNotifyDispatch(db, transport, at);
+
+    expect(report.sent).toBe(0);
+    expect(report.cancelledOptOut).toBe(1);
+  });
+});
+
+describe('runPushNotifyDispatch — quiet hours (§13.2)', () => {
+  it('a non-reveal push scheduled at 23:00 local is deferred to 08:00', async () => {
+    const { profileId } = await makeClaimedProfile({ timezone: 'America/New_York' });
+    await upsertPushSubscription(db, profileId, 'https://push.example/quiet', { p256dh: 'p', auth: 'a' });
+    const at2300ET = new Date('2026-07-20T03:00:00Z');
+    await sendNotification(db, profileId, 'nemesis_lead_taken', { line: 'x' }, 'push', 'p4', at2300ET);
+
+    const transport = new LoggingPushTransport();
+    const report = await runPushNotifyDispatch(db, transport, at2300ET);
+
+    expect(report.sent).toBe(0);
+    expect(report.deferredQuietHours).toBe(1);
+    expect(transport.getLastPush('https://push.example/quiet')).toBeUndefined();
+  });
+
+  it('reveal-kind push is exempt from quiet-hours deferral', async () => {
+    const { profileId } = await makeClaimedProfile({ timezone: 'America/New_York' });
+    await upsertPushSubscription(db, profileId, 'https://push.example/reveal-exempt', { p256dh: 'p', auth: 'a' });
+    const at2300ET = new Date('2026-07-20T03:00:00Z');
+    await sendNotification(db, profileId, 'reveal', { line: 'Reveal is in' }, 'push', 'p5', at2300ET);
+
+    const transport = new LoggingPushTransport();
+    const report = await runPushNotifyDispatch(db, transport, at2300ET);
+
+    expect(report.sent).toBe(1);
+    expect(transport.getLastPush('https://push.example/reveal-exempt')?.body).toBe('Reveal is in');
+  });
+});
+
+describe('runPushNotifyDispatch — multi-device fan-out + revocation (§5.6, WS9-T2)', () => {
+  /** Scripted per-endpoint outcomes — lets a single test drive one device to a 410 (revoked)
+   * and another to a normal success, which `LoggingPushTransport` alone can't express. */
+  class ScriptedPushTransport implements PushTransport {
+    public readonly sent: string[] = [];
+    constructor(private readonly outcomes: Record<string, PushSendResult | 'throw'>) {}
+    async send(push: Parameters<PushTransport['send']>[0]): Promise<PushSendResult> {
+      const outcome = this.outcomes[push.subscription.endpoint] ?? { revoked: false };
+      if (outcome === 'throw') throw new Error('transient failure');
+      this.sent.push(push.subscription.endpoint);
+      return outcome;
+    }
+  }
+
+  it('sends to every active device and marks the row sent if at least one succeeds', async () => {
+    const { profileId } = await makeClaimedProfile();
+    await upsertPushSubscription(db, profileId, 'https://push.example/multi-1', { p256dh: 'p', auth: 'a' });
+    await upsertPushSubscription(db, profileId, 'https://push.example/multi-2', { p256dh: 'p', auth: 'a' });
+    const at = new Date('2026-07-19T15:00:00Z');
+    await sendNotification(db, profileId, 'reveal', { line: 'x' }, 'push', 'p6', at);
+
+    const transport = new ScriptedPushTransport({});
+    const report = await runPushNotifyDispatch(db, transport, at);
+
+    expect(report.sent).toBe(1);
+    expect(transport.sent.sort()).toEqual(['https://push.example/multi-1', 'https://push.example/multi-2']);
+  });
+
+  it('revokes a device that returns 404/410-derived revoked:true, independent of the row outcome', async () => {
+    const { profileId } = await makeClaimedProfile();
+    await upsertPushSubscription(db, profileId, 'https://push.example/good', { p256dh: 'p', auth: 'a' });
+    await upsertPushSubscription(db, profileId, 'https://push.example/gone', { p256dh: 'p', auth: 'a' });
+    const at = new Date('2026-07-19T15:00:00Z');
+    await sendNotification(db, profileId, 'reveal', { line: 'x' }, 'push', 'p7', at);
+
+    const transport = new ScriptedPushTransport({ 'https://push.example/gone': { revoked: true } });
+    const report = await runPushNotifyDispatch(db, transport, at);
+
+    expect(report.sent).toBe(1); // the good device still got it
+    const active = await listActivePushSubscriptionsForProfile(db, profileId);
+    expect(active.map((s) => s.endpoint)).toEqual(['https://push.example/good']);
+  });
+
+  it('marks the row failed when every device errors', async () => {
+    const { profileId } = await makeClaimedProfile();
+    await upsertPushSubscription(db, profileId, 'https://push.example/fails', { p256dh: 'p', auth: 'a' });
+    const at = new Date('2026-07-19T15:00:00Z');
+    await sendNotification(db, profileId, 'reveal', { line: 'x' }, 'push', 'p8', at);
+
+    const transport = new ScriptedPushTransport({ 'https://push.example/fails': 'throw' });
+    const report = await runPushNotifyDispatch(db, transport, at);
+
+    expect(report.sent).toBe(0);
+    expect(report.failed).toBe(1);
+    const rows = await db.execute(sql`SELECT status FROM notifications WHERE dedupe_key = 'p8'`);
     expect(rows.rows[0]!['status']).toBe('failed');
   });
 });
