@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T09:41:50.868Z",
+  "updated_at": "2026-07-18T09:41:52.229Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -218,13 +218,13 @@
         "WS0"
       ],
       "mock_start_ok": false,
-      "note": null,
+      "note": "Implemented together with the rest of its workstream on this branch (owner: claude-code-web-session-9c961fec). pnpm verify in progress. Branch not yet merged to main — do not treat as buildable-against-main until updated to done.",
       "status": "claimed",
       "owner": "claude-code-web-session-9c961fec",
       "branch": "claude/wave-2-ws-1-2-4-woo118",
       "pr": null,
       "claimed_at": "2026-07-18T09:40:33.379Z",
-      "updated_at": "2026-07-18T09:40:33.379Z"
+      "updated_at": "2026-07-18T09:41:52.228Z"
     },
     "WS2-T3": {
       "title": "Claim + merge",
