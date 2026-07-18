@@ -11,6 +11,7 @@ test('WS7-T1 design system gallery renders every component state', async ({ page
   await expect(stamps).toContainText('LOSS');
   await expect(stamps).toContainText('VOID');
   await expect(stamps).toContainText('CALLED IT');
+  await expect(stamps).toContainText('PENDING');
 
   const priceTags = page.getByTestId('gallery-pricetag');
   await expect(priceTags).toContainText('63¢');
@@ -29,7 +30,5 @@ test('WS7-T1 design system gallery renders every component state', async ({ page
   await expect(streaks).toContainText('🔥');
   await expect(streaks).toContainText('❄️');
 
-  await expect(page.getByTestId('gallery-barcode')).toContainText(
-    '/q/2026-07-19-world-cup-final',
-  );
+  await expect(page.getByTestId('gallery-barcode')).toContainText('/q/2026-07-19-world-cup-final');
 });
