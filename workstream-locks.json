@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T19:48:43.216Z",
+  "updated_at": "2026-07-18T19:48:44.733Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -723,12 +723,12 @@
       ],
       "mock_start_ok": true,
       "note": null,
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-code-web-session-9c961fec",
+      "branch": "feat-ws7-t5-claim-flow-ui",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-18T18:56:11.432Z"
+      "claimed_at": "2026-07-18T19:48:44.733Z",
+      "updated_at": "2026-07-18T19:48:44.733Z"
     },
     "WS7-T6": {
       "title": "Nemesis UI",
