@@ -76,11 +76,16 @@ function isEligiblePair(
   blockedKeys: ReadonlySet<string>,
   pairedKeys: ReadonlySet<string>,
 ): boolean {
-  const key = pairKey(a.profileId, b.profileId);
-  if (blockedKeys.has(key) || pairedKeys.has(key)) return false;
+  // Cheapest checks first: this runs O(n²) times over the pool (~500k calls at n=1000), and the
+  // rating-band/category-overlap checks reject most pairs without ever allocating a pairKey
+  // string — blocked/season-repeat sets are typically far smaller than the candidate pair count,
+  // so paying their string-concat cost only for pairs that already passed the cheap filters cuts
+  // real wall-clock (perf AC: 1k-profile pool < 5s, §19.3 WS4-T4).
   const band = Math.max(NEMESIS_BAND_BASE, 0.5 * (a.rd + b.rd));
   if (Math.abs(a.rating - b.rating) > band) return false;
   if (categoryOverlap(a.categoryShares, b.categoryShares) < OVERLAP_FLOOR) return false;
+  const key = pairKey(a.profileId, b.profileId);
+  if (blockedKeys.has(key) || pairedKeys.has(key)) return false;
   return true;
 }
 
