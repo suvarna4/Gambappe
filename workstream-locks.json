@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T19:59:37.962Z",
+  "updated_at": "2026-07-18T20:03:06.659Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -927,13 +927,13 @@
         "WS4-T6"
       ],
       "mock_start_ok": true,
-      "note": "Implemented on feat/ws9-t3-beat-wiring (built on claude/wave-2-ws-1-2-4-woo118 per the claim note): reveal:fire writes streak_milestone/streak_busted/streak_freeze_used/called_it to the notifications outbox (deduped via dedupe_key); nemesis:lastday is a real, correctly-scheduled no-op (WS5 not landed). claim_nudge_* beats out of scope (client-side, WS7-T5 not built). Local commit c606625, not pushed.",
+      "note": "Recovered abandoned local commit c606625, rebased onto WS3's tip, pushed, PR #25 opened (stacked on #10). All suites green.",
       "status": "in_review",
       "owner": "claude-code-web-session-9c961fec",
-      "branch": "claude/wave-2-ws-1-2-4-woo118",
-      "pr": null,
+      "branch": "feat-ws9-t3-beat-wiring",
+      "pr": "https://github.com/suvarna4/Gambappe/pull/25",
       "claimed_at": "2026-07-18T10:55:14.403Z",
-      "updated_at": "2026-07-18T11:15:11.275Z"
+      "updated_at": "2026-07-18T20:03:06.659Z"
     },
     "WS9-T4": {
       "title": "Reveal + pre-lock reminders",
