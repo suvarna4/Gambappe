@@ -14,3 +14,4 @@ export * from './repositories/analytics.js';
 export * from './repositories/audit-log.js';
 export * from './repositories/metric-rollups.js';
 export * from './repositories/ops-dashboard.js';
+export * from './repositories/duplicate-accounts.js';
