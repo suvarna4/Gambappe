@@ -12,3 +12,4 @@ export * from './repositories/venue-sync.js';
 export * from './repositories/settlement.js';
 export * from './repositories/analytics.js';
 export * from './repositories/audit-log.js';
+export * from './repositories/metric-rollups.js';
