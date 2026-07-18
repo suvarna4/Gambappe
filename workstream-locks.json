@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T11:04:21.005Z",
+  "updated_at": "2026-07-18T11:04:59.355Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1034,12 +1034,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-code-web-session-35b05898",
+      "branch": "feat/ws11-t1-rate-limiter",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-18T09:35:00Z"
+      "claimed_at": "2026-07-18T11:04:59.355Z",
+      "updated_at": "2026-07-18T11:04:59.355Z"
     },
     "WS11-T2": {
       "title": "Bot scoring",
