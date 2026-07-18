@@ -124,3 +124,22 @@ export async function getLastSnapshotTs(db: Db, marketId: string): Promise<Date 
     .limit(1);
   return row?.ts ?? null;
 }
+
+/**
+ * The snapshot whose `ts` is closest to `target` (either direction) — the late-lock backfill
+ * source (§5.7: "the price snapshot nearest `lock_at`"). Orders by absolute distance so this
+ * works whether the nearest snapshot landed just before or just after `target`.
+ */
+export async function getPriceSnapshotNearest(
+  db: Db,
+  marketId: string,
+  target: Date,
+): Promise<{ yesPrice: number; ts: Date } | null> {
+  const [row] = await db
+    .select({ yesPrice: marketPriceSnapshots.yesPrice, ts: marketPriceSnapshots.ts })
+    .from(marketPriceSnapshots)
+    .where(eq(marketPriceSnapshots.marketId, marketId))
+    .orderBy(sql`abs(extract(epoch from (${marketPriceSnapshots.ts} - ${target.toISOString()}::timestamptz)))`)
+    .limit(1);
+  return row ? { yesPrice: Number(row.yesPrice), ts: row.ts } : null;
+}

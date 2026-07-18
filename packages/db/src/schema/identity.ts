@@ -127,6 +127,14 @@ export const profiles = pgTable(
     lastCountedDate: date('last_counted_date'),
     /** 0..STREAK_FREEZE_CAP. */
     freezeBank: smallint('freeze_bank').notNull().default(0),
+    /**
+     * The Monday (window_start) of the last week `streak:freeze-grant` granted this profile a
+     * freeze — self-exclusion marker so a crash-then-pg-boss-redelivery re-run is a no-op for
+     * already-granted profiles (same idempotency pattern as `last_counted_date` for
+     * `streak:sweep`), instead of re-granting anyone still below `freeze_bank` cap. Added by
+     * WS3-T3 — no other workstream reads/writes this column.
+     */
+    lastFreezeGrantWeek: date('last_freeze_grant_week'),
     /** Record only, no freezes. */
     currentWinStreak: integer('current_win_streak').notNull().default(0),
     bestWinStreak: integer('best_win_streak').notNull().default(0),

@@ -20,9 +20,15 @@ import { SCHEDULE_TZ } from '@receipts/core';
 import type { JobHandler } from './heartbeat.js';
 import { analyticsRollupHandler } from './jobs/analytics-rollup.js';
 import { botScoreHandler } from './jobs/bot-score.js';
+import { gradeFollowupHandler } from './jobs/grade-followup.js';
 import { maintenancePruneHandler } from './jobs/maintenance-prune.js';
 import { notifyDispatchHandler } from './jobs/notify-dispatch.js';
+import { questionLockHandler } from './jobs/question-lock.js';
+import { questionOpenHandler } from './jobs/question-open.js';
+import { revealFireHandler } from './jobs/reveal-fire.js';
 import { settlementPollHandler } from './jobs/settlement-poll.js';
+import { streakFreezeGrantHandler } from './jobs/streak-freeze-grant.js';
+import { streakSweepHandler } from './jobs/streak-sweep.js';
 import { stubHandler } from './jobs/stubs.js';
 import { venuePriceTickHandler } from './jobs/venue-price-tick.js';
 import { venueSyncCatalogHandler } from './jobs/venue-sync-catalog.js';
@@ -63,36 +69,36 @@ export const JOB_REGISTRY: readonly JobDefinition[] = [
     name: 'grade:followup',
     owner: 'WS3-T3',
     // Enqueued transactionally by grading (§6.5) — no cron.
-    handler: stubHandler('grade:followup', 'WS3-T3'),
+    handler: gradeFollowupHandler,
   },
   {
     name: 'question:open',
     owner: 'WS3-T1',
     // Per-question at open_at — scheduled sends, no cron.
-    handler: stubHandler('question:open', 'WS3-T1'),
+    handler: questionOpenHandler,
   },
   {
     name: 'question:lock',
     owner: 'WS3-T1',
-    handler: stubHandler('question:lock', 'WS3-T1'),
+    handler: questionLockHandler,
   },
   {
     name: 'reveal:fire',
     owner: 'WS3-T4',
     // Per-question at reveal_at (+30min re-arm, §6.7).
-    handler: stubHandler('reveal:fire', 'WS3-T4'),
+    handler: revealFireHandler,
   },
   {
     name: 'streak:sweep',
     owner: 'WS3-T3',
     cron: '30 3 * * *', // daily 03:30 ET
-    handler: stubHandler('streak:sweep', 'WS3-T3'),
+    handler: streakSweepHandler,
   },
   {
     name: 'streak:freeze-grant',
     owner: 'WS3-T3',
     cron: '5 0 * * 1', // Mon 00:05 ET
-    handler: stubHandler('streak:freeze-grant', 'WS3-T3'),
+    handler: streakFreezeGrantHandler,
   },
   {
     name: 'fingerprint:nightly',
