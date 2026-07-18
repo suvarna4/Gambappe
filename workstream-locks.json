@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T17:53:59.488Z",
+  "updated_at": "2026-07-18T17:55:53.213Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1079,12 +1079,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "in_review",
+      "status": "done",
       "owner": "claude-code-web-session-35b05898",
       "branch": "feat/ws11-t4-duplicate-accounts",
       "pr": "https://github.com/suvarna4/Gambappe/pull/19",
       "claimed_at": "2026-07-18T17:46:39.919Z",
-      "updated_at": "2026-07-18T17:53:59.488Z"
+      "updated_at": "2026-07-18T17:55:53.213Z"
     },
     "WS12-T1": {
       "title": "SIWE endpoints",
