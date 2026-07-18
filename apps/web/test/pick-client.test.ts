@@ -4,7 +4,7 @@
  * why those endpoints don't exist on this branch yet).
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiClientError, fetchMe, placePick, undoPick } from '@/lib/pick-client';
+import { ApiClientError, fetchMe, fetchReveal, placePick, undoPick } from '@/lib/pick-client';
 
 function jsonResponse(
   body: unknown,
@@ -168,6 +168,113 @@ describe('placePick (§6.2) — not merged yet (WS3-T2), but the client contract
     // @ts-expect-error deliberately passing an invalid body to prove the client validates first
     await expect(placePick('q1', { side: 'yes', stake: 100 })).rejects.toThrow();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('fetchReveal (§6.7, WS7-T3)', () => {
+  const basePayload = {
+    question: {
+      id: '018f1e2b-0000-7000-8000-000000000001',
+      slug: 'will-it-happen',
+      kind: 'daily',
+      status: 'revealed',
+      question_date: '2026-07-19',
+      headline: 'Will it happen?',
+      blurb: null,
+      yes_label: 'Yes',
+      no_label: 'No',
+      open_at: '2026-07-19T13:00:00Z',
+      lock_at: '2026-07-19T16:00:00Z',
+      reveal_at: '2026-07-20T00:00:00Z',
+      yes_price: 0.63,
+      yes_price_updated_at: '2026-07-19T13:00:00Z',
+      crowd: { yes: 6, no: 4, pct_yes: 60 },
+      outcome: 'yes',
+      revealed_at: '2026-07-20T00:00:00Z',
+      void_reason: null,
+      is_volatile: false,
+      venue: 'kalshi',
+      venue_url: 'https://kalshi.example/markets/test',
+    },
+    outcome: 'yes',
+    crowd: { yes: 6, no: 4, pct_yes: 60 },
+    narrative_line: '60% called it. Yes it will.',
+    share: {
+      page_url: 'https://receipts.example/q/will-it-happen',
+      og_url: 'https://receipts.example/api/og/q/will-it-happen',
+      card_urls: [],
+    },
+  };
+
+  it('GETs the reveal path and parses a payload with no viewer block (spectator, no pick)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ data: basePayload }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await fetchReveal('will-it-happen');
+    expect(result.data.outcome).toBe('yes');
+    expect(result.data.viewer).toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/questions/will-it-happen/reveal',
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  it('parses a payload with a viewer result block', async () => {
+    const withViewer = {
+      ...basePayload,
+      viewer: {
+        pick: {
+          id: '018f1e2b-0000-7000-8000-000000000002',
+          question_id: '018f1e2b-0000-7000-8000-000000000001',
+          profile_id: '018f1e2b-0000-7000-8000-000000000003',
+          side: 'yes',
+          yes_price_at_entry: 0.63,
+          price_stamped_at: '2026-07-19T13:00:00Z',
+          picked_at: '2026-07-19T13:00:00Z',
+          source: 'spectator_page',
+          confidence: null,
+          result: 'win',
+          edge: 0.37,
+        },
+        result: 'win',
+        edge: 0.37,
+        percentile: 82,
+        streak: { current: 4, best: 4, delta: 1, freeze_used: false },
+        badges: [],
+      },
+    };
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ data: withViewer }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await fetchReveal('will-it-happen');
+    expect(result.data.viewer?.result).toBe('win');
+    expect(result.data.viewer?.streak.current).toBe(4);
+  });
+
+  it('surfaces REVEAL_NOT_READY as a typed ApiClientError (423)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        jsonResponse(
+          { error: { code: 'REVEAL_NOT_READY', message: 'not yet' } },
+          { status: 423 },
+        ),
+      ),
+    );
+    await expect(fetchReveal('will-it-happen')).rejects.toMatchObject({
+      code: 'REVEAL_NOT_READY',
+      status: 423,
+    });
+  });
+
+  it('surfaces UNAUTHENTICATED for a caller with no ghost/claimed identity', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        jsonResponse({ error: { code: 'UNAUTHENTICATED', message: 'nope' } }, { status: 401 }),
+      ),
+    );
+    await expect(fetchReveal('will-it-happen')).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
   });
 });
 

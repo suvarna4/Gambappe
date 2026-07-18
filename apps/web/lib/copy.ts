@@ -105,6 +105,11 @@ export const copy = {
       "Voided by the venue — this one's streak-safe, it won't count for or against you.",
     revealedNoPickLabel: "You didn't pick this one.",
     calledItBadge: 'Called it',
+    /** WS7-T3 reveal sequence (§10.3): the percentile/streak count-up block. `topPercent` is
+     * already the §8.6 "Top X%" convention (100 − percentile, clamped to a 1% floor) — see
+     * `@receipts/core`'s `topPercentDisplay`, the same helper `/p/[slug]` uses for this stat. */
+    percentileLabel: (topPercent: number) => `Top ${topPercent}%`,
+    freezeUsedNote: 'Freeze used — streak safe.',
     tomorrowTeaser: "Tomorrow's question lands at 9:00 ET.",
     noQuestionToday: "There's no daily question live right now — check back at 9:00 ET.",
     priceStaleNotice: 'Prices are catching up — try again in a minute.',
