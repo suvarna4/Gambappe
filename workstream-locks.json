@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T21:59:04.265Z",
+  "updated_at": "2026-07-18T22:01:37.382Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -819,13 +819,13 @@
         "WS3-T4"
       ],
       "mock_start_ok": true,
-      "note": "Rebased onto merged WS7-T2/WS9-T2/WS9-T3; reconciled /q/[slug] mock scaffold with WS7-T2's real page (kept real page, wired og:image, dropped dead scaffold module). Full suite green post-rebase.",
-      "status": "in_review",
+      "note": "Merged to main via PR #29.",
+      "status": "done",
       "owner": "claude-code-web-session-9c961fec",
       "branch": "feat-ws8-t1-t3-og-isr",
       "pr": "https://github.com/suvarna4/Gambappe/pull/29",
       "claimed_at": "2026-07-18T10:55:11.391Z",
-      "updated_at": "2026-07-18T21:20:57.967Z"
+      "updated_at": "2026-07-18T22:01:37.381Z"
     },
     "WS8-T2": {
       "title": "Share cards + share sheet",
