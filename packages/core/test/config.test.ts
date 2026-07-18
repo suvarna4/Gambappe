@@ -9,6 +9,7 @@ describe('Appendix D constants', () => {
   it('matches the pinned defaults exactly', () => {
     expect(CONFIG).toMatchInlineSnapshot(`
       {
+        "ACCURACY_PERCENTILE_MIN_PICKS": 10,
         "AUTOPAUSE_REPORT_N": 3,
         "AUTOPAUSE_REPORT_WINDOW_D": 7,
         "BOT_EXCLUDE_THRESHOLD": 0.8,
