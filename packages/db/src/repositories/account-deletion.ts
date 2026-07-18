@@ -19,6 +19,7 @@ import {
   pushSubscriptions,
   ratings,
   users,
+  verificationTokens,
   walletLinks,
 } from '../schema/index.js';
 
@@ -72,6 +73,15 @@ export async function deleteAccount(
 
     await tx.delete(fingerprints).where(eq(fingerprints.profileId, profileId));
     await tx.delete(ratings).where(eq(ratings.profileId, profileId));
+
+    // verification_tokens has no FK to users (Auth.js keys it by email, `identifier`) — the
+    // users hard-delete below cascades accounts/sessions but can't touch this table, so a
+    // pending magic-link row would otherwise survive deletion and falsify §11.4/§11.5 "email
+    // gone" (a stale token still round-trips through the identifier value).
+    const [deletingUser] = await tx.select({ email: users.email }).from(users).where(eq(users.id, userId));
+    if (deletingUser?.email) {
+      await tx.delete(verificationTokens).where(eq(verificationTokens.identifier, deletingUser.email));
+    }
 
     // Auth.js hard delete — accounts/sessions cascade via onDelete:'cascade' FKs (email gone).
     await tx.delete(users).where(eq(users.id, userId));

@@ -13,7 +13,7 @@ import type pg from 'pg';
 import { connect, type Db } from '../../src/client.js';
 import { deleteAccount } from '../../src/repositories/account-deletion.js';
 import { getProfileBySlug } from '../../src/repositories/profiles.js';
-import { markets, picks, posts, profiles, questions, users } from '../../src/schema/index.js';
+import { markets, picks, posts, profiles, questions, users, verificationTokens } from '../../src/schema/index.js';
 import { buildMarket, buildPick, buildProfile, buildQuestion } from '../../src/testing/index.js';
 
 const url =
@@ -64,6 +64,14 @@ describe('deleteAccount (§11.4)', () => {
       status: 'visible',
     });
 
+    // A pending magic-link send — verification_tokens has no FK to users (Auth.js keys it by
+    // email), so the users hard-delete's cascade can't reach it on its own.
+    await db.insert(verificationTokens).values({
+      identifier: 'delete-me@example.com',
+      token: 'pending-magic-link-token',
+      expires: new Date('2026-07-19T00:15:00Z'),
+    });
+
     await deleteAccount(db, profile.id as string, userId, new Date('2026-07-19T00:00:00Z'));
 
     // Old slug 404s.
@@ -91,5 +99,12 @@ describe('deleteAccount (§11.4)', () => {
     // Email gone from `users` (hard delete).
     const userRows = await db.execute(sql`SELECT email FROM users WHERE id = ${userId}`);
     expect(userRows.rows).toHaveLength(0);
+
+    // Pending verification_tokens for that email are pruned too — not just the users row.
+    const tokenRows = await db
+      .select()
+      .from(verificationTokens)
+      .where(eq(verificationTokens.identifier, 'delete-me@example.com'));
+    expect(tokenRows).toHaveLength(0);
   });
 });

@@ -3,6 +3,7 @@
  * Test factories are exported from `@receipts/db/testing`.
  */
 export * from './client.js';
+export * from './pg-errors.js';
 export * from './schema/index.js';
 export * from './repositories/profiles.js';
 export * from './repositories/questions.js';

@@ -16,7 +16,15 @@ function extractCookie(cookieHeader: string | null, name: string): string | null
     const eq = part.indexOf('=');
     if (eq === -1) continue;
     const key = part.slice(0, eq).trim();
-    if (key === name) return decodeURIComponent(part.slice(eq + 1).trim());
+    if (key === name) {
+      // A malformed percent-encoding (e.g. a stray "%") throws URIError — treat exactly like a
+      // missing cookie (anonymous), never a 500 (§6.1.1: "never throws on a bad cookie").
+      try {
+        return decodeURIComponent(part.slice(eq + 1).trim());
+      } catch {
+        return null;
+      }
+    }
   }
   return null;
 }

@@ -5,7 +5,7 @@
  */
 import type { NextResponse } from 'next/server';
 import { ApiError, now, slugifyHandle, updateHandleBodySchema } from '@receipts/core';
-import { handleExists, updateProfileById } from '@receipts/db';
+import { getProfileBySlug, handleExists, isUniqueViolation, updateProfileById } from '@receipts/db';
 import { jsonSuccess, runRoute } from '@/lib/api-response';
 import { assertSameOrigin } from '@/lib/origin-check';
 import { resolveIdentityFromRequest } from '@/lib/identity-request';
@@ -44,12 +44,30 @@ export async function PATCH(request: Request): Promise<NextResponse> {
       throw new ApiError('VALIDATION_FAILED', 'handle already taken', { field: 'handle' });
     }
 
-    const updated = await updateProfileById(db, profile.id, {
-      handle: body.handle,
-      slug: slugifyHandle(body.handle),
-      handleIsGenerated: false,
-      handleChangedAt: at,
-    });
+    // slugifyHandle is lossy (lowercasing + stripping) — two distinct, individually-unique
+    // handles can collide on the same slug, and profiles.slug carries its own unique index
+    // (profiles_slug_uq) independent of the handle uniqueness check above.
+    const slug = slugifyHandle(body.handle);
+    const existingSlug = await getProfileBySlug(db, slug);
+    if (existingSlug && existingSlug.id !== profile.id) {
+      throw new ApiError('VALIDATION_FAILED', 'handle already taken', { field: 'handle' });
+    }
+
+    let updated;
+    try {
+      updated = await updateProfileById(db, profile.id, {
+        handle: body.handle,
+        slug,
+        handleIsGenerated: false,
+        handleChangedAt: at,
+      });
+    } catch (err) {
+      // Defense-in-depth against the TOCTOU race the pre-checks above can't fully close.
+      if (isUniqueViolation(err)) {
+        throw new ApiError('VALIDATION_FAILED', 'handle already taken', { field: 'handle' });
+      }
+      throw err;
+    }
 
     return jsonSuccess({ handle: updated.handle, slug: updated.slug });
   });

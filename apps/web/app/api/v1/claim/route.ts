@@ -21,7 +21,15 @@ function readGhostCookie(request: Request): string | null {
   for (const part of header.split(';')) {
     const eq = part.indexOf('=');
     if (eq === -1) continue;
-    if (part.slice(0, eq).trim() === GHOST_COOKIE_NAME) return decodeURIComponent(part.slice(eq + 1).trim());
+    if (part.slice(0, eq).trim() === GHOST_COOKIE_NAME) {
+      // A malformed percent-encoding throws URIError — treat exactly like a missing cookie
+      // (anonymous), never a 500 (§6.1.1: "never throws on a bad cookie").
+      try {
+        return decodeURIComponent(part.slice(eq + 1).trim());
+      } catch {
+        return null;
+      }
+    }
   }
   return null;
 }

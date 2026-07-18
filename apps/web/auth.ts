@@ -68,12 +68,12 @@ function buildProviders(): NextAuthConfig['providers'] {
       from: process.env.EMAIL_FROM ?? 'noreply@receipts.example',
       maxAge: MAGIC_LINK_TTL_MIN * 60,
       async sendVerificationRequest({ identifier, url }) {
-        // WS2-T2 stub: real Resend sending is WS9 scope (§13.2). Outside production, store/log
-        // the link so test harnesses and local dev can read it back without a mail provider.
+        // WS2-T2 stub: real Resend sending is WS9 scope (§13.2). Outside production, store the
+        // link in the in-memory mailbox so test harnesses and local dev can read it back
+        // without a mail provider — never logged (§16.2 forbids logging emails unconditionally,
+        // not just in production; `getLastMagicLink` is the intended read-back path).
         if (process.env.NODE_ENV !== 'production') {
           recordMagicLink(identifier, url);
-           
-          console.log(`[auth] magic link for ${identifier}: ${url}`);
           return;
         }
         throw new Error(
@@ -112,7 +112,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
         // Verified-email linking only (§11.1) — Google emails are verified; X provides none
         // reliably, so X accounts stand alone unless the same email is verified via magic
         // link first (handled by `allowDangerousEmailAccountLinking: false` on each provider).
-        if (account?.provider === 'google' && profile && profile['email_verified'] === false) {
+        // Fail closed: an absent/undefined claim is treated the same as an explicit `false`,
+        // not silently allowed through — `!== true`, not `=== false`.
+        if (account?.provider === 'google' && profile?.['email_verified'] !== true) {
           return false;
         }
         return true;
