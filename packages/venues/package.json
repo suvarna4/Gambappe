@@ -1,0 +1,46 @@
+{
+  "name": "@receipts/venues",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "VenueAdapter contract + shared contract-test suite + MockVenueAdapter (design doc §7.1, WS0-T6). Real kalshi/polymarket adapters are WS1 scope.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./contract-suite": {
+      "types": "./dist/contract-suite.d.ts",
+      "default": "./dist/contract-suite.js"
+    },
+    "./mock": {
+      "types": "./dist/mock/index.d.ts",
+      "default": "./dist/mock/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@receipts/core": "workspace:*",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@receipts/config": "workspace:*",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  },
+  "peerDependencies": {
+    "vitest": "^3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vitest": {
+      "optional": true
+    }
+  }
+}

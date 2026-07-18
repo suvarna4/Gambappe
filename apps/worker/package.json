@@ -1,0 +1,33 @@
+{
+  "name": "worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "apps/worker — long-lived pg-boss process: all scheduled/queued jobs (design doc §2.2, §7.6).",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
+  },
+  "dependencies": {
+    "@receipts/core": "workspace:*",
+    "@receipts/db": "workspace:*",
+    "drizzle-orm": "^0.44.7",
+    "ioredis": "^5.6.0",
+    "pg": "^8.16.0",
+    "pg-boss": "^10.3.0",
+    "pino": "^9.7.0",
+    "uuidv7": "^1.2.1"
+  },
+  "devDependencies": {
+    "@receipts/config": "workspace:*",
+    "@types/node": "^22.15.0",
+    "@types/pg": "^8.15.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  }
+}

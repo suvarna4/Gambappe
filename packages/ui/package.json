@@ -1,0 +1,29 @@
+{
+  "name": "@receipts/ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Design-system React components (design doc §10.4). Implemented by WS7-T1; scaffolded in WS0.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@receipts/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@receipts/config": "workspace:*",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  }
+}

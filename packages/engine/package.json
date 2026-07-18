@@ -1,0 +1,29 @@
+{
+  "name": "@receipts/engine",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Pure functions only (design doc §4.2): fingerprint, glicko2, matchers, scorers, narration. Zero I/O. Implemented by WS4; scaffolded in WS0.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@receipts/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@receipts/config": "workspace:*",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "extends": "@receipts/config/tsconfig.package.json",
+  "include": [
+    "src"
+  ],
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src"
+  }
+}

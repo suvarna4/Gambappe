@@ -1,0 +1,187 @@
+# CI pipeline (design doc §17.3, WS0-T5).
+# PR: install → lint → typecheck → unit → build → drizzle drift check → integration
+# (docker services) → e2e (chromium) → dependency denylist scan (INV-1).
+# Main: same + deploy staging. Prod deploys are manual promotions (§18).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # CI never hits real venues (§17.2); tests run against the MockVenueAdapter + fixtures.
+  CI: 'true'
+
+jobs:
+  verify:
+    name: lint · typecheck · unit · build · drift · denylist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Dependency denylist scan (INV-1 — no payment/exchange-trading SDKs)
+        run: pnpm denylist
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Drizzle drift check (§4.5 — schema code vs migrations)
+        run: |
+          pnpm --filter @receipts/db db:check
+          pnpm --filter @receipts/db db:generate --name drift-check
+          if [ -n "$(git status --porcelain packages/db/drizzle)" ]; then
+            echo "::error::Schema drift detected — drizzle-kit generate produced changes."
+            git status --porcelain packages/db/drizzle
+            git diff packages/db/drizzle
+            exit 1
+          fi
+
+  integration:
+    name: integration (pg16 + redis7 services)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: receipts
+          POSTGRES_PASSWORD: receipts
+          POSTGRES_DB: receipts_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U receipts -d receipts_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://receipts:receipts@localhost:5432/receipts_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Integration tests
+        run: pnpm test:integration
+
+  e2e:
+    name: e2e (chromium)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: receipts
+          POSTGRES_PASSWORD: receipts
+          POSTGRES_DB: receipts
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U receipts -d receipts"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://receipts:receipts@localhost:5432/receipts
+      REDIS_URL: redis://localhost:6379
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace
+        run: pnpm build
+
+      - name: Migrate + seed
+        run: |
+          pnpm db:migrate
+          pnpm db:seed
+        env:
+          ADMIN_SEED_EMAIL: ci-admin@receipts.test
+
+      - name: Install Playwright chromium
+        run: pnpm --filter web exec playwright install --with-deps chromium
+
+      - name: E2E (chromium)
+        run: pnpm e2e
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
+          retention-days: 7
+
+  deploy-staging:
+    name: deploy staging (main only)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [verify, integration, e2e]
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      # §18: web → Vercel staging, worker → Fly.io, migrations as a release step before
+      # web+worker roll. Wired once platform credentials exist (secrets: VERCEL_TOKEN,
+      # FLY_API_TOKEN, STAGING_DATABASE_URL). Prod deploys are manual promotions — never CI.
+      - name: Deploy staging (placeholder until platform credentials are provisioned)
+        run: |
+          echo "deploy: drizzle-kit migrate (release step) -> Vercel staging -> Fly.io worker"
+          echo "Skipping: platform secrets not configured in this repository yet."

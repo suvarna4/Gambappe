@@ -1,0 +1,40 @@
+{
+  "name": "receipts",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:integration": "turbo run test:integration --concurrency=1",
+    "e2e": "pnpm --filter web e2e",
+    "lint": "pnpm run denylist && eslint . --max-warnings 0",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "denylist": "node scripts/check-dependency-denylist.mjs",
+    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "db:generate": "pnpm --filter @receipts/db db:generate",
+    "db:migrate": "pnpm --filter @receipts/db db:migrate",
+    "db:seed": "pnpm --filter @receipts/db db:seed"
+  },
+  "prettier": "@receipts/config/prettier",
+  "devDependencies": {
+    "@receipts/config": "workspace:*",
+    "eslint": "^9.30.0",
+    "prettier": "^3.6.0",
+    "turbo": "^2.5.0",
+    "typescript": "^5.8.0",
+    "typescript-eslint": "^8.35.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "@tailwindcss/oxide"
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "@receipts/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./eslint": "./eslint.config.base.mjs",
+    "./prettier": "./prettier.config.mjs",
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./tsconfig.package.json": "./tsconfig.package.json"
+  },
+  "scripts": {
+    "build": "true",
+    "typecheck": "true",
+    "test": "true"
+  },
+  "devDependencies": {
+    "typescript-eslint": "^8.35.0"
+  }
+}
