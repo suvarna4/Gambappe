@@ -6,6 +6,12 @@ import { defineConfig, devices } from '@playwright/test';
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000';
 
+// WS10-T1 admin-auth.spec.ts needs a known stopgap token + allowlist; harmless test-only
+// defaults so CI/local runs don't need to export these just to run e2e (webServer inherits
+// process.env as-is, so setting them here before defineConfig is enough).
+process.env.ADMIN_STOPGAP_TOKEN ??= 'e2e-test-stopgap-token';
+process.env.ADMIN_STOPGAP_IP_ALLOWLIST ??= '127.0.0.1';
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
