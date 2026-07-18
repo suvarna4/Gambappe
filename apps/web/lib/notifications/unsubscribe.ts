@@ -9,7 +9,8 @@
  * flips `email_<category>`. Push has its own opt-in/out surface (`push_subscriptions`, the
  * subscribe/unsubscribe endpoints, WS9-T2) rather than a mailto-style unsubscribe link.
  */
-import { profileSettingsSchema, verifyUnsubscribeToken, type NotificationSettings } from '@receipts/core';
+import { profileSettingsSchema, type NotificationSettings } from '@receipts/core';
+import { verifyUnsubscribeToken } from '@receipts/core/server';
 import { getProfileById, updateProfileById, type Db } from '@receipts/db';
 
 export type UnsubscribeResult =
