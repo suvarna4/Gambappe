@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T09:21:27.684Z",
+  "updated_at": "2026-07-18T09:21:29.197Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -389,12 +389,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "available",
-      "owner": null,
+      "status": "claimed",
+      "owner": "racer-2",
       "branch": null,
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-18T09:35:00Z"
+      "claimed_at": "2026-07-18T09:21:29.197Z",
+      "updated_at": "2026-07-18T09:21:29.197Z"
     },
     "WS4-T2": {
       "title": "Glicko-2",
