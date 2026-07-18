@@ -19,7 +19,10 @@
     "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "db:generate": "pnpm --filter @receipts/db db:generate",
     "db:migrate": "pnpm --filter @receipts/db db:migrate",
-    "db:seed": "pnpm --filter @receipts/db db:seed"
+    "db:seed": "pnpm --filter @receipts/db db:seed",
+    "ws": "node scripts/workstream-lock.mjs",
+    "ws:ready": "node scripts/workstream-lock.mjs list-ready",
+    "ws:status": "node scripts/workstream-lock.mjs status"
   },
   "prettier": "@receipts/config/prettier",
   "devDependencies": {
