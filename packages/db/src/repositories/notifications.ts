@@ -81,9 +81,7 @@ export async function sendNotification(
 
 /**
  * Queued, due (`scheduled_at <= at`) EMAIL notifications, oldest first, up to `limit`. Push
- * delivery is WS9-T2 scope (VAPID/web-push isn't wired yet) — `notify:dispatch` only ever
- * touches `channel = 'email'` rows; queued push rows are left untouched (see
- * `apps/worker/src/jobs/notify-dispatch.ts` header).
+ * rows are queried separately by `listDueQueuedPushNotifications` below (WS9-T2).
  */
 export async function listDueQueuedEmailNotifications(
   db: Db,
@@ -97,6 +95,27 @@ export async function listDueQueuedEmailNotifications(
       and(
         eq(notifications.status, 'queued'),
         eq(notifications.channel, 'email'),
+        lte(notifications.scheduledAt, at),
+      ),
+    )
+    .orderBy(asc(notifications.scheduledAt))
+    .limit(limit);
+}
+
+/** Queued, due PUSH notifications, oldest first, up to `limit` (WS9-T2's `notify:dispatch`
+ * extension — see this file's header: push rows sat untouched until this landed). */
+export async function listDueQueuedPushNotifications(
+  db: Db,
+  at: Date,
+  limit: number,
+): Promise<NotificationRow[]> {
+  return db
+    .select()
+    .from(notifications)
+    .where(
+      and(
+        eq(notifications.status, 'queued'),
+        eq(notifications.channel, 'push'),
         lte(notifications.scheduledAt, at),
       ),
     )
