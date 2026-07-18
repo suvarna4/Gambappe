@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T18:54:55.681Z",
+  "updated_at": "2026-07-18T18:55:04.740Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -722,13 +722,13 @@
         "WS2-T3"
       ],
       "mock_start_ok": true,
-      "note": "Mock-start OK vs WS7-T2 (§19.2).",
+      "note": "Resumed mock-start per explicit user go-ahead after PR #7 (WS2)/#10 (WS3) remained the long-pole blocker; builds against packages/core's already-merged claim.ts schema, not against WS2's unmerged route. Draft PR, not to be merged until WS7-T2 + WS2-T3 land.",
       "status": "claimed",
       "owner": "claude-code-web-session-35b05898",
       "branch": "feat/ws7-t5-claim-flow-ui",
       "pr": null,
       "claimed_at": "2026-07-18T18:54:55.681Z",
-      "updated_at": "2026-07-18T18:54:55.681Z"
+      "updated_at": "2026-07-18T18:55:04.740Z"
     },
     "WS7-T6": {
       "title": "Nemesis UI",
