@@ -18,4 +18,6 @@ export * from './repositories/fingerprints.js';
 export * from './repositories/streaks.js';
 export * from './repositories/analytics.js';
 export * from './repositories/leaderboards.js';
+export * from './repositories/notifications.js';
+export * from './repositories/nemesis.js';
 export * from './streak-replay.js';
