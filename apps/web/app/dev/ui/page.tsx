@@ -36,6 +36,7 @@ export default function UiGalleryPage() {
         <Stamp variant="loss" />
         <Stamp variant="void" />
         <Stamp variant="called_it" />
+        <Stamp variant="pending" />
       </section>
 
       <section data-testid="gallery-pricetag" className="space-y-3">

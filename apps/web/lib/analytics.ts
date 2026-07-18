@@ -9,6 +9,9 @@ import { createHash, randomBytes } from 'node:crypto';
 import type { Redis } from 'ioredis';
 import { logger } from './logger';
 import { ensureRedisConnected } from './stores';
+import { extractClientIp, extractUserAgent } from './http';
+
+export { extractClientIp, extractUserAgent };
 
 const SALT_TTL_SECONDS = 60 * 60 * 48; // 2 days — safety margin past the UTC day rotation
 
@@ -40,21 +43,6 @@ export async function getDailySalt(redis: Redis, dateKey: string): Promise<strin
   const winner = await redis.get(key);
   if (winner) return winner;
   throw new Error(`getDailySalt: no salt present for ${dateKey} after NX race`);
-}
-
-/** First entry of a (possibly multi-hop) X-Forwarded-For, else null. No raw value is ever stored. */
-export function extractClientIp(headers: Headers): string | null {
-  const forwardedFor = headers.get('x-forwarded-for');
-  if (forwardedFor) {
-    const first = forwardedFor.split(',')[0]?.trim();
-    if (first) return first;
-  }
-  const realIp = headers.get('x-real-ip');
-  return realIp?.trim() || null;
-}
-
-export function extractUserAgent(headers: Headers): string | null {
-  return headers.get('user-agent')?.trim() || null;
 }
 
 export interface RequestMetaHashes {

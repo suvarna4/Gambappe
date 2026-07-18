@@ -1,0 +1,130 @@
+import type { QuestionPublic } from '@receipts/core';
+import { Barcode, CountdownTicker, CrowdBar, PriceTag, Stamp, TicketCard } from '@receipts/ui';
+import { copy } from '@/lib/copy';
+import { formatEtClock } from '@/lib/format-et';
+
+export interface QuestionStateViewProps {
+  question: QuestionPublic;
+  /** `serverNow - Date.now()` at render time (§9.1 `x-server-time`) — see the page component
+   * for why this is computed via `@receipts/core`'s clock rather than a raw `Date.now()` call. */
+  serverOffsetMs: number;
+  /** Reserved slot for the client-side viewer strip (§10.1: "no layout shift on hydration"). */
+  viewerSlot?: React.ReactNode;
+}
+
+/**
+ * The question page's SERVER-RENDERED shell (§10.2, INV-10): renders `QuestionPublic` only —
+ * no identity, no cookies, no `viewer` data anywhere in this component's props or body. That's
+ * a structural guarantee, not just a convention: the type above has no field through which
+ * viewer-specific data COULD flow, so this component's output is provably identical for every
+ * visitor given the same question state (see `test/question-state-view.test.tsx`'s dual-render
+ * proof). All identity-dependent rendering (pick buttons, your receipt, undo) lives in
+ * `ViewerStrip`, a separate client component that hydrates into `viewerSlot` after paint.
+ *
+ * Implements the §10.3 state table: one branch per {scheduled, open, locked, revealed, voided}.
+ */
+export function QuestionStateView({
+  question,
+  serverOffsetMs,
+  viewerSlot,
+}: QuestionStateViewProps) {
+  return (
+    <div data-testid={`question-state-${question.status}`}>
+      <TicketCard>
+        <div className="space-y-4">
+          <header className="space-y-1">
+            <h1 className="text-lg font-semibold">{question.headline}</h1>
+            {question.blurb ? <p className="text-muted text-sm">{question.blurb}</p> : null}
+          </header>
+
+          {question.status === 'scheduled' && (
+            <div className="space-y-2" data-testid="question-scheduled">
+              <CountdownTicker
+                targetIso={question.open_at}
+                serverOffsetMs={serverOffsetMs}
+                label={copy.question.opensLabel}
+              />
+              <p className="text-muted text-xs">{formatEtClock(question.open_at)}</p>
+            </div>
+          )}
+
+          {question.status === 'open' && (
+            <div className="space-y-3" data-testid="question-open">
+              <div className="flex flex-wrap gap-6">
+                <PriceTag
+                  side="yes"
+                  label={question.yes_label}
+                  yesProbability={question.yes_price ?? 0.5}
+                />
+                <PriceTag
+                  side="no"
+                  label={question.no_label}
+                  yesProbability={question.yes_price ?? 0.5}
+                />
+              </div>
+              <CountdownTicker
+                targetIso={question.lock_at}
+                serverOffsetMs={serverOffsetMs}
+                label={copy.question.locksInLabel}
+              />
+              <p className="text-muted text-xs">
+                {copy.question.crowdLocksAt(formatEtClock(question.lock_at))}
+              </p>
+            </div>
+          )}
+
+          {question.status === 'locked' && (
+            <div className="space-y-3" data-testid="question-locked">
+              {question.crowd ? (
+                <CrowdBar
+                  yesCount={question.crowd.yes}
+                  noCount={question.crowd.no}
+                  yesLabel={question.yes_label}
+                  noLabel={question.no_label}
+                />
+              ) : null}
+              <CountdownTicker
+                targetIso={question.reveal_at}
+                serverOffsetMs={serverOffsetMs}
+                label={copy.question.revealInLabel}
+              />
+            </div>
+          )}
+
+          {question.status === 'revealed' && (
+            <div className="space-y-3" data-testid="question-revealed">
+              {question.crowd ? (
+                <CrowdBar
+                  yesCount={question.crowd.yes}
+                  noCount={question.crowd.no}
+                  yesLabel={question.yes_label}
+                  noLabel={question.no_label}
+                />
+              ) : null}
+              <p className="font-mono text-sm">
+                {question.outcome === 'yes' ? question.yes_label : question.no_label}
+                <span aria-hidden="true"> ✓</span>
+              </p>
+              <p className="text-muted text-xs">{copy.question.tomorrowTeaser}</p>
+            </div>
+          )}
+
+          {question.status === 'voided' && (
+            <div className="space-y-3" data-testid="question-voided">
+              <Stamp variant="void" />
+              <p className="text-muted text-sm">{copy.question.voidedExplainer}</p>
+              {question.void_reason ? (
+                <p className="text-muted text-xs">{question.void_reason}</p>
+              ) : null}
+              <p className="text-muted text-xs">{copy.question.tomorrowTeaser}</p>
+            </div>
+          )}
+
+          {viewerSlot}
+        </div>
+
+        <Barcode path={`/q/${question.slug}`} className="mt-4" />
+      </TicketCard>
+    </div>
+  );
+}

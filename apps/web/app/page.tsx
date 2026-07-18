@@ -1,12 +1,44 @@
 /**
- * `/` — today's question (design doc §10.1). WS0-T4 ships the boot skeleton; the state
- * machine UI is WS7-T2 scope.
+ * `/` — today's question (design doc §10.1: "SSR + client hydrate | today's question | State
+ * machine UI (§10.3)"). WS7-T2.
  */
-export default function HomePage() {
+import type { Metadata } from 'next';
+import { nowMs } from '@receipts/core';
+import { QuestionStateView } from '@/components/QuestionStateView';
+import { ViewerStrip } from '@/components/ViewerStrip';
+import { copy } from '@/lib/copy';
+import { getTodayQuestionPublic } from '@/lib/question-view';
+import { getDb } from '@/lib/stores';
+
+export const metadata: Metadata = {
+  title: 'Receipts — today’s question',
+  description: 'Pick a side on today’s real prediction-market question. No money, just receipts.',
+};
+
+// Re-evaluated per request (today's question changes daily and needs the effective-status
+// timestamp math to stay live) — WS8-T3 owns the CDN/ISR layer proper (§10.2), this task only
+// needs the render to be correct and viewer-free (INV-10).
+export const dynamic = 'force-dynamic';
+
+export default async function HomePage() {
+  const nowMsValue = nowMs();
+  const question = await getTodayQuestionPublic(getDb(), { nowMsValue });
+  const serverOffsetMs = nowMsValue - Date.now();
+
   return (
-    <main>
-      <h1>Receipts</h1>
-      <p>Today&apos;s question arrives with WS3/WS7. This is the WS0 skeleton.</p>
+    <main className="mx-auto max-w-xl space-y-6 px-6 py-10">
+      <h1 className="text-2xl font-bold">Receipts</h1>
+      {question ? (
+        <QuestionStateView
+          question={question}
+          serverOffsetMs={serverOffsetMs}
+          viewerSlot={<ViewerStrip question={question} />}
+        />
+      ) : (
+        <p className="text-muted text-sm" data-testid="no-question-today">
+          {copy.question.noQuestionToday}
+        </p>
+      )}
     </main>
   );
 }

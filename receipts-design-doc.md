@@ -252,6 +252,8 @@ packages/core/src/
 
 `packages/engine` and `packages/venues` depend on `core`; nothing depends on `apps/*`. `packages/engine` has **zero I/O** — pure functions over plain data, so it is fully parallel-safe and trivially testable.
 
+**Two export surfaces, one package.** `core`'s main `.` entrypoint (the barrel `index.ts`) must be safe to import from a browser bundle — `apps/web`'s client components (`'use client'`) import it directly (e.g. for `SCHEDULE_TZ`, enums, zod schemas), and webpack bundles whatever the barrel transitively pulls in. Anything that needs a Node built-in (`node:crypto`, `node:fs`, ...) — e.g. the §13.2 unsubscribe-token HMAC signing — must live in its own file, excluded from the main barrel, and exported only via a dedicated subpath (`@receipts/core/server`, `package.json`'s `exports` field mirrors `@receipts/db`'s `./testing` subpath pattern). Only `apps/worker` and server-only `apps/web` code (route handlers, server components, `apps/web/lib/*` modules never imported by a client component) may import from `@receipts/core/server`.
+
 ### 4.3 Coding conventions
 
 - Node 22, ESM everywhere. Path aliases via tsconfig `paths` (`@receipts/core` etc.).
@@ -1547,7 +1549,7 @@ The P0 (48-hour) cut is the subset tagged P0 below, in the same wave order — s
 
 ## Appendix B — Environment variables (complete; `.env.example` mirrors this)
 
-`DATABASE_URL`, `REDIS_URL`, `APP_NAME`, `NEXT_PUBLIC_APP_URL`, `AUTH_SECRET`, `AUTH_GOOGLE_ID/SECRET`, `AUTH_TWITTER_ID/SECRET`, `RESEND_API_KEY`, `EMAIL_FROM`, `GHOST_COOKIE_SECRET` (HMAC key for hashing ghost cookie secrets at rest, §6.1.1 — effectively non-rotatable; rotating it logs out every ghost), `INTERNAL_API_SECRET`, `ADMIN_STOPGAP_TOKEN` + `ADMIN_STOPGAP_IP_ALLOWLIST` (P0 only, removed at P1 — §19.5), `WALLET_HASH_SECRET` (HMAC key for `wallet_links.address_hash`), `SHARE_TOKEN_SECRET` (signs `?r=` attribution tokens, §10.5), `KALSHI_API_BASE`, `POLYMARKET_GAMMA_BASE`, `POLYMARKET_CLOB_BASE`, `POLYMARKET_DATA_BASE`, `POLYGON_RPC_URL`, `KALSHI_REF_PARAM`, `POLYMARKET_REF_PARAM`, `VAPID_PUBLIC_KEY/PRIVATE_KEY`, `SENTRY_DSN`, `FLAG_*` (per §4.6), `ADMIN_SEED_EMAIL` (dev/staging only). Note: the analytics IP-hash salt is **not** an env secret — it is a per-day random value generated into Redis and discarded on rotation (§5.6), precisely so no persisted secret can ever reverse the IPv4 space.
+`DATABASE_URL`, `REDIS_URL`, `APP_NAME`, `NEXT_PUBLIC_APP_URL`, `AUTH_SECRET`, `AUTH_GOOGLE_ID/SECRET`, `AUTH_TWITTER_ID/SECRET`, `RESEND_API_KEY`, `EMAIL_FROM`, `GHOST_COOKIE_SECRET` (HMAC key for hashing ghost cookie secrets at rest, §6.1.1 — effectively non-rotatable; rotating it logs out every ghost), `INTERNAL_API_SECRET`, `ADMIN_STOPGAP_TOKEN` + `ADMIN_STOPGAP_IP_ALLOWLIST` (P0 only, removed at P1 — §19.5), `WALLET_HASH_SECRET` (HMAC key for `wallet_links.address_hash`), `SHARE_TOKEN_SECRET` (signs `?r=` attribution tokens, §10.5), `UNSUB_TOKEN_SECRET` (HMAC key signing one-click unsubscribe tokens, §13.2 — added WS9-T1; read by both `apps/worker`, which signs the link at send time, and `apps/web`, which verifies it on click, since `PATCH /me/settings` requires a claimed session a mail client's one-click link can't supply), `KALSHI_API_BASE`, `POLYMARKET_GAMMA_BASE`, `POLYMARKET_CLOB_BASE`, `POLYMARKET_DATA_BASE`, `POLYGON_RPC_URL`, `KALSHI_REF_PARAM`, `POLYMARKET_REF_PARAM`, `VAPID_PUBLIC_KEY/PRIVATE_KEY`, `SENTRY_DSN`, `FLAG_*` (per §4.6), `ADMIN_SEED_EMAIL` (dev/staging only). Note: the analytics IP-hash salt is **not** an env secret — it is a per-day random value generated into Redis and discarded on rotation (§5.6), precisely so no persisted secret can ever reverse the IPv4 space.
 
 ## Appendix C — Error codes
 
@@ -1615,6 +1617,8 @@ The P0 (48-hour) cut is the subset tagged P0 below, in the same wave order — s
 | `RL_*` (all rate limits) | see the §14.1 table — that table is their source of truth | §14.1 |
 | `WALLET_SIZE_BUCKETS` | xs<$10, s<$100, m<$1k, l<$10k, xl≥$10k (bounds used transiently at ingestion only; INV-7) | §12.4 |
 | `VENUE_RATE_LIMIT_RPS` | 4 per venue | §7.2 |
+| `QUIET_HOURS_START_LOCAL` / `QUIET_HOURS_END_LOCAL` | 22:00 / 08:00 (profile.timezone, default `SCHEDULE_TZ`) — added WS9-T1, not in the original table | §13.2 |
+| `MARKETING_EMAIL_DAILY_CAP` | 1 per profile per local day (reveal/nemesis/duo exempt) — added WS9-T1, not in the original table | §13.2 |
 | `HOUSE_MIN_PROFILES` | 500 | §8.11 |
 
 ## Appendix E — Red-team resolution log
