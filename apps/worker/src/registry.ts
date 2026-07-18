@@ -1,7 +1,13 @@
 /**
- * The job registry — every §7.6 job, complete. All cron times are America/New_York
- * (SCHEDULE_TZ); pg-boss singleton crons prevent double-fire, and every handler is
- * idempotent + heartbeat-writing (§19.4 rule 4).
+ * The job registry — every §7.6 job, complete, PLUS `bot:score` (WS11-T2). §7.6's table
+ * (and this registry's history before WS11-T2) didn't have a slot for the nightly bot-scoring
+ * heuristic §14.2 requires; the nearest existing job, `fingerprint:nightly`, belongs to a
+ * separate, undelivered workstream (WS4-T7) that WS11-T2 doesn't depend on, so folding bot
+ * scoring into that stub would mean two unrelated workstreams racing to fill in the same
+ * handler. Adding a dedicated job is the smaller, contained deviation from the doc's literal
+ * table — called out here and in the WS11-T2 PR description rather than silently reusing
+ * someone else's slot. All cron times are America/New_York (SCHEDULE_TZ); pg-boss singleton
+ * crons prevent double-fire, and every handler is idempotent + heartbeat-writing (§19.4 rule 4).
  *
  * Jobs without a cron are queue-only: enqueued transactionally (grade:followup, §6.5),
  * per-question (question:open/lock, reveal:fire), or per-event (wallet:ingest).
@@ -13,6 +19,7 @@
 import { SCHEDULE_TZ } from '@receipts/core';
 import type { JobHandler } from './heartbeat.js';
 import { analyticsRollupHandler } from './jobs/analytics-rollup.js';
+import { botScoreHandler } from './jobs/bot-score.js';
 import { maintenancePruneHandler } from './jobs/maintenance-prune.js';
 import { settlementPollHandler } from './jobs/settlement-poll.js';
 import { stubHandler } from './jobs/stubs.js';
@@ -138,6 +145,12 @@ export const JOB_REGISTRY: readonly JobDefinition[] = [
     owner: 'WS9-T1',
     cron: '* * * * *', // every 30s per spec; minute cron + WS9-T1 self-requeue (see header)
     handler: stubHandler('notify:dispatch', 'WS9-T1'),
+  },
+  {
+    name: 'bot:score',
+    owner: 'WS11-T2',
+    cron: '15 3 * * *', // daily 03:15 ET — before analytics:rollup (04:00) so bot_flag_rate sees fresh scores
+    handler: botScoreHandler,
   },
   {
     name: 'analytics:rollup',

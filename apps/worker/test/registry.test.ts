@@ -1,10 +1,12 @@
 /**
- * WS0-T4 AC: the job registry contains a stub (or implementation) for EVERY §7.6 job.
+ * WS0-T4 AC: the job registry contains a stub (or implementation) for EVERY §7.6 job — PLUS
+ * `bot:score` (WS11-T2), a deliberate addition beyond the doc's literal table (see the
+ * registry.ts header comment for why the §14.2 bot-scoring heuristic needed its own slot).
  */
 import { describe, expect, it } from 'vitest';
 import { JOB_NAMES, JOB_REGISTRY, SCHEDULE_TIMEZONE } from '../src/registry.js';
 
-/** The §7.6 job table, verbatim. */
+/** The §7.6 job table, verbatim, plus `bot:score` (WS11-T2). */
 const SPEC_JOBS = [
   'venue:sync-catalog',
   'venue:price-tick',
@@ -24,6 +26,7 @@ const SPEC_JOBS = [
   'duo:matchmaker',
   'duo:window-roll',
   'notify:dispatch',
+  'bot:score',
   'analytics:rollup',
   'maintenance:prune',
 ] as const;
@@ -71,6 +74,7 @@ describe('job registry (§7.6)', () => {
     expect(byName['nemesis:lastday']).toBe('0 9 * * 0');
     expect(byName['nemesis:assign']).toBe('0 9 * * 1');
     expect(byName['duo:window-roll']).toBe('0 9 * * 2,5');
+    expect(byName['bot:score']).toBe('15 3 * * *');
     expect(byName['analytics:rollup']).toBe('0 4 * * *');
     expect(byName['maintenance:prune']).toBe('30 4 * * *');
   });
