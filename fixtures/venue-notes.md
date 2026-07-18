@@ -1,4 +1,4 @@
-# Venue notes (WS1-T2/T3, §7.2)
+# Venue notes (WS1-T2/T3/T6, §7.2)
 
 Endpoints called by each adapter, plus a **SPEC-GAP** flag on everything that could not be
 verified against live venue docs in this sandbox (no network egress to kalshi.com /
@@ -55,6 +55,21 @@ has NOT been verified against a live response. In particular:
 None of the above blocks WS1-T2 (contract suite + unit ACs all pass against the hand-authored
 fixtures), but production cutover should re-verify this file against current Kalshi docs
 first (design doc R1 risk row).
+
+### Kalshi WS ticker (`packages/venues/src/kalshi/ws-ticker.ts`, WS1-T6, P1.5, flag `kalshi_ws_ticker`)
+
+Endpoint: `wss://{KALSHI_API_BASE with http(s)->ws(s)}/ws/v2` (derived, not independently
+verified). Subscribe message shape (`{id, cmd:'subscribe', params:{channels:['ticker'],
+market_tickers:[...]}}`) and inbound ticker payload shape (`{msg:{market_ticker, yes_bid,
+yes_ask}}`) are both **SPEC-GAP(WS1-T6)** best-effort reconstructions, unverified live.
+
+This is explicitly a P1.5 flourish, not load-bearing: `venue:price-tick` (WS1-T4, the source
+of record for stamped prices and grading) does not import or depend on `ws-ticker.ts` in any
+way — grep `apps/worker/src` for `ws-ticker` to confirm zero references. `subscribe()` is
+also a safe no-op whenever the `kalshi_ws_ticker` flag is off (default) or `KALSHI_API_BASE`
+is unset, and any malformed/unexpected WS message is swallowed (never thrown) rather than
+surfaced as a failure. Killing the WS connection therefore causes zero functional loss by
+construction, not merely by test coverage.
 
 ## Polymarket (`packages/venues/src/polymarket/`)
 

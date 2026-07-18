@@ -16,6 +16,9 @@ export const FLAG_DEFAULTS = {
   nemesis: false,
   /** Venue spread flavor (§7.7). */
   divergence_display: false,
+  /** Kalshi WS live-price ticker flourish during reveal windows (§7.3, P1.5). REST
+   * (`venue:price-tick`) is always the source of record — this is purely additive. */
+  kalshi_ws_ticker: false,
   /** Everything Houses (P2). */
   houses: false,
   /** Passkey auth. */

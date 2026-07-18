@@ -54,7 +54,7 @@ describe('errors (Appendix C)', () => {
 });
 
 describe('flags (§4.6)', () => {
-  it('has exactly the 8 spec flags, all defaulting off', () => {
+  it('has exactly the 9 spec flags, all defaulting off', () => {
     expect(FLAG_NAMES.sort()).toEqual(
       [
         'confidence_slider',
@@ -63,6 +63,9 @@ describe('flags (§4.6)', () => {
         'web_push',
         'nemesis',
         'divergence_display',
+        // kalshi_ws_ticker added by WS1-T6 (§7.3 P1.5) — named explicitly in the design
+        // doc's task table, per the flag-naming convention this test pins.
+        'kalshi_ws_ticker',
         'houses',
         'passkeys',
       ].sort(),
