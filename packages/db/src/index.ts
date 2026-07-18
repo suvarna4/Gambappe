@@ -15,4 +15,5 @@ export * from './repositories/users.js';
 export * from './repositories/account-deletion.js';
 export * from './repositories/wallet-links.js';
 export * from './repositories/fingerprints.js';
+export * from './repositories/streaks.js';
 export * from './streak-replay.js';
