@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T23:10:34.135Z",
+  "updated_at": "2026-07-18T23:32:11.196Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -784,13 +784,13 @@
         "WS7-T5"
       ],
       "mock_start_ok": false,
-      "note": null,
-      "status": "in_review",
+      "note": "Merged main d7ccd6f (squash of PR #38, branch feat/ws7-t9-settings-ui). Settings UI: pause-nemesis toggle, 4 email + 3 push notification toggles, typed-handle delete confirm, claim-gated via inline ClaimEntry. Fable review (F1-F6) fixes applied; INV-10 flaky test fixed via vi.useFakeTimers in question-state-view.test.tsx. Rebased onto main once for a copy.ts additive conflict (threadCopy vs settingsCopy).",
+      "status": "done",
       "owner": "claude-code-web-session-35b05898",
       "branch": "feat/ws7-t9-settings-ui",
       "pr": "https://github.com/suvarna4/Gambappe/pull/38",
       "claimed_at": "2026-07-18T22:28:25.043Z",
-      "updated_at": "2026-07-18T22:44:35.097Z"
+      "updated_at": "2026-07-18T23:32:11.194Z"
     },
     "WS7-T10": {
       "title": "Placement UI",
