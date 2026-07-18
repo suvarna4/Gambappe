@@ -12,6 +12,7 @@
  */
 import { SCHEDULE_TZ } from '@receipts/core';
 import type { JobHandler } from './heartbeat.js';
+import { analyticsRollupHandler } from './jobs/analytics-rollup.js';
 import { maintenancePruneHandler } from './jobs/maintenance-prune.js';
 import { settlementPollHandler } from './jobs/settlement-poll.js';
 import { stubHandler } from './jobs/stubs.js';
@@ -142,7 +143,7 @@ export const JOB_REGISTRY: readonly JobDefinition[] = [
     name: 'analytics:rollup',
     owner: 'WS13-T2',
     cron: '0 4 * * *', // daily 04:00 ET
-    handler: stubHandler('analytics:rollup', 'WS13-T2'),
+    handler: analyticsRollupHandler,
   },
   {
     name: 'maintenance:prune',
