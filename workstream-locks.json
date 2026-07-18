@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T19:32:19.987Z",
+  "updated_at": "2026-07-18T19:37:14.870Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1094,12 +1094,12 @@
       ],
       "mock_start_ok": false,
       "note": "Draft PR #9, stacked on #4/#7/#8 (#6 already merged) — diff shrinks as those merge. Picked up the WS4-T4 perf-test fix. pnpm verify green.",
-      "status": "in_review",
+      "status": "done",
       "owner": null,
       "branch": "claude/wave-2-ws-1-2-4-woo118",
       "pr": "https://github.com/suvarna4/Gambappe/pull/9",
       "claimed_at": null,
-      "updated_at": "2026-07-18T10:36:35.094Z"
+      "updated_at": "2026-07-18T19:37:14.870Z"
     },
     "WS12-T2": {
       "title": "Ingestion + proxy + bucketing",
