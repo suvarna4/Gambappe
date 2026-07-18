@@ -2,7 +2,7 @@
  * Duo repository helpers (design doc §5.5). Additive-only, WS8-T1 scope: the public duo page
  * (`GET /duos/:id`, §9.2) and its `/api/og/duo/:id` OG card (§10.5) both need a duo-by-id
  * lookup plus its two partner profiles' handles/slugs; the full `/api/v1/duos/*` route
- * surface (match history, ladder) is WS3/WS5 scope and lands separately.
+ * surface (match history, ladder, disband) is WS6-T4 scope and lands separately (below).
  *
  * `DuoRow`/`getDuoById` are reused from `./ratings.js` (WS4-T7), which independently built
  * the same lookup for its own batch job, rather than redeclared here — both files are
@@ -10,7 +10,7 @@
  * an ambiguous-export TS error. Not re-exported from this file either (same reason); callers
  * needing `DuoRow`/`getDuoById` get them from `@receipts/db` via `ratings.js`'s export.
  */
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import type { Db } from '../client.js';
 import { duos, profiles } from '../schema/index.js';
 import { getDuoById, type DuoRow } from './ratings.js';
@@ -38,4 +38,44 @@ export async function getDuoWithProfiles(db: Db, id: string): Promise<DuoWithPro
   ]);
   if (!profileA[0] || !profileB[0]) return null;
   return { duo, profileA: profileA[0], profileB: profileB[0] };
+}
+
+// --- WS6-T4 additions (§9.2 `POST /duos/:id/disband`) -------------------------------------------
+
+export interface DuoLockedForUpdate {
+  id: string;
+  profileAId: string;
+  profileBId: string;
+  status: DuoRow['status'];
+}
+
+/**
+ * Row-locks the duo for the duration of the caller's transaction (`SELECT ... FOR UPDATE`) —
+ * mirrors `ratings.ts`'s `lockDuoForInflation`/`lockUnappliedDuoMatch` precedent one column
+ * selection over. Used by the disband flow so two concurrent disband attempts on the same duo
+ * serialize instead of racing (the second blocks until the first commits, then correctly sees
+ * `status: 'disbanded'` and 404s) — this file's own `disbandDuo` update is intentionally
+ * unconditional (no `WHERE status = 'active'` guard) because the lock, not the update clause,
+ * is what closes the race here.
+ */
+export async function lockDuoForUpdate(tx: Db, duoId: string): Promise<DuoLockedForUpdate | null> {
+  const rows = await tx.execute(sql`
+    SELECT id, profile_a_id, profile_b_id, status FROM duos WHERE id = ${duoId} FOR UPDATE
+  `);
+  const r = rows.rows[0];
+  if (!r) return null;
+  return {
+    id: r['id'] as string,
+    profileAId: r['profile_a_id'] as string,
+    profileBId: r['profile_b_id'] as string,
+    status: r['status'] as DuoRow['status'],
+  };
+}
+
+/** §8.5 "disband itself is always unilateral": flips `status` to `disbanded`. Caller is
+ * responsible for the membership/status checks (via `lockDuoForUpdate` above) and for running
+ * `applyDuoMidWindowExit` BEFORE this — that function's active-duo lookup filters on
+ * `status = 'active'`, so it must see the pre-disband state (`apps/web/lib/duo-disband.ts`). */
+export async function disbandDuo(db: Db, duoId: string, at: Date): Promise<void> {
+  await db.update(duos).set({ status: 'disbanded', updatedAt: at }).where(eq(duos.id, duoId));
 }

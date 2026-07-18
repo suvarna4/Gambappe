@@ -312,6 +312,26 @@ export async function updateDuoChemistry(
   await db.update(duos).set({ jointHitRate, synergy, updatedAt: at }).where(eq(duos.id, duoId));
 }
 
+// --- WS6-T4 addition (§9.2 `GET /duos/:id` match_history) --------------------------------------
+
+/**
+ * A duo's PAST matches — `completed`/`cancelled` only, newest-window-first. The duo's live
+ * `scheduled`/`active` match (if any) is deliberately excluded: `duo-queue.ts`'s
+ * `getCurrentDuoAndMatch` (§9.2 `GET /duo/current`) already owns surfacing that one, per its own
+ * header comment ("Completed/cancelled matches are history — WS6-T4's `GET /duos/:id` owns
+ * match_history"). `limit` bounds the response (no pagination on this field per
+ * `getDuoResponseSchema` — a plain array, not a `listEnvelopeSchema` — since a duo plays at most
+ * one match per window and MVP duo seasons are short-lived, §8.10).
+ */
+export async function listDuoMatchHistory(db: Db, duoId: string, limit: number): Promise<DuoMatchRow[]> {
+  return db
+    .select()
+    .from(duoMatches)
+    .where(and(or(eq(duoMatches.duoAId, duoId), eq(duoMatches.duoBId, duoId)), inArray(duoMatches.status, ['completed', 'cancelled'])))
+    .orderBy(sql`${duoMatches.windowStart} desc`)
+    .limit(limit);
+}
+
 // --- match conclusion (§5.7, §8.9) -------------------------------------------------------------
 
 export interface DuoMatchConclusionInput {
