@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T11:01:41.016Z",
+  "updated_at": "2026-07-18T11:01:58.424Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1141,12 +1141,12 @@
       ],
       "mock_start_ok": false,
       "note": "Rebased onto main after WS1 merge (PR #6); resolved conflicts in ci.yml (TEST_REDIS_URL vs REDIS_URL) and packages/db/src/index.ts. mergeable_state now clean.",
-      "status": "in_review",
+      "status": "done",
       "owner": "claude-code-web-session-35b05898",
       "branch": "feat/ws13-t1-event-capture",
       "pr": "https://github.com/suvarna4/Gambappe/pull/5",
       "claimed_at": "2026-07-18T09:48:20.476Z",
-      "updated_at": "2026-07-18T10:45:06.841Z"
+      "updated_at": "2026-07-18T11:01:58.424Z"
     },
     "WS13-T2": {
       "title": "Rollups",
