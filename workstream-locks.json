@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T21:24:48.608Z",
+  "updated_at": "2026-07-18T21:37:22.115Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -614,12 +614,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "in_review",
+      "status": "done",
       "owner": "claude-sonnet5-vf9acd-orchestrator",
       "branch": "feat/ws6-t2-duo-match-lifecycle",
       "pr": "https://github.com/suvarna4/Gambappe/pull/35",
       "claimed_at": "2026-07-18T20:25:36.674Z",
-      "updated_at": "2026-07-18T21:21:39.883Z"
+      "updated_at": "2026-07-18T21:37:22.115Z"
     },
     "WS6-T3": {
       "title": "Ladder + windows",
