@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T19:48:44.733Z",
+  "updated_at": "2026-07-18T19:49:50.063Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -897,12 +897,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-sonnet5-vf9acd-orchestrator",
       "branch": "feat/ws9-t1-outbox-email",
-      "pr": null,
+      "pr": "https://github.com/suvarna4/Gambappe/pull/23",
       "claimed_at": "2026-07-18T19:04:20.447Z",
-      "updated_at": "2026-07-18T19:04:20.447Z"
+      "updated_at": "2026-07-18T19:49:50.062Z"
     },
     "WS9-T2": {
       "title": "Web push",
