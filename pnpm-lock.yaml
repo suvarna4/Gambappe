@@ -84,6 +84,9 @@ importers:
       '@receipts/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@receipts/venues':
+        specifier: workspace:*
+        version: link:../../packages/venues
       drizzle-orm:
         specifier: ^0.44.7
         version: 0.44.7(@types/pg@8.20.0)(pg@8.22.0)

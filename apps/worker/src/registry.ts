@@ -13,7 +13,10 @@
 import { SCHEDULE_TZ } from '@receipts/core';
 import type { JobHandler } from './heartbeat.js';
 import { maintenancePruneHandler } from './jobs/maintenance-prune.js';
+import { settlementPollHandler } from './jobs/settlement-poll.js';
 import { stubHandler } from './jobs/stubs.js';
+import { venuePriceTickHandler } from './jobs/venue-price-tick.js';
+import { venueSyncCatalogHandler } from './jobs/venue-sync-catalog.js';
 
 export interface JobDefinition {
   name: string;
@@ -32,19 +35,19 @@ export const JOB_REGISTRY: readonly JobDefinition[] = [
     name: 'venue:sync-catalog',
     owner: 'WS1-T4',
     cron: '10 * * * *', // hourly :10
-    handler: stubHandler('venue:sync-catalog', 'WS1-T4'),
+    handler: venueSyncCatalogHandler,
   },
   {
     name: 'venue:price-tick',
     owner: 'WS1-T4',
     cron: '* * * * *', // every 60s
-    handler: stubHandler('venue:price-tick', 'WS1-T4'),
+    handler: venuePriceTickHandler,
   },
   {
     name: 'settlement:poll',
     owner: 'WS1-T5',
     cron: '*/5 * * * *', // every 5 min
-    handler: stubHandler('settlement:poll', 'WS1-T5'),
+    handler: settlementPollHandler,
   },
   {
     name: 'grade:followup',

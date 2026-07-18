@@ -15,6 +15,7 @@
   "dependencies": {
     "@receipts/core": "workspace:*",
     "@receipts/db": "workspace:*",
+    "@receipts/venues": "workspace:*",
     "drizzle-orm": "^0.44.7",
     "ioredis": "^5.6.0",
     "pg": "^8.16.0",
