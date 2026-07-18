@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T12:53:39.044Z",
+  "updated_at": "2026-07-18T13:06:31.641Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1049,12 +1049,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "in_review",
+      "status": "done",
       "owner": "claude-code-web-session-35b05898",
       "branch": "feat/ws11-t2-bot-scoring",
       "pr": "https://github.com/suvarna4/Gambappe/pull/17",
       "claimed_at": "2026-07-18T12:43:10.641Z",
-      "updated_at": "2026-07-18T12:51:22.286Z"
+      "updated_at": "2026-07-18T13:06:31.640Z"
     },
     "WS11-T3": {
       "title": "Reports/blocks + auto-pause",
