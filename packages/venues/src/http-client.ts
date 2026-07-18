@@ -105,6 +105,21 @@ function buildUrl(url: string, params?: Record<string, string | number | undefin
   return u.toString();
 }
 
+/**
+ * Origin+path only, query string stripped — this client is shared by every venue adapter,
+ * including the wallet-import data-API client whose query params carry a raw EOA address
+ * (`?user=0x...`). §16.2: never log a wallet address; a query string is never safe to include
+ * in a thrown error's message (which routinely ends up in logs) regardless of caller.
+ */
+function redactedUrl(fullUrl: string): string {
+  try {
+    const u = new URL(fullUrl);
+    return `${u.origin}${u.pathname}`;
+  } catch {
+    return fullUrl.split('?')[0] ?? fullUrl;
+  }
+}
+
 export function createVenueHttpClient(options: VenueHttpClientOptions = {}): VenueHttpClient {
   const rps = options.rps ?? VENUE_RATE_LIMIT_RPS;
   const timeoutMs = options.timeoutMs ?? 5_000;
@@ -115,6 +130,7 @@ export function createVenueHttpClient(options: VenueHttpClientOptions = {}): Ven
 
   async function get<T>(url: string, opts: VenueHttpRequestOptions = {}): Promise<T> {
     const fullUrl = buildUrl(url, opts.searchParams);
+    const safeUrl = redactedUrl(fullUrl);
     let lastError: VenueHttpError | undefined;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -127,7 +143,7 @@ export function createVenueHttpClient(options: VenueHttpClientOptions = {}): Ven
         res = await fetchImpl(fullUrl, { headers: opts.headers, signal: controller.signal });
       } catch (err) {
         clearTimeout(timer);
-        lastError = new VenueHttpError(`venue http: network error (${fullUrl})`, { cause: err });
+        lastError = new VenueHttpError(`venue http: network error (${safeUrl})`, { cause: err });
         if (attempt < maxRetries) {
           await sleep(jitteredBackoff(attempt, baseDelayMs));
           continue;
@@ -137,7 +153,7 @@ export function createVenueHttpClient(options: VenueHttpClientOptions = {}): Ven
       clearTimeout(timer);
 
       if (!res.ok) {
-        const httpErr = new VenueHttpError(`venue http ${res.status} (${fullUrl})`, {
+        const httpErr = new VenueHttpError(`venue http ${res.status} (${safeUrl})`, {
           status: res.status,
         });
         if (isRetryableStatus(res.status) && attempt < maxRetries) {
@@ -153,11 +169,11 @@ export function createVenueHttpClient(options: VenueHttpClientOptions = {}): Ven
       try {
         return (await res.json()) as T;
       } catch (err) {
-        throw new VenueHttpError(`venue http: invalid JSON response (${fullUrl})`, { cause: err });
+        throw new VenueHttpError(`venue http: invalid JSON response (${safeUrl})`, { cause: err });
       }
     }
 
-    throw lastError ?? new VenueHttpError(`venue http: exhausted retries (${fullUrl})`);
+    throw lastError ?? new VenueHttpError(`venue http: exhausted retries (${safeUrl})`);
   }
 
   return { get };
