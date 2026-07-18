@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T09:40:33.379Z",
+  "updated_at": "2026-07-18T09:40:35.670Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -389,12 +389,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-code-web-session-9c961fec",
+      "branch": "claude/wave-2-ws-1-2-4-woo118",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-18T09:21:50.498Z"
+      "claimed_at": "2026-07-18T09:40:35.670Z",
+      "updated_at": "2026-07-18T09:40:35.670Z"
     },
     "WS4-T2": {
       "title": "Glicko-2",
