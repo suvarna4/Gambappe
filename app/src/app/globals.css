@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+/* §10.1 design tokens — "the receipt". Dark default; colorblind-safe
+   side accents (never red/green); monospace for all numerals/prices. */
+:root {
+  --bg: #0d0e12;
+  --surface: #16181f;
+  --surface-2: #1e212b;
+  --ink: #f2f3f5;
+  --ink-dim: #9aa0ac;
+  --side-yes: #4cc9f0;
+  --side-no: #f4a261;
+  --win: #4cc9f0;
+  --loss: #6b7280;
+  --border: #2a2d38;
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--ink);
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+.ticket {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  position: relative;
+}
+
+.ticket::before,
+.ticket::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: var(--bg);
+  border-radius: 50%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.ticket::before { left: -8px; }
+.ticket::after { right: -8px; }
+
+.tear-line {
+  border-top: 2px dotted var(--border);
+}
+
+.numeral {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.stamp {
+  transform: rotate(-2deg);
+  display: inline-block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
