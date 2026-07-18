@@ -10,4 +10,5 @@ export * from './repositories/picks.js';
 export * from './repositories/heartbeats.js';
 export * from './repositories/merge.js';
 export * from './repositories/users.js';
+export * from './repositories/account-deletion.js';
 export * from './streak-replay.js';
