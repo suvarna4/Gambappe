@@ -290,6 +290,167 @@ test.describe('pick-as-ghost + undo (§6.2, AC: "E2E pick-as-ghost")', () => {
   });
 });
 
+test.describe('reveal sequence (§10.3, WS7-T3)', () => {
+  function revealMockBody(question: { id: string; slug?: string | null }, viewer?: unknown) {
+    return {
+      data: {
+        question: {
+          id: question.id,
+          slug: question.slug,
+          kind: 'daily',
+          status: 'revealed',
+          question_date: '2026-07-19',
+          headline: 'Will it happen?',
+          blurb: null,
+          yes_label: 'Yes it will',
+          no_label: 'No it will not',
+          open_at: '2026-07-19T13:00:00Z',
+          lock_at: '2026-07-19T16:00:00Z',
+          reveal_at: '2026-07-20T00:00:00Z',
+          yes_price: 0.63,
+          yes_price_updated_at: '2026-07-19T13:00:00Z',
+          crowd: { yes: 6, no: 4, pct_yes: 60 },
+          outcome: 'yes',
+          revealed_at: new Date().toISOString(),
+          void_reason: null,
+          is_volatile: false,
+          venue: 'kalshi',
+          venue_url: 'https://kalshi.example/markets/test',
+        },
+        outcome: 'yes',
+        crowd: { yes: 6, no: 4, pct_yes: 60 },
+        narrative_line: '60% called it. Yes it will it is.',
+        share: {
+          page_url: `https://receipts.example/q/${question.slug}`,
+          og_url: `https://receipts.example/api/og/q/${question.slug}`,
+          card_urls: [],
+        },
+        ...(viewer ? { viewer } : {}),
+      },
+    };
+  }
+
+  test('a winning pick plays the client reveal sequence: result stamp, percentile, streak', async ({
+    page,
+  }) => {
+    const { question } = await seedQuestion(
+      {},
+      {
+        status: 'revealed',
+        outcome: 'yes',
+        crowdYesAtLock: 6,
+        crowdNoAtLock: 4,
+        yesLabel: 'Yes it will',
+        revealedAt: new Date(),
+      },
+    );
+
+    await page.route(`**/api/v1/questions/${question.slug}/reveal`, (route) =>
+      route.fulfill({
+        status: 200,
+        json: revealMockBody(question, {
+          pick: {
+            id: '018f1e2b-0000-7000-8000-0000000000f9',
+            question_id: question.id,
+            profile_id: '018f1e2b-0000-7000-8000-0000000000e1',
+            side: 'yes',
+            yes_price_at_entry: 0.63,
+            price_stamped_at: '2026-07-19T13:00:00Z',
+            picked_at: '2026-07-19T13:00:00Z',
+            source: 'spectator_page',
+            confidence: null,
+            result: 'win',
+            edge: 0.37,
+          },
+          result: 'win',
+          edge: 0.37,
+          percentile: 82,
+          streak: { current: 4, best: 4, delta: 1, freeze_used: false },
+          badges: [],
+        }),
+      }),
+    );
+
+    await page.goto(`/q/${question.slug}`);
+    await expect(page.getByTestId('reveal-sequence-result')).toBeVisible();
+    await expect(page.getByTestId('reveal-sequence-result')).toContainText('WIN');
+    await expect(page.getByTestId('reveal-sequence-percentile')).toContainText('82');
+    await expect(page.getByTestId('reveal-sequence-streak')).toContainText('4');
+  });
+
+  test("no viewer pick: shows the \"didn't pick this one\" copy, no result stamp", async ({
+    page,
+  }) => {
+    const { question } = await seedQuestion(
+      {},
+      {
+        status: 'revealed',
+        outcome: 'yes',
+        crowdYesAtLock: 6,
+        crowdNoAtLock: 4,
+        revealedAt: new Date(),
+      },
+    );
+
+    await page.route(`**/api/v1/questions/${question.slug}/reveal`, (route) =>
+      route.fulfill({ status: 200, json: revealMockBody(question) }),
+    );
+
+    await page.goto(`/q/${question.slug}`);
+    await expect(page.getByTestId('reveal-sequence-no-pick')).toBeVisible();
+    await expect(page.getByTestId('reveal-sequence-no-pick')).toContainText(
+      "You didn't pick this one.",
+    );
+    await expect(page.getByTestId('reveal-sequence-result')).not.toBeVisible();
+  });
+
+  test('prefers-reduced-motion: the result still renders (no animation wait blocks it)', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const { question } = await seedQuestion(
+      {},
+      {
+        status: 'revealed',
+        outcome: 'yes',
+        crowdYesAtLock: 6,
+        crowdNoAtLock: 4,
+        revealedAt: new Date(),
+      },
+    );
+
+    await page.route(`**/api/v1/questions/${question.slug}/reveal`, (route) =>
+      route.fulfill({
+        status: 200,
+        json: revealMockBody(question, {
+          pick: {
+            id: '018f1e2b-0000-7000-8000-0000000000fa',
+            question_id: question.id,
+            profile_id: '018f1e2b-0000-7000-8000-0000000000e2',
+            side: 'yes',
+            yes_price_at_entry: 0.63,
+            price_stamped_at: '2026-07-19T13:00:00Z',
+            picked_at: '2026-07-19T13:00:00Z',
+            source: 'spectator_page',
+            confidence: null,
+            result: 'loss',
+            edge: -0.63,
+          },
+          result: 'loss',
+          edge: -0.63,
+          percentile: 20,
+          streak: { current: 0, best: 4, delta: -4, freeze_used: false },
+          badges: [],
+        }),
+      }),
+    );
+
+    await page.goto(`/q/${question.slug}`);
+    await expect(page.getByTestId('reveal-sequence-result')).toBeVisible();
+    await expect(page.getByTestId('reveal-sequence-result')).toContainText('LOSS');
+  });
+});
+
 test.describe('INV-10 — spectator page is viewer-free at the HTTP layer', () => {
   test('identical HTML with and without an identity-shaped cookie', async ({ request }) => {
     const { question } = await seedQuestion(

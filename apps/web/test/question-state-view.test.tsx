@@ -77,6 +77,18 @@ describe('QuestionStateView — one render per §10.3 state', () => {
     expect(html).toContain('Yes');
   });
 
+  it('revealed: the outcome stamp and crowd bar carry the §10.3 reveal-moment motion classes', () => {
+    const html = renderState({
+      ...base,
+      status: 'revealed',
+      outcome: 'yes',
+      crowd: { yes: 70, no: 30, pct_yes: 70 },
+    });
+    expect(html).toContain('data-testid="reveal-outcome-stamp"');
+    expect(html).toContain('motion-safe:[animation:stamp-slam_450ms_ease-out_1]');
+    expect(html).toContain('motion-safe:[animation:crowd-fill_500ms_ease-out_200ms_1_both]');
+  });
+
   it('voided: shows the VOID stamp and streak-safe copy', () => {
     const html = renderState({ ...base, status: 'voided', void_reason: 'venue cancelled' });
     expect(html).toContain('data-testid="question-voided"');
@@ -111,6 +123,23 @@ describe('INV-10 — SSR is viewer-free', () => {
     // None of the identity-dependent markers this component CAN render post-hydration are
     // present in its initial server render.
     for (const marker of ['pick-yes', 'pick-no', 'undo-pick', 'viewer-strip-pick', 'age-gate']) {
+      expect(html).not.toContain(marker);
+    }
+  });
+
+  it("for a revealed question, ViewerStrip's server-rendered output is RevealSequence's own reserved loading skeleton — never the viewer's result/streak/percentile", () => {
+    const html = renderToStaticMarkup(
+      <ViewerStrip
+        question={{ ...base, status: 'revealed', outcome: 'yes', crowd: { yes: 70, no: 30, pct_yes: 70 } }}
+      />,
+    );
+    expect(html).toContain('data-testid="reveal-sequence-loading"');
+    for (const marker of [
+      'reveal-sequence-result',
+      'reveal-sequence-no-pick',
+      'reveal-sequence-percentile',
+      'reveal-sequence-streak',
+    ]) {
       expect(html).not.toContain(marker);
     }
   });
