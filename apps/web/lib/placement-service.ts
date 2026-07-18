@@ -216,8 +216,18 @@ async function getPlacementAnswersForPrior(
  * (WS4-T7) hasn't run for this profile yet. Only the `placement_prior` column is touched on
  * conflict — every other fingerprint column (rating lives in a separate `ratings` table
  * entirely, §5.4) is left exactly as the nightly job last wrote it, per §8.7 "rating untouched
- * (stays 1500/350)". Wallet import (§12, WS12) averaging with an existing prior is that
- * workstream's concern, not implemented here.
+ * (stays 1500/350)".
+ *
+ * SPEC-GAP(WS4-T8/WS12): §8.7 "wallet import may write the same prior fields; if both exist,
+ * average them" is only honored in the wallet -> placement direction. `wallet-ingest.ts`
+ * correctly blends its fresh wallet prior against whatever's already in the column. This
+ * function can't do the same symmetrically: it always recomputes from ALL answers-so-far, so
+ * blending that fresh recompute against the column's own last-written value would double-count
+ * answers already folded into a prior placement write. Net effect: if a profile links a wallet
+ * and THEN answers (or re-answers) placement items, this write silently drops the wallet
+ * contribution instead of averaging with it. A correct fix needs the two sources tracked
+ * separately (e.g. a second column) so each write can recompute the average from scratch —
+ * deferred; not fixed here per explicit product decision.
  */
 export async function seedPlacementPrior(db: Db, profileId: string, at: Date): Promise<void> {
   const answers = await getPlacementAnswersForPrior(db, profileId);
