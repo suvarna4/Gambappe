@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T22:09:55.173Z",
+  "updated_at": "2026-07-18T22:27:07.051Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -690,13 +690,13 @@
         "WS3-T4"
       ],
       "mock_start_ok": false,
-      "note": null,
-      "status": "in_review",
+      "note": "merged suvarna4/Gambappe#37 (squash 7dfa0b8); fable review found 3 real bugs (unbounded 423 retry, Tailwind v4 rotate/transform composition bug in stamp-slam keyframe, percentile copy not matching pinned Top-X% convention), all fixed and re-verified before merge",
+      "status": "done",
       "owner": "claude-code-web-session-35b05898",
       "branch": "feat/ws7-t3-reveal-experience",
       "pr": "https://github.com/suvarna4/Gambappe/pull/37",
       "claimed_at": "2026-07-18T21:20:35.366Z",
-      "updated_at": "2026-07-18T21:59:04.265Z"
+      "updated_at": "2026-07-18T22:27:07.049Z"
     },
     "WS7-T4": {
       "title": "Profile page",
