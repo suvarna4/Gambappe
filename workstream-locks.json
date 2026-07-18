@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T20:16:22.446Z",
+  "updated_at": "2026-07-18T20:16:46.056Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -988,12 +988,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-code-web-session-35b05898",
+      "branch": "feat/ws10-t3-settlement-void-regrade",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-18T09:35:00Z"
+      "claimed_at": "2026-07-18T20:16:46.056Z",
+      "updated_at": "2026-07-18T20:16:46.056Z"
     },
     "WS10-T4": {
       "title": "Moderation queues",
