@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T20:25:36.675Z",
+  "updated_at": "2026-07-18T20:27:12.739Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1125,13 +1125,13 @@
         "WS7-T4"
       ],
       "mock_start_ok": true,
-      "note": "Merged to main via PR #9 (backend: badge/settings/unlink routes). Left in_review, not done — still genuinely blocked on WS7-T4 (profile page UI) per its declared dependency; the lock tool correctly refuses to mark done until that lands.",
-      "status": "in_review",
+      "note": "Merged to main via PR #9 (backend: badge/settings/unlink routes). WS7-T4 (profile page) merged via PR #24 — dependency now satisfied.",
+      "status": "done",
       "owner": null,
       "branch": "claude/wave-2-ws-1-2-4-woo118",
       "pr": "https://github.com/suvarna4/Gambappe/pull/9",
       "claimed_at": null,
-      "updated_at": "2026-07-18T19:37:43.658Z"
+      "updated_at": "2026-07-18T20:27:12.739Z"
     },
     "WS13-T1": {
       "title": "Event capture",
