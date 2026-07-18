@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T10:19:09.020Z",
+  "updated_at": "2026-07-18T10:19:10.462Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -143,13 +143,13 @@
         "WS0-T4"
       ],
       "mock_start_ok": false,
-      "note": "PR #6 open against main, pnpm verify green in isolation.",
+      "note": "PR #6 open against main. Fixed a CI-caught bug (e23d28f): settlement grading CASE expression needed an explicit ::pick_result cast — CI re-running now.",
       "status": "in_review",
       "owner": null,
       "branch": "claude/wave-2-ws-1-2-4-woo118",
       "pr": "https://github.com/suvarna4/Gambappe/pull/6",
       "claimed_at": null,
-      "updated_at": "2026-07-18T10:03:22.145Z"
+      "updated_at": "2026-07-18T10:19:10.461Z"
     },
     "WS1-T5": {
       "title": "Settlement poller",
