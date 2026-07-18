@@ -94,6 +94,10 @@ export async function verifyWalletLink(
 
   const expectedDomain = new URL(input.appUrl).host;
   if (parsed.domain !== expectedDomain) throw new ApiError('SIGNATURE_INVALID', 'domain mismatch');
+  if (parsed.uri !== input.appUrl) throw new ApiError('SIGNATURE_INVALID', 'uri mismatch');
+  if (parsed.statement !== WALLET_SIWE_STATEMENT) {
+    throw new ApiError('SIGNATURE_INVALID', 'unexpected statement');
+  }
   if (parsed.chainId !== WALLET_SIWE_CHAIN_ID) throw new ApiError('SIGNATURE_INVALID', 'chain id mismatch');
   if (!ETH_ADDRESS_RE.test(parsed.address)) throw new ApiError('SIGNATURE_INVALID', 'invalid address in message');
 

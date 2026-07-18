@@ -6,13 +6,14 @@
  * `wallet:ingest` enqueue (§12.2 step 4: "don't block on ingestion").
  */
 import type { NextResponse } from 'next/server';
-import { ApiError, isFlagEnabled, now, walletVerifyBodySchema } from '@receipts/core';
+import { ApiError, RL_SIWE_PROFILE_H, isFlagEnabled, now, walletVerifyBodySchema } from '@receipts/core';
 import { jsonSuccess, runRoute } from '@/lib/api-response';
 import { assertSameOrigin } from '@/lib/origin-check';
 import { resolveIdentityFromRequest } from '@/lib/identity-request';
 import { verifyWalletLink } from '@/lib/wallet-flow';
 import { verifySiweSignature } from '@/lib/wallet-verify';
 import { RedisWalletNonceStore } from '@/lib/wallet-nonce-store';
+import { RedisWalletSiweLimiter, walletSiweHourKey } from '@/lib/wallet-siwe-limiter';
 import { enqueueWalletIngest } from '@/lib/wallet-queue';
 import { getDb, getRedis } from '@/lib/stores';
 
@@ -31,6 +32,11 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     const { identity } = await resolveIdentityFromRequest(request);
     if (identity.kind !== 'claimed') throw new ApiError('UNAUTHENTICATED', 'a claimed profile is required');
+
+    // §14.1 "SIWE nonce/verify | profile | 10/hour" — one shared budget across nonce + verify.
+    const limiter = new RedisWalletSiweLimiter(getRedis());
+    const count = await limiter.increment(identity.profile.id, walletSiweHourKey(now()));
+    if (count > RL_SIWE_PROFILE_H) throw new ApiError('RATE_LIMITED', 'too many wallet-link attempts, try again later');
 
     const body = walletVerifyBodySchema.parse(await request.json());
     const result = await verifyWalletLink(

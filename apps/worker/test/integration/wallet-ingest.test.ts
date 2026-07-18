@@ -90,7 +90,7 @@ async function insertActiveLink(): Promise<{ profileId: string; walletLinkId: st
     id: walletLinkId,
     profileId: profile.id as string,
     address: EOA,
-    addressHash: 'test-address-hash',
+    addressHash: `test-address-hash-${walletLinkId}`,
     verifiedAt: NOW,
     status: 'active',
   });
@@ -139,5 +139,39 @@ describe('wallet:ingest (§12.3–12.4)', () => {
   it('unknown wallet link id: not-found, not an error', async () => {
     const result = await runWalletIngest(db, uuidv7(), { dataApiClient: fakeDataApiClient(), at: NOW });
     expect(result).toEqual({ status: 'not-found' });
+  });
+
+  it('mid-job unlink race: a link unlinked after the initial status check is not resurrected', async () => {
+    const { profileId, walletLinkId } = await insertActiveLink();
+
+    // Simulate the user unlinking between runWalletIngest's initial status==='active' check and
+    // the later updateWalletLinkEnrichment write, by unlinking from inside the fake data-api call.
+    const client = new PolymarketDataApiClient({
+      dataBaseUrl: DATA_BASE,
+      http: createVenueHttpClient({
+        fetchImpl: (async (input: string | URL) => {
+          await db.update(walletLinks).set({ status: 'unlinked', address: null }).where(eq(walletLinks.id, walletLinkId));
+          const u = new URL(typeof input === 'string' ? input : input.toString());
+          const route = router(u);
+          if (!route) return new Response(JSON.stringify({ error: 'not found' }), { status: 404 });
+          return new Response(JSON.stringify(route.body), {
+            status: route.status,
+            headers: { 'content-type': 'application/json' },
+          });
+        }) as typeof fetch,
+        rps: 1000,
+        timeoutMs: 2_000,
+        maxRetries: 0,
+      }),
+    });
+
+    const result = await runWalletIngest(db, walletLinkId, { dataApiClient: client, at: NOW });
+    expect(result).toEqual({ status: 'not-active' });
+
+    const [linkAfter] = await db.select().from(walletLinks).where(eq(walletLinks.id, walletLinkId));
+    expect(linkAfter!.enrichment).toBeNull(); // not resurrected by the in-flight job
+
+    const [fpAfter] = await db.select().from(fingerprints).where(eq(fingerprints.profileId, profileId));
+    expect(fpAfter).toBeUndefined(); // no stale wallet prior blended in either
   });
 });

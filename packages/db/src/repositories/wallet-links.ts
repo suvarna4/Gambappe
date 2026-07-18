@@ -51,18 +51,27 @@ export async function getMostRecentWalletLinkByAddressHash(
   return row ?? null;
 }
 
-/** `wallet:ingest` (WS12-T2): persists the bucketed enrichment + resolved proxy, if any. */
+/**
+ * `wallet:ingest` (WS12-T2): persists the bucketed enrichment + resolved proxy, if any.
+ * Guarded to `status='active'` — the user can unlink between the job's initial `status==='active'`
+ * check and this write (§19.4 rule 4); without the guard, a mid-job unlink would have this write
+ * resurrect enrichment data onto a row the unlink just cleared. Returns `null` (not a throw) when
+ * that race is hit, so the caller can treat it the same as the pre-job not-active check.
+ */
 export async function updateWalletLinkEnrichment(
   db: Db,
   id: string,
   patch: { enrichment: WalletLinkRow['enrichment']; proxyAddress?: string | null },
   at: Date,
-): Promise<WalletLinkRow> {
+): Promise<WalletLinkRow | null> {
   const set: Partial<NewWalletLinkRow> = { enrichment: patch.enrichment, updatedAt: at };
   if (patch.proxyAddress !== undefined) set.proxyAddress = patch.proxyAddress;
-  const [updated] = await db.update(walletLinks).set(set).where(eq(walletLinks.id, id)).returning();
-  if (!updated) throw new Error(`updateWalletLinkEnrichment: no row for id=${id}`);
-  return updated;
+  const [updated] = await db
+    .update(walletLinks)
+    .set(set)
+    .where(and(eq(walletLinks.id, id), eq(walletLinks.status, 'active')))
+    .returning();
+  return updated ?? null;
 }
 
 /**

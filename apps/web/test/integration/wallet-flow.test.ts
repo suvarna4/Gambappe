@@ -22,7 +22,7 @@ const url =
   process.env.TEST_DATABASE_URL ?? 'postgres://receipts:receipts@localhost:5432/receipts_test';
 
 const APP_URL = 'https://receipts.example';
-const ADDRESS = '0xAbC0000000000000000000000000000000dEaD';
+const ADDRESS = '0xAbC000000000000000000000000000000000dEaD';
 const NOW = new Date('2026-07-18T12:00:00Z');
 
 let pool: pg.Pool;
@@ -83,8 +83,9 @@ describe('verifyWalletLink (§12.2)', () => {
   it('replayed nonce is rejected (NONCE_EXPIRED)', async () => {
     const profileId = await makeClaimedProfile();
     const nonceStore = new InMemoryWalletNonceStore();
+    const address = '0x6666666666666666666666666666666666666666';
     const { message } = await buildWalletNonceMessage(
-      { profileId, address: ADDRESS, appUrl: APP_URL },
+      { profileId, address, appUrl: APP_URL },
       { nonceStore, at: NOW },
     );
     const deps = { db, nonceStore, verifySignature: async () => true, at: NOW };
@@ -120,15 +121,62 @@ describe('verifyWalletLink (§12.2)', () => {
     ).rejects.toMatchObject({ code: 'SIGNATURE_INVALID' });
   });
 
+  it('wrong-statement message is rejected (SIGNATURE_INVALID)', async () => {
+    const profileId = await makeClaimedProfile();
+    const nonceStore = new InMemoryWalletNonceStore();
+    const message = buildSiweMessage({
+      domain: new URL(APP_URL).host,
+      address: ADDRESS.toLowerCase(),
+      statement: 'Sign in to claim your free NFT airdrop.',
+      uri: APP_URL,
+      chainId: WALLET_SIWE_CHAIN_ID,
+      nonce: 'forged-statement-nonce',
+      issuedAt: NOW,
+      expirationTime: new Date(NOW.getTime() + 600_000),
+    });
+    await nonceStore.save('forged-statement-nonce', profileId, 600);
+
+    await expect(
+      verifyWalletLink(
+        { profileId, body: { message, signature: '0xdeadbeef' }, appUrl: APP_URL },
+        { db, nonceStore, verifySignature: async () => true, at: NOW },
+      ),
+    ).rejects.toMatchObject({ code: 'SIGNATURE_INVALID' });
+  });
+
+  it('wrong-uri message is rejected (SIGNATURE_INVALID)', async () => {
+    const profileId = await makeClaimedProfile();
+    const nonceStore = new InMemoryWalletNonceStore();
+    const message = buildSiweMessage({
+      domain: new URL(APP_URL).host,
+      address: ADDRESS.toLowerCase(),
+      statement: WALLET_SIWE_STATEMENT,
+      uri: 'https://phishing.example',
+      chainId: WALLET_SIWE_CHAIN_ID,
+      nonce: 'forged-uri-nonce',
+      issuedAt: NOW,
+      expirationTime: new Date(NOW.getTime() + 600_000),
+    });
+    await nonceStore.save('forged-uri-nonce', profileId, 600);
+
+    await expect(
+      verifyWalletLink(
+        { profileId, body: { message, signature: '0xdeadbeef' }, appUrl: APP_URL },
+        { db, nonceStore, verifySignature: async () => true, at: NOW },
+      ),
+    ).rejects.toMatchObject({ code: 'SIGNATURE_INVALID' });
+  });
+
   it('address case-insensitivity: differently-cased addresses hash/store identically and collide as "already linked"', async () => {
     const profileA = await makeClaimedProfile();
     const profileB = await makeClaimedProfile();
     const nonceStoreA = new InMemoryWalletNonceStore();
     const nonceStoreB = new InMemoryWalletNonceStore();
+    const address = '0x7777777777777777777777777777777777777777';
 
-    await linkWallet(profileA, nonceStoreA, { address: ADDRESS.toLowerCase() });
+    await linkWallet(profileA, nonceStoreA, { address: address.toLowerCase() });
 
-    await expect(linkWallet(profileB, nonceStoreB, { address: ADDRESS.toUpperCase() })).rejects.toMatchObject({
+    await expect(linkWallet(profileB, nonceStoreB, { address: address.toUpperCase() })).rejects.toMatchObject({
       code: 'WALLET_ALREADY_LINKED',
     });
   });
@@ -136,10 +184,10 @@ describe('verifyWalletLink (§12.2)', () => {
   it('already-linked-elsewhere -> WALLET_ALREADY_LINKED conflict', async () => {
     const profileA = await makeClaimedProfile();
     const profileB = await makeClaimedProfile();
-    await linkWallet(profileA, new InMemoryWalletNonceStore(), { address: '0x1111111111111111111111111111111111111a' });
+    await linkWallet(profileA, new InMemoryWalletNonceStore(), { address: '0x111111111111111111111111111111111111111a' });
 
     await expect(
-      linkWallet(profileB, new InMemoryWalletNonceStore(), { address: '0x1111111111111111111111111111111111111a' }),
+      linkWallet(profileB, new InMemoryWalletNonceStore(), { address: '0x111111111111111111111111111111111111111a' }),
     ).rejects.toMatchObject({ code: 'WALLET_ALREADY_LINKED' });
   });
 
@@ -147,7 +195,7 @@ describe('verifyWalletLink (§12.2)', () => {
     const profileId = await makeClaimedProfile();
     await expect(
       linkWallet(profileId, new InMemoryWalletNonceStore(), {
-        address: '0x2222222222222222222222222222222222222b',
+        address: '0x222222222222222222222222222222222222222b',
         verifies: false,
       }),
     ).rejects.toMatchObject({ code: 'SIGNATURE_INVALID' });
@@ -157,7 +205,7 @@ describe('verifyWalletLink (§12.2)', () => {
 describe('unlinkWallet (§12.5)', () => {
   it('nulls address/proxy_address, deletes enrichment, keeps address_hash — SQL assert', async () => {
     const profileId = await makeClaimedProfile();
-    const address = '0x3333333333333333333333333333333333333c';
+    const address = '0x333333333333333333333333333333333333333c';
     const linked = await linkWallet(profileId, new InMemoryWalletNonceStore(), { address });
     await db
       .update(walletLinks)
@@ -182,7 +230,7 @@ describe('unlinkWallet (§12.5)', () => {
 
   it('relink cooldown: re-linking the same address right after unlink is rejected', async () => {
     const profileId = await makeClaimedProfile();
-    const address = '0x4444444444444444444444444444444444444d';
+    const address = '0x444444444444444444444444444444444444444d';
     await linkWallet(profileId, new InMemoryWalletNonceStore(), { address, at: NOW });
     await unlinkWallet(profileId, { db, at: NOW });
 
@@ -195,7 +243,7 @@ describe('unlinkWallet (§12.5)', () => {
 
   it('relink after the cooldown window succeeds', async () => {
     const profileId = await makeClaimedProfile();
-    const address = '0x5555555555555555555555555555555555555e';
+    const address = '0x555555555555555555555555555555555555555e';
     await linkWallet(profileId, new InMemoryWalletNonceStore(), { address, at: NOW });
     await unlinkWallet(profileId, { db, at: NOW });
 

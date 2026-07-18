@@ -139,12 +139,15 @@ export async function runWalletIngest(
   const enrichment = { ...builtEnrichment, firstSeen };
   walletEnrichmentSchema.parse(enrichment); // fail loudly before ever persisting a malformed shape
 
-  await updateWalletLinkEnrichment(
+  const updated = await updateWalletLinkEnrichment(
     db,
     walletLinkId,
     { enrichment, proxyAddress: proxy.proxyAddress },
     at,
   );
+  // Race: the user unlinked between the guard above and this write (§19.4 rule 4). Don't blend
+  // a stale wallet prior into the fingerprint for a link that's no longer active.
+  if (!updated) return { status: 'not-active' };
 
   const existing = await getFingerprintRow(db, link.profileId);
   const blended: FingerprintPrior = blendWalletPriorIntoExisting(
