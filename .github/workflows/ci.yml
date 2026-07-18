@@ -139,6 +139,16 @@ jobs:
     env:
       DATABASE_URL: postgres://receipts:receipts@localhost:5432/receipts
       REDIS_URL: redis://localhost:6379
+      # Required by apps/web/lib/origin-check.ts (the CSRF/same-origin guard every mutation
+      # route runs through) and a few other routes (wallet nonce/verify, reveal). Every prior
+      # e2e spec happened to avoid exercising a code path that reads this, so its absence here
+      # was latent until e2e/auth-provider-config.spec.ts's POST route hit it. Matches
+      # playwright.config.ts's baseURL default (http://localhost:3000).
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      # Required by apps/web/lib/ghost-cookie.ts (the ghost-mint step every ghost+/claimed
+      # route resolves through, §6.1.1) — same latency-until-first-real-exercise story as
+      # NEXT_PUBLIC_APP_URL above. Test-only value; never a real secret.
+      GHOST_COOKIE_SECRET: e2e-test-ghost-cookie-secret
     steps:
       - uses: actions/checkout@v4
 
