@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T18:55:46.251Z",
+  "updated_at": "2026-07-18T18:55:48.146Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -218,13 +218,13 @@
         "WS0"
       ],
       "mock_start_ok": false,
-      "note": "PR #7 open against main, pnpm verify green in isolation.",
-      "status": "in_review",
+      "note": "PR #7 merged.",
+      "status": "done",
       "owner": "claude-code-web-session-9c961fec",
       "branch": "claude/wave-2-ws-1-2-4-woo118",
       "pr": "https://github.com/suvarna4/Gambappe/pull/7",
       "claimed_at": "2026-07-18T09:40:33.379Z",
-      "updated_at": "2026-07-18T10:06:34.235Z"
+      "updated_at": "2026-07-18T18:55:48.146Z"
     },
     "WS2-T3": {
       "title": "Claim + merge",
