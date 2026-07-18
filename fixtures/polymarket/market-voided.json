@@ -1,0 +1,16 @@
+{
+  "id": "PM-VOIDED-1",
+  "question": "Was the test event cancelled?",
+  "slug": "was-the-test-event-cancelled",
+  "category": "Economics",
+  "endDate": "2026-07-06T09:00:00Z",
+  "liquidity": "0.00",
+  "volume": "0.00",
+  "active": false,
+  "closed": true,
+  "archived": false,
+  "outcomes": "[\"Yes\", \"No\"]",
+  "outcomePrices": "[\"0\", \"0\"]",
+  "clobTokenIds": "[\"333399999999999999\", \"444499999999999999\"]",
+  "umaResolutionStatus": "resolved"
+}

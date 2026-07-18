@@ -1,0 +1,16 @@
+{
+  "id": "PM-RESOLVED-YES-1",
+  "question": "Did the test event resolve yes?",
+  "slug": "did-the-test-event-resolve-yes",
+  "category": "Sports",
+  "endDate": "2026-07-12T09:00:00Z",
+  "liquidity": "10000.00",
+  "volume": "40000.00",
+  "active": false,
+  "closed": true,
+  "archived": false,
+  "outcomes": "[\"Yes\", \"No\"]",
+  "outcomePrices": "[\"1\", \"0\"]",
+  "clobTokenIds": "[\"111199999999999999\", \"222299999999999999\"]",
+  "umaResolutionStatus": "resolved"
+}
