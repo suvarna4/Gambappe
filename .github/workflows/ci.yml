@@ -91,6 +91,9 @@ jobs:
       # WS1-T4: venue:price-tick integration tests exercise the Redis price cache +
       # venue_degraded flag against the redis:7 service already provisioned above.
       TEST_REDIS_URL: redis://localhost:6379
+      # WS13-T1: apps/web/lib/stores.ts's getRedis() always reads REDIS_URL (no TEST_-prefixed
+      # variant — it's the same helper prod code uses), so both names point at the one service.
+      REDIS_URL: redis://localhost:6379
     steps:
       - uses: actions/checkout@v4
 

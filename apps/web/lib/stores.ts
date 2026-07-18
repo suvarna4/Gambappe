@@ -38,3 +38,15 @@ export function getRedis(): Redis {
   }
   return cache.redis;
 }
+
+/**
+ * `lazyConnect` + `enableOfflineQueue: false` means a command issued before the socket is
+ * up throws ("Stream isn't writeable") rather than queuing — every caller must ensure the
+ * connection first. Centralized here so each new Redis consumer doesn't reimplement it.
+ */
+export async function ensureRedisConnected(redis: Redis): Promise<Redis> {
+  if (redis.status === 'wait' || redis.status === 'end') {
+    await redis.connect();
+  }
+  return redis;
+}
