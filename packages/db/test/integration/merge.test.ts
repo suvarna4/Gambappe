@@ -11,11 +11,11 @@ import { eq, sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { uuidv7 } from 'uuidv7';
 import type pg from 'pg';
+import { connect, type Db } from '../../src/client.js';
+import { getProfileById } from '../../src/repositories/profiles.js';
+import { mergeGhostIntoProfile } from '../../src/repositories/merge.js';
 import {
-  connect,
-  getProfileById,
   markets,
-  mergeGhostIntoProfile,
   picks,
   placementAnswers,
   placementItems,
@@ -23,9 +23,8 @@ import {
   questions,
   reactions,
   streakFreezeUses,
-  type Db,
-} from '@receipts/db';
-import { buildMarket, buildPick, buildProfile, buildQuestion } from '@receipts/db/testing';
+} from '../../src/schema/index.js';
+import { buildMarket, buildPick, buildProfile, buildQuestion } from '../../src/testing/index.js';
 
 const url =
   process.env.TEST_DATABASE_URL ?? 'postgres://receipts:receipts@localhost:5432/receipts_test';

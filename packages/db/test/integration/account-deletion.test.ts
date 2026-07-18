@@ -10,19 +10,11 @@ import { eq, sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { uuidv7 } from 'uuidv7';
 import type pg from 'pg';
-import {
-  connect,
-  deleteAccount,
-  getProfileBySlug,
-  markets,
-  picks,
-  posts,
-  profiles,
-  questions,
-  users,
-  type Db,
-} from '@receipts/db';
-import { buildMarket, buildPick, buildProfile, buildQuestion } from '@receipts/db/testing';
+import { connect, type Db } from '../../src/client.js';
+import { deleteAccount } from '../../src/repositories/account-deletion.js';
+import { getProfileBySlug } from '../../src/repositories/profiles.js';
+import { markets, picks, posts, profiles, questions, users } from '../../src/schema/index.js';
+import { buildMarket, buildPick, buildProfile, buildQuestion } from '../../src/testing/index.js';
 
 const url =
   process.env.TEST_DATABASE_URL ?? 'postgres://receipts:receipts@localhost:5432/receipts_test';
