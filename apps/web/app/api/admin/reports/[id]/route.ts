@@ -9,6 +9,7 @@ import { ApiError, errorEnvelope, nowMs } from '@receipts/core';
 import { getDb } from '@/lib/stores';
 import { getReportById, resolveReport, updatePostStatus, updateProfileStatus, type Db } from '@receipts/db';
 import { withAdminAudit } from '@/lib/admin-audit';
+import { applyDuoMidWindowExit } from '@/lib/duo-match-lifecycle';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -68,6 +69,13 @@ async function patchHandler(request: Request): Promise<NextResponse> {
       await updateProfileStatus(tx as Db, report.reportedProfileId!, 'paused_matchmaking');
     } else if (action === 'suspend') {
       await updateProfileStatus(tx as Db, report.reportedProfileId!, 'suspended');
+      // §5.7 mid-window exit: suspension is one of the trigger events ("block, pause,
+      // suspension, deletion") for a duo match in progress, same integrity rule as nemesis
+      // (WS6-T2). `pause` is deliberately NOT wired here — nemesis's own precedent
+      // (moderation.ts's `applyBlock`) only triggers on block, not pause/suspend/delete, so
+      // there's no existing behavior to mirror for those; this task's brief explicitly scoped
+      // the duo trigger set to "deleted/suspended/blocked" only.
+      await applyDuoMidWindowExit(tx as Db, report.reportedProfileId!, resolvedAt);
     }
     return row;
   });
