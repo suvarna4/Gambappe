@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T09:49:25.067Z",
+  "updated_at": "2026-07-18T09:49:26.356Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -312,13 +312,13 @@
         "WS1-T5"
       ],
       "mock_start_ok": false,
-      "note": null,
-      "status": "available",
+      "note": "Claiming ahead via /goal continuation. Actual dependencies (WS1/WS2/WS4) are fully implemented+verified on branch claude/wave-2-ws-1-2-4-woo118 (owner: claude-code-web-session-9c961fec) even though registry shows them 'claimed' not 'done' (not yet merged to main). Building directly on top of that branch, not against mocks.",
+      "status": "claimed",
       "owner": null,
-      "branch": null,
+      "branch": "claude/wave-2-ws-1-2-4-woo118",
       "pr": null,
       "claimed_at": null,
-      "updated_at": "2026-07-18T09:35:00Z"
+      "updated_at": "2026-07-18T09:49:26.356Z"
     },
     "WS3-T4": {
       "title": "Reveal orchestration",
