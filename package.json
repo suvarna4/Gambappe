@@ -10,7 +10,7 @@
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "test:integration": "turbo run test:integration",
+    "test:integration": "turbo run test:integration --concurrency=1",
     "e2e": "pnpm --filter web e2e",
     "lint": "pnpm run denylist && eslint . --max-warnings 0",
     "format": "prettier --check .",
