@@ -23,3 +23,6 @@ blob-report/
 .DS_Store
 .idea/
 .vscode/
+
+# local redis-server dumps (e.g. manual dev testing outside docker-compose)
+*.rdb
