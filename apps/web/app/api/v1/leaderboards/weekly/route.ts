@@ -31,7 +31,11 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     const at = now();
     const todayEt = etDateString(at);
-    const weekStart = parsed.query.week_start ?? isoWeekMonday(todayEt);
+    // Normalize to the containing week's Monday regardless of source — an arbitrary
+    // client-supplied non-Monday date would otherwise produce an off-spec window (§8.12 weeks
+    // are always Mon-Sun) and its own distinct cache key per arbitrary date (unbounded key
+    // space: every miss is a full week's pick scan).
+    const weekStart = isoWeekMonday(parsed.query.week_start ?? todayEt);
     const weekEnd = addDaysToDateString(weekStart, 6);
     const live = todayEt >= weekStart && todayEt <= weekEnd;
 

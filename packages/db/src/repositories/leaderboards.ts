@@ -19,8 +19,19 @@ export interface LeaderboardPickRow {
   pickedAtMs: number;
 }
 
-/** Daily, `revealed`, `question_date` in `[weekStart, weekEnd]` (inclusive), win/loss only —
- * "only revealed questions count" (§8.12 publication rule), void/pending excluded. */
+/**
+ * Daily, `revealed`, `question_date` in `[weekStart, weekEnd]` (inclusive), win/loss only —
+ * "only revealed questions count" (§8.12 publication rule), void/pending excluded.
+ *
+ * SPEC-GAP(WS3-T7): §8.12 says bonus questions (`nemesis_bonus`/`duo_bonus`) are included by
+ * their `lock_at` date, not just `kind = 'daily'` questions by `question_date`. No bonus
+ * questions exist yet this wave (WS5/WS6, their originating workstreams, aren't built), so
+ * there's nothing to test this against today — but this filter has no marker distinguishing
+ * "the doc's bonus-question rule was implemented and found not to apply" from "it was simply
+ * never revisited." When WS5/WS6 land, this needs a `(kind = 'daily' AND ...) OR (kind IN
+ * ('nemesis_bonus','duo_bonus') AND lock_at::date BETWEEN weekStart AND weekEnd)` branch (or
+ * equivalent) — otherwise those results silently never surface on weekly leaderboards.
+ */
 export async function getLeaderboardPicksForWeek(
   db: Db,
   weekStart: string,
