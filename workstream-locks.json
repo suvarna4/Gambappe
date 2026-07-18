@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T12:19:17.631Z",
+  "updated_at": "2026-07-18T12:20:05.626Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1156,12 +1156,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "in_review",
+      "status": "done",
       "owner": "claude-code-web-session-35b05898",
       "branch": "feat/ws13-t2-rollups",
       "pr": "https://github.com/suvarna4/Gambappe/pull/14",
       "claimed_at": "2026-07-18T11:50:49.407Z",
-      "updated_at": "2026-07-18T12:05:23.011Z"
+      "updated_at": "2026-07-18T12:20:05.625Z"
     },
     "WS13-T3": {
       "title": "Metrics page",
