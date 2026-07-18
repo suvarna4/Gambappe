@@ -1,20 +1,11 @@
 /**
  * Client-side (browser) typed fetch wrappers for the viewer island (§10.2 spectator-page
- * architecture, WS7-T2). These call the REAL `/api/v1/*` HTTP paths per §9.2 — unlike
- * `question-view.ts` (which reads Postgres directly for SSR), browser JS has no DB access, so
- * there's no mock-start shortcut here.
- *
- * NONE of these are merged yet. `POST /questions/:id/picks`, `DELETE /picks/:id`, and
- * `GET /questions/:slug` (used for the §10.2 30s poll) are WS3-T1/T2 scope
- * (`docs/workstream-locks.md`: WS3-T2 `in_review`). `GET /me` looked merged at a glance —
- * `apps/web/app/api/v1/me/route.ts` exists — but that file only exports `DELETE` (WS2-T5,
- * account deletion); no workstream has shipped the actual `GET /me` read handler yet, so it
- * 404s exactly like the others. All four calls will 404 until their owning routes land. This
- * is expected under the design doc's Mock-start OK posture (§19.2, §0.2): the request/response
- * shapes below are typed against the real `packages/core` contract, so nothing here needs to
- * change once those routes ship. Callers (the `ViewerStrip`/pick-flow components) must treat
- * these calls as fallible and degrade gracefully — never crash the page — since that's also
- * just correct behavior for any network call in production.
+ * architecture, WS7-T2) and the "me" surfaces built on top of it (reveal sequence, settings).
+ * These call the REAL `/api/v1/*` HTTP paths per §9.2 — unlike `question-view.ts` (which reads
+ * Postgres directly for SSR), browser JS has no DB access, so there's no mock-start shortcut
+ * here. All routes below are merged; callers must still treat every call as fallible and
+ * degrade gracefully — never crash the page — since that's also just correct behavior for any
+ * network call in production.
  */
 import {
   createPickBodySchema,

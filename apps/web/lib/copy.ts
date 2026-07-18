@@ -226,4 +226,5 @@ export const settingsCopy = {
   deleteError: 'Could not delete your account — try again.',
   deleteDoneHeading: "Your account's been deleted",
   deleteDoneBody: 'Your picks and profile are gone. Thanks for playing.',
+  deleteDoneHomeLink: 'Home',
 } as const;

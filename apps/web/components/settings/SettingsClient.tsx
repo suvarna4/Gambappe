@@ -25,8 +25,11 @@ type DeletePhase = 'idle' | 'confirming' | 'deleting' | 'done' | 'error';
 export interface SettingsClientProps {
   /** `process.env.VAPID_PUBLIC_KEY`, read server-side by `page.tsx` (mirrors `PushOptInButton`'s
    * own rationale for taking this as a prop instead of fetching it). `null` when the `web_push`
-   * flag is off or the key isn't configured — the push section doesn't render at all then
-   * (§4.6: "UI must render coherently with any flag off"). */
+   * flag is off or the key isn't configured — only `PushOptInButton` (the subscribe/unsubscribe
+   * action) is gated on this; the push notification PREFERENCE toggles below render regardless,
+   * since `PATCH /me/settings` isn't flag-gated and an already-subscribed profile's preferences
+   * stay live either way (§4.6: "UI must render coherently with any flag off" cuts the other
+   * way here — hiding a still-functional preference would be the incoherent state). */
   vapidPublicKey: string | null;
 }
 
@@ -34,6 +37,7 @@ export default function SettingsClient({ vapidPublicKey }: SettingsClientProps) 
   const [phase, setPhase] = useState<Phase>('loading');
   const [me, setMe] = useState<MeResponse | null>(null);
   const [settings, setSettings] = useState<ProfileSettings | null>(null);
+  const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [deletePhase, setDeletePhase] = useState<DeletePhase>('idle');
   const [deleteTyped, setDeleteTyped] = useState('');
@@ -64,31 +68,45 @@ export default function SettingsClient({ vapidPublicKey }: SettingsClientProps) 
     };
   }, []);
 
+  // Both save functions below fully serialize on `saving` (a single in-flight save at a time,
+  // every toggle disabled meanwhile — see the `disabled={saving}` props below) and use
+  // FUNCTIONAL setState for both the optimistic write and the on-failure revert, touching only
+  // the one field being changed. Serializing means at most one PATCH is ever in flight, so its
+  // response always reflects the very save that's resolving — there's no window where a second,
+  // concurrently-resolving request's full-object response could overwrite a still-in-flight (or
+  // just-reverted) sibling field with a stale snapshot.
+
   async function saveNemesisPaused(next: boolean) {
-    if (!settings) return;
-    const prev = settings;
-    setSettings({ ...settings, nemesis_paused: next });
+    if (!settings || saving) return;
+    setSaving(true);
+    setSettings((cur) => (cur ? { ...cur, nemesis_paused: next } : cur));
     setSaveError(null);
     try {
       const { data } = await updateSettings({ nemesis_paused: next });
       setSettings(data.settings);
     } catch {
-      setSettings(prev);
+      setSettings((cur) => (cur ? { ...cur, nemesis_paused: !next } : cur));
       setSaveError(settingsCopy.saveError);
+    } finally {
+      setSaving(false);
     }
   }
 
   async function saveNotification(key: keyof NotificationSettings, next: boolean) {
-    if (!settings) return;
-    const prev = settings;
-    setSettings({ ...settings, notifications: { ...settings.notifications, [key]: next } });
+    if (!settings || saving) return;
+    setSaving(true);
+    setSettings((cur) => (cur ? { ...cur, notifications: { ...cur.notifications, [key]: next } } : cur));
     setSaveError(null);
     try {
       const { data } = await updateSettings({ notifications: { [key]: next } });
       setSettings(data.settings);
     } catch {
-      setSettings(prev);
+      setSettings((cur) =>
+        cur ? { ...cur, notifications: { ...cur.notifications, [key]: !next } } : cur,
+      );
       setSaveError(settingsCopy.saveError);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -136,7 +154,7 @@ export default function SettingsClient({ vapidPublicKey }: SettingsClientProps) 
         <h2 className="text-lg font-bold">{settingsCopy.deleteDoneHeading}</h2>
         <p className="text-muted text-sm">{settingsCopy.deleteDoneBody}</p>
         <a href="/" className="text-side-a text-sm underline">
-          Home
+          {settingsCopy.deleteDoneHomeLink}
         </a>
       </div>
     );
@@ -159,6 +177,7 @@ export default function SettingsClient({ vapidPublicKey }: SettingsClientProps) 
             type="checkbox"
             data-testid="settings-nemesis-paused"
             checked={s.nemesis_paused}
+            disabled={saving}
             onChange={(e) => saveNemesisPaused(e.target.checked)}
           />
         </label>
@@ -172,51 +191,59 @@ export default function SettingsClient({ vapidPublicKey }: SettingsClientProps) 
           label={settingsCopy.emailRevealLabel}
           testId="settings-email-reveal"
           checked={s.notifications.email_reveal}
+          disabled={saving}
           onChange={(next) => saveNotification('email_reveal', next)}
         />
         <NotificationToggle
           label={settingsCopy.emailNemesisLabel}
           testId="settings-email-nemesis"
           checked={s.notifications.email_nemesis}
+          disabled={saving}
           onChange={(next) => saveNotification('email_nemesis', next)}
         />
         <NotificationToggle
           label={settingsCopy.emailDuoLabel}
           testId="settings-email-duo"
           checked={s.notifications.email_duo}
+          disabled={saving}
           onChange={(next) => saveNotification('email_duo', next)}
         />
         <NotificationToggle
           label={settingsCopy.emailProductLabel}
           testId="settings-email-product"
           checked={s.notifications.email_product}
+          disabled={saving}
           onChange={(next) => saveNotification('email_product', next)}
         />
-        {vapidPublicKey ? (
-          <>
-            <NotificationToggle
-              label={settingsCopy.pushRevealLabel}
-              testId="settings-push-reveal"
-              checked={s.notifications.push_reveal}
-              onChange={(next) => saveNotification('push_reveal', next)}
-            />
-            <NotificationToggle
-              label={settingsCopy.pushNemesisLabel}
-              testId="settings-push-nemesis"
-              checked={s.notifications.push_nemesis}
-              onChange={(next) => saveNotification('push_nemesis', next)}
-            />
-            <NotificationToggle
-              label={settingsCopy.pushDuoLabel}
-              testId="settings-push-duo"
-              checked={s.notifications.push_duo}
-              onChange={(next) => saveNotification('push_duo', next)}
-            />
-            <PushOptInButton vapidPublicKey={vapidPublicKey} />
-          </>
-        ) : null}
+        {/* Unlike `PushOptInButton` below, these three stay unconditional: `PATCH
+            /me/settings` isn't flag-gated and the worker's push-dispatch pass reads them
+            regardless of `web_push`, so hiding them behind the flag would strand anyone
+            already subscribed (a different device, or subscribed before the flag flipped
+            off) with no in-product way to see or change their push preferences. */}
+        <NotificationToggle
+          label={settingsCopy.pushRevealLabel}
+          testId="settings-push-reveal"
+          checked={s.notifications.push_reveal}
+          disabled={saving}
+          onChange={(next) => saveNotification('push_reveal', next)}
+        />
+        <NotificationToggle
+          label={settingsCopy.pushNemesisLabel}
+          testId="settings-push-nemesis"
+          checked={s.notifications.push_nemesis}
+          disabled={saving}
+          onChange={(next) => saveNotification('push_nemesis', next)}
+        />
+        <NotificationToggle
+          label={settingsCopy.pushDuoLabel}
+          testId="settings-push-duo"
+          checked={s.notifications.push_duo}
+          disabled={saving}
+          onChange={(next) => saveNotification('push_duo', next)}
+        />
+        {vapidPublicKey ? <PushOptInButton vapidPublicKey={vapidPublicKey} /> : null}
         {saveError ? (
-          <p className="text-loss text-xs" data-testid="settings-save-error">
+          <p className="text-loss text-xs" role="alert" data-testid="settings-save-error">
             {saveError}
           </p>
         ) : null}
@@ -258,7 +285,7 @@ export default function SettingsClient({ vapidPublicKey }: SettingsClientProps) 
               {settingsCopy.deleteConfirmButton}
             </button>
             {deletePhase === 'error' ? (
-              <p className="text-loss text-xs" data-testid="settings-delete-error">
+              <p className="text-loss text-xs" role="alert" data-testid="settings-delete-error">
                 {settingsCopy.deleteError}
               </p>
             ) : null}
@@ -273,11 +300,13 @@ function NotificationToggle({
   label,
   testId,
   checked,
+  disabled,
   onChange,
 }: {
   label: string;
   testId: string;
   checked: boolean;
+  disabled?: boolean;
   onChange: (next: boolean) => void;
 }) {
   return (
@@ -287,6 +316,7 @@ function NotificationToggle({
         type="checkbox"
         data-testid={testId}
         checked={checked}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
       />
     </label>

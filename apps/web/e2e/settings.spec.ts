@@ -90,7 +90,20 @@ test.describe('settings page (§9.2, §9.4, WS7-T9)', () => {
     await expect(page.getByTestId('settings-ready')).toBeVisible();
     await expect(page.getByTestId('settings-nemesis-paused')).not.toBeChecked();
 
-    await page.getByTestId('settings-nemesis-paused').click();
+    // The push preference toggles render even with the `web_push` flag off (this test's env
+    // has no FLAG_WEB_PUSH/VAPID_PUBLIC_KEY set) — only PushOptInButton's subscribe action is
+    // flag-gated, not the preferences themselves (an already-subscribed profile's push
+    // dispatch honors these regardless of the flag).
+    await expect(page.getByTestId('settings-push-reveal')).toBeVisible();
+    await expect(page.getByTestId('settings-push-nemesis')).toBeVisible();
+    await expect(page.getByTestId('settings-push-duo')).toBeVisible();
+
+    // Waiting for the request (not just the resulting checked state) makes the `patchBody`
+    // assertion below deterministic rather than racing the mocked route's async fulfillment.
+    await Promise.all([
+      page.waitForRequest('**/api/v1/me/settings'),
+      page.getByTestId('settings-nemesis-paused').click(),
+    ]);
 
     await expect(page.getByTestId('settings-nemesis-paused')).toBeChecked();
     expect(patchBody).toEqual({ nemesis_paused: true });

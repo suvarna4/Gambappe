@@ -9,6 +9,13 @@ import { isFlagEnabled } from '@receipts/core';
 import SettingsClient from '@/components/settings/SettingsClient';
 import { settingsCopy } from '@/lib/copy';
 
+// §4.6 flags are runtime env flags meant to flip without a rebuild — Next would otherwise
+// statically prerender this page (no dynamic API used) and freeze `isFlagEnabled('web_push')` +
+// `VAPID_PUBLIC_KEY` at build time, so a runtime flag flip (or restarting a standalone server
+// build without rebuilding) would silently desync this page from every API route, which reads
+// both fresh per request (mirrors `apps/web/app/page.tsx`'s own `force-dynamic` precedent).
+export const dynamic = 'force-dynamic';
+
 export default function SettingsPage() {
   const vapidPublicKey =
     isFlagEnabled('web_push') && process.env.VAPID_PUBLIC_KEY
