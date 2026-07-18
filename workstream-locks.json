@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T23:08:38.999Z",
+  "updated_at": "2026-07-18T23:09:29.243Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -643,13 +643,13 @@
         "WS6-T2"
       ],
       "mock_start_ok": false,
-      "note": null,
-      "status": "available",
-      "owner": null,
+      "note": "Starting: duo public/self APIs",
+      "status": "claimed",
+      "owner": "claude-sonnet5-vf9acd-orchestrator",
       "branch": null,
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-18T09:35:00Z"
+      "claimed_at": "2026-07-18T23:09:29.243Z",
+      "updated_at": "2026-07-18T23:09:29.243Z"
     },
     "WS7-T1": {
       "title": "Design system",
