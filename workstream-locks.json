@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T18:55:51.544Z",
+  "updated_at": "2026-07-18T18:55:53.113Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -264,13 +264,13 @@
         "WS2-T3"
       ],
       "mock_start_ok": false,
-      "note": "PR #7 open against main, pnpm verify green in isolation.",
-      "status": "in_review",
+      "note": "PR #7 merged.",
+      "status": "done",
       "owner": null,
       "branch": "claude/wave-2-ws-1-2-4-woo118",
       "pr": "https://github.com/suvarna4/Gambappe/pull/7",
       "claimed_at": null,
-      "updated_at": "2026-07-18T10:06:38.164Z"
+      "updated_at": "2026-07-18T18:55:53.113Z"
     },
     "WS3-T1": {
       "title": "Question lifecycle + scheduler",
