@@ -4,7 +4,7 @@
  */
 import { NextResponse } from 'next/server';
 import { nowMs } from '@receipts/core';
-import { getPool, getRedis } from '@/lib/stores';
+import { ensureRedisConnected, getPool, getRedis } from '@/lib/stores';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -36,8 +36,7 @@ async function checkPostgres(): Promise<CheckState> {
 
 async function checkRedis(): Promise<CheckState> {
   try {
-    const redis = getRedis();
-    if (redis.status === 'wait' || redis.status === 'end') await redis.connect();
+    const redis = await ensureRedisConnected(getRedis());
     await withTimeout(redis.ping(), 2_000);
     return 'ok';
   } catch {

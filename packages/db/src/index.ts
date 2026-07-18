@@ -10,3 +10,4 @@ export * from './repositories/picks.js';
 export * from './repositories/heartbeats.js';
 export * from './repositories/venue-sync.js';
 export * from './repositories/settlement.js';
+export * from './repositories/analytics.js';
