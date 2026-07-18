@@ -38,6 +38,9 @@ importers:
       '@receipts/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@receipts/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
       '@receipts/ui':
         specifier: workspace:*
         version: link:../../packages/ui
