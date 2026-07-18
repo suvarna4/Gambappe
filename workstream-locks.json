@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T09:21:20.524Z",
+  "updated_at": "2026-07-18T09:21:27.684Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -204,12 +204,12 @@
       ],
       "mock_start_ok": false,
       "note": "test claim, released",
-      "status": "available",
-      "owner": null,
+      "status": "claimed",
+      "owner": "racer-3",
       "branch": null,
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-18T09:21:18.665Z"
+      "claimed_at": "2026-07-18T09:21:27.683Z",
+      "updated_at": "2026-07-18T09:21:27.683Z"
     },
     "WS2-T2": {
       "title": "Auth.js setup",
