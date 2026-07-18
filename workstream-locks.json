@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T19:50:11.890Z",
+  "updated_at": "2026-07-18T19:54:26.636Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -707,12 +707,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-sonnet5-vf9acd-orchestrator",
       "branch": "feat/ws7-t4-profile-page",
-      "pr": null,
+      "pr": "https://github.com/suvarna4/Gambappe/pull/24",
       "claimed_at": "2026-07-18T19:04:18.603Z",
-      "updated_at": "2026-07-18T19:04:18.603Z"
+      "updated_at": "2026-07-18T19:54:26.636Z"
     },
     "WS7-T5": {
       "title": "Claim flow UI + prompt engine",
