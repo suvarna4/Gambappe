@@ -5,8 +5,14 @@
  * hidden (rows retained — aggregates/crowd counts stay truthful), posts marked
  * `removed_by_author`, best-effort wallet/push/notification cleanup, Auth.js user hard-deleted
  * (accounts/sessions cascade via `onDelete: 'cascade'` FKs — email gone), fingerprint/rating
- * rows deleted. Active pairing/duo exit rules and the async analytics/Sentry scrub are
- * SPEC-GAPs — see comments below.
+ * rows deleted. The async analytics/Sentry scrub is a SPEC-GAP — see comment below.
+ *
+ * Active DUO match exit (§5.7, WS6-T2) is deliberately NOT done in this function — `packages/db`
+ * has no `@receipts/engine` dependency (§4.2), and the mid-window-exit rule needs
+ * `scoreDuoMatch`/`updateGlicko2` from it. `DELETE /api/v1/me` (apps/web) calls
+ * `applyDuoMidWindowExit` (`apps/web/lib/duo-match-lifecycle.ts`) before calling this function
+ * instead. (Active NEMESIS pairing exit on deletion remains an open SPEC-GAP — WS5 doesn't
+ * exist in this wave either; unlike duo, no caller-side follow-up has been wired for it yet.)
  */
 import { and, eq } from 'drizzle-orm';
 import type { Db } from '../client.js';
@@ -68,8 +74,10 @@ export async function deleteAccount(
       .set({ status: 'cancelled' })
       .where(and(eq(notifications.profileId, profileId), eq(notifications.status, 'queued')));
 
-    // SPEC-GAP(WS2-T5): active pairing/duo mid-week exit rules (§5.7) deferred — nemesis (WS5)
-    // and duo (WS6) don't exist in this wave, so there is nothing to exit yet.
+    // Duo match mid-window exit (§5.7) is handled by the CALLER, before this function runs —
+    // see this file's header. SPEC-GAP(WS2-T5, still open): active nemesis pairing exit on
+    // deletion — WS5 doesn't exist in this wave, so there is nothing to exit yet, and (unlike
+    // duo) no caller-side follow-up exists for it either.
 
     await tx.delete(fingerprints).where(eq(fingerprints.profileId, profileId));
     await tx.delete(ratings).where(eq(ratings.profileId, profileId));

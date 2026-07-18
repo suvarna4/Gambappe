@@ -15,12 +15,23 @@
  * NOTE on 30s cadences (duo:matchmaker, notify:dispatch): pg-boss cron granularity is one
  * minute; the owning tasks (WS6-T1, WS9-T1) implement the sub-minute tick by self-requeue
  * with startAfter inside the minute cron. The stub runs at the minute cron meanwhile.
+ *
+ * NOTE on `duo:window-roll`'s owner: §19.3's WBS table lists this job under WS6-T3 ("Ladder +
+ * windows"), not WS6-T2 ("Match lifecycle + scoring + chemistry") — but WS6-T2's own task brief
+ * explicitly scoped implementing the window-roll handler itself (match creation via WS4-T5's
+ * `matchDuoVsDuo` + bonus authoring + the straggler backstop that calls WS6-T2's completion
+ * logic), leaving WS6-T3 to add ladder promotion/relegation (§8.10) on top of an
+ * already-working window-roll rather than building the job from scratch. Flagged here (and in
+ * the WS6-T2 PR description) since it's a real deviation from the doc's literal task-to-job
+ * mapping — WS6-T3, when claimed, should treat this handler as already done and scope its own
+ * work to §8.10 only.
  */
 import { SCHEDULE_TZ } from '@receipts/core';
 import type { JobHandler } from './heartbeat.js';
 import { analyticsRollupHandler } from './jobs/analytics-rollup.js';
 import { botScoreHandler } from './jobs/bot-score.js';
 import { duoMatchmakerHandler } from './jobs/duo-matchmaker.js';
+import { duoWindowRollHandler } from './jobs/duo-window-roll.js';
 import { gradeFollowupHandler } from './jobs/grade-followup.js';
 import { maintenancePruneHandler } from './jobs/maintenance-prune.js';
 import { notifyDispatchHandler } from './jobs/notify-dispatch.js';
@@ -145,9 +156,9 @@ export const JOB_REGISTRY: readonly JobDefinition[] = [
   },
   {
     name: 'duo:window-roll',
-    owner: 'WS6-T3',
+    owner: 'WS6-T2', // see file header note — §19.3 nominally lists WS6-T3
     cron: '0 9 * * 2,5', // Tue/Fri 09:00 ET
-    handler: stubHandler('duo:window-roll', 'WS6-T3'),
+    handler: duoWindowRollHandler,
   },
   {
     name: 'notify:dispatch',
