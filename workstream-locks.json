@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T09:21:50.499Z",
+  "updated_at": "2026-07-18T09:21:51.790Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -207,9 +207,9 @@
       "status": "available",
       "owner": null,
       "branch": null,
-      "pr": "https://example.com/pr/999",
+      "pr": "none",
       "claimed_at": null,
-      "updated_at": "2026-07-18T09:21:49.251Z"
+      "updated_at": "2026-07-18T09:21:51.790Z"
     },
     "WS2-T2": {
       "title": "Auth.js setup",
