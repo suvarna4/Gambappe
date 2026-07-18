@@ -22,7 +22,7 @@ const url =
   process.env.TEST_DATABASE_URL ?? 'postgres://receipts:receipts@localhost:5432/receipts_test';
 
 const APP_URL = 'https://receipts.example';
-const ADDRESS = '0xAbC0000000000000000000000000000000dEaD';
+const ADDRESS = '0xAbC000000000000000000000000000000000dEaD'; // 40 hex chars — a valid EOA
 const NOW = new Date('2026-07-18T12:00:00Z');
 
 let pool: pg.Pool;

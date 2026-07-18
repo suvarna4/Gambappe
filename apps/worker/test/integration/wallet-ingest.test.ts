@@ -86,11 +86,15 @@ async function insertActiveLink(): Promise<{ profileId: string; walletLinkId: st
   const profile = buildProfile({ kind: 'claimed' });
   await db.insert(profiles).values(profile);
   const walletLinkId = uuidv7();
+  // addressHash must be unique per call: `wallet_links` has a real partial-unique constraint on
+  // (address_hash) WHERE status='active' (§5.6 — "an address links to one profile at a time").
+  // Each `it()` in this file shares one Postgres schema for the whole file (only `beforeAll`
+  // resets it), so a fixed hash here collides with the previous test's still-active row.
   await db.insert(walletLinks).values({
     id: walletLinkId,
     profileId: profile.id as string,
     address: EOA,
-    addressHash: 'test-address-hash',
+    addressHash: `test-address-hash-${walletLinkId}`,
     verifiedAt: NOW,
     status: 'active',
   });
