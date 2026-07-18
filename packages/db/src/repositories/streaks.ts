@@ -81,6 +81,9 @@ async function persistNewFreezeUses(
 export interface StreakApplyResult extends StreakReplayResult {
   freezeUsedForGap: boolean;
   previousStreak: number;
+  /** `freeze_bank` after this call's consumption (WS9-T3: `streak_freeze_used` beat data,
+   * §13.3 "{n} left" — additive field, not itself new streak logic). */
+  freezeBankAfter: number;
 }
 
 /**
@@ -128,7 +131,12 @@ export async function applyStreakForParticipant(
     })
     .where(eq(profiles.id, profileId));
 
-  return { ...result, freezeUsedForGap: decision.newFreezeUses.length > 0, previousStreak: before.currentStreak };
+  return {
+    ...result,
+    freezeUsedForGap: decision.newFreezeUses.length > 0,
+    previousStreak: before.currentStreak,
+    freezeBankAfter: decision.freezeBankAfter,
+  };
 }
 
 /**
@@ -175,7 +183,12 @@ export async function applyStreakForNonParticipant(
     })
     .where(eq(profiles.id, profileId));
 
-  return { ...result, freezeUsedForGap: decision.newFreezeUses.length > 0, previousStreak: before.currentStreak };
+  return {
+    ...result,
+    freezeUsedForGap: decision.newFreezeUses.length > 0,
+    previousStreak: before.currentStreak,
+    freezeBankAfter: decision.freezeBankAfter,
+  };
 }
 
 export interface StreakSweepCandidate {
