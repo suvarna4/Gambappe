@@ -8,3 +8,4 @@
  * — out of scope here.
  */
 export * from './fingerprint.js';
+export * from './glicko2.js';
