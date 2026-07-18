@@ -13,6 +13,9 @@ export default tseslint.config(
       '**/playwright-report/**',
       '**/test-results/**',
       '**/drizzle/**',
+      // Nested git worktrees for parallel background agents (never committed, see .gitignore) —
+      // linting from the main worktree must not walk into another agent's live checkout.
+      '.claude/worktrees/**',
     ],
   },
   ...tseslint.configs.recommended,
