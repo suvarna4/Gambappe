@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T10:34:21.877Z",
+  "updated_at": "2026-07-18T10:34:23.164Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -158,13 +158,13 @@
         "WS1-T4"
       ],
       "mock_start_ok": false,
-      "note": "PR #6 open against main — CI fully green (lint/typecheck/unit/build/drift, integration, e2e all pass).",
-      "status": "in_review",
+      "note": null,
+      "status": "done",
       "owner": null,
       "branch": "claude/wave-2-ws-1-2-4-woo118",
       "pr": "https://github.com/suvarna4/Gambappe/pull/6",
       "claimed_at": null,
-      "updated_at": "2026-07-18T10:31:56.736Z"
+      "updated_at": "2026-07-18T10:34:23.163Z"
     },
     "WS1-T6": {
       "title": "Kalshi WS ticker",
