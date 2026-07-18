@@ -23,6 +23,7 @@ import { botScoreHandler } from './jobs/bot-score.js';
 import { duoMatchmakerHandler } from './jobs/duo-matchmaker.js';
 import { gradeFollowupHandler } from './jobs/grade-followup.js';
 import { maintenancePruneHandler } from './jobs/maintenance-prune.js';
+import { nemesisAssignHandler } from './jobs/nemesis-assign.js';
 import { notifyDispatchHandler } from './jobs/notify-dispatch.js';
 import { questionLockHandler } from './jobs/question-lock.js';
 import { questionOpenHandler } from './jobs/question-open.js';
@@ -129,7 +130,7 @@ export const JOB_REGISTRY: readonly JobDefinition[] = [
     name: 'nemesis:assign',
     owner: 'WS5-T1',
     cron: '0 9 * * 1', // Mon 09:00 ET
-    handler: stubHandler('nemesis:assign', 'WS5-T1'),
+    handler: nemesisAssignHandler,
   },
   {
     name: 'wallet:ingest',

@@ -7,7 +7,7 @@ import { uuidv7 } from 'uuidv7';
 import { slugifyHandle } from '@receipts/core';
 import type { Db } from '../client.js';
 import { markets, picks, profiles, questions } from '../schema/index.js';
-import type { placementAnswers, placementItems } from '../schema/index.js';
+import type { fingerprints, placementAnswers, placementItems, ratings, seasons } from '../schema/index.js';
 
 export type ProfileRow = typeof profiles.$inferInsert;
 export type MarketRow = typeof markets.$inferInsert;
@@ -15,6 +15,9 @@ export type QuestionRow = typeof questions.$inferInsert;
 export type PickRow = typeof picks.$inferInsert;
 export type PlacementItemRow = typeof placementItems.$inferInsert;
 export type PlacementAnswerRow = typeof placementAnswers.$inferInsert;
+export type FingerprintRow = typeof fingerprints.$inferInsert;
+export type RatingRow = typeof ratings.$inferInsert;
+export type SeasonRow = typeof seasons.$inferInsert;
 
 let seq = 0;
 function nextSeq(): number {
@@ -203,6 +206,40 @@ export function buildPlacementAnswer(
     placementItemId,
     side: 'yes',
     answeredAt: T0,
+    ...overrides,
+  };
+}
+
+/** `fingerprints` row (§8.1, WS4-T1/T7). Neutral defaults (0 style axes, empty category shares)
+ * so a fixture only needs to override what a test actually cares about (WS5-T1's nemesis-pool
+ * style-vector/category-overlap fixtures). */
+export function buildFingerprint(profileId: string, overrides: Partial<FingerprintRow> = {}): FingerprintRow {
+  return {
+    profileId,
+    resolvedPickCount: 0,
+    chalk: 0,
+    contrarian: 0,
+    timing: 0,
+    categoryShares: {},
+    computedAt: T0,
+    ...overrides,
+  };
+}
+
+/** `ratings` row (§5.4, §8.3). Schema defaults (1500/350/0.06) apply for any field omitted. */
+export function buildRating(profileId: string, overrides: Partial<RatingRow> = {}): RatingRow {
+  return {
+    profileId,
+    ...overrides,
+  };
+}
+
+/** `seasons` row (§5.4). Defaults to a nemesis season starting at `startsOn`. */
+export function buildSeason(overrides: Partial<SeasonRow> & { startsOn: string; endsOn: string }): SeasonRow {
+  return {
+    id: uuidv7(),
+    kind: 'nemesis',
+    name: `Test Nemesis Season (${overrides.startsOn})`,
     ...overrides,
   };
 }
