@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T23:50:21.530Z",
+  "updated_at": "2026-07-18T23:51:07.170Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1233,13 +1233,13 @@
         "WS14-T2"
       ],
       "mock_start_ok": false,
-      "note": null,
-      "status": "available",
-      "owner": null,
+      "note": "Starting: launch runbook + Question Zero drill",
+      "status": "claimed",
+      "owner": "claude-sonnet5-vf9acd-orchestrator",
       "branch": null,
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-18T09:35:00Z"
+      "claimed_at": "2026-07-18T23:51:07.170Z",
+      "updated_at": "2026-07-18T23:51:07.170Z"
     }
   }
 }
