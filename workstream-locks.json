@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T09:41:53.690Z",
+  "updated_at": "2026-07-18T09:41:55.099Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -403,13 +403,13 @@
         "WS0-T2"
       ],
       "mock_start_ok": false,
-      "note": null,
+      "note": "Implemented together with the rest of its workstream on this branch (owner: claude-code-web-session-9c961fec). pnpm verify in progress. Branch not yet merged to main — do not treat as buildable-against-main until updated to done.",
       "status": "claimed",
       "owner": "claude-code-web-session-9c961fec",
       "branch": "claude/wave-2-ws-1-2-4-woo118",
       "pr": null,
       "claimed_at": "2026-07-18T09:40:36.988Z",
-      "updated_at": "2026-07-18T09:40:36.988Z"
+      "updated_at": "2026-07-18T09:41:55.098Z"
     },
     "WS4-T3": {
       "title": "Style distance & complementarity",
