@@ -10,5 +10,6 @@ export * from './ids.js';
 export * from './flags.js';
 export * from './clock.js';
 export * from './handles.js';
+export * from './duplicate-accounts.js';
 export * from './types/index.js';
 export * from './schemas/index.js';
