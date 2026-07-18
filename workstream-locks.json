@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T10:00:16.889Z",
+  "updated_at": "2026-07-18T10:00:18.414Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -464,13 +464,13 @@
         "WS4-T1"
       ],
       "mock_start_ok": false,
-      "note": "Implemented, merged, pnpm verify green (lint+typecheck+test+build+drizzle-drift), and pushed to branch claude/wave-2-ws-1-2-4-woo118 (owner: claude-code-web-session-9c961fec). Not yet merged to main / no PR opened yet — check that branch for the code before assuming it's on main.",
-      "status": "claimed",
+      "note": "PR #4 open against main, pnpm verify green in isolation.",
+      "status": "in_review",
       "owner": null,
       "branch": "claude/wave-2-ws-1-2-4-woo118",
-      "pr": null,
+      "pr": "https://github.com/suvarna4/Gambappe/pull/4",
       "claimed_at": null,
-      "updated_at": "2026-07-18T09:45:57.116Z"
+      "updated_at": "2026-07-18T10:00:18.414Z"
     },
     "WS4-T7": {
       "title": "Engine job wiring",
