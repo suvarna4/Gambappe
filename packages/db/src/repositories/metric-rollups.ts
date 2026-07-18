@@ -1,8 +1,8 @@
 /**
  * `metric_rollups` repository (§16.3, WS13-T2): written nightly by `analytics:rollup`, read
- * by the admin metrics page (WS13-T3, not yet built).
+ * by the admin metrics page (WS13-T3).
  */
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq, gte, lte } from 'drizzle-orm';
 import type { Db } from '../client.js';
 import { metricRollups } from '../schema/index.js';
 
@@ -45,4 +45,17 @@ export async function listMetricRollups(
     .select()
     .from(metricRollups)
     .where(and(...conditions));
+}
+
+/** All rows with `date` in `[startDate, endDate]` inclusive, ordered by date (§13.1 metrics page). */
+export async function listMetricRollupsForRange(
+  db: Db,
+  startDate: string,
+  endDate: string,
+): Promise<MetricRollupRow[]> {
+  return db
+    .select()
+    .from(metricRollups)
+    .where(and(gte(metricRollups.date, startDate), lte(metricRollups.date, endDate)))
+    .orderBy(asc(metricRollups.date));
 }
