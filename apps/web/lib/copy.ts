@@ -3,10 +3,10 @@
  * lives in `apps/web/lib/copy.ts` (single reviewable file; no scattered literals) including
  * narration templates' rendered strings (§13.3)." — WS14-T3 scans this file for money words).
  *
- * Seeded independently by WS7-T2 (the `copy` object below, home + question page), WS7-T5
- * (the flat `CLAIM_*` exports, claim flow UI), and WS7-T6 (`nemesisCopy`, nemesis UI) before
- * any had landed on `main` — merged here on rebase. Later tasks should add their own section
- * to this file rather than starting a second copy file.
+ * Seeded independently by WS7-T2 (the `copy.question`/`copy.errors` sections), WS7-T5 (the
+ * flat `CLAIM_*` exports, claim flow UI), WS7-T6 (`nemesisCopy`, nemesis UI), and WS7-T10
+ * (`copy.placement`) before any had landed on `main` — merged here on rebase. Later tasks
+ * should add their own section to this file rather than starting a second copy file.
  *
  * Rules enforced in review (§10.6):
  *  - No money amounts, "bets", stake sizes, or venue balances (INV-8) — say "pick"/"call".
@@ -122,6 +122,30 @@ export const copy = {
     AGE_ATTESTATION_REQUIRED: "Confirm you're 18+ to place a pick.",
     RATE_LIMITED: 'Too many attempts — try again shortly.',
     generic: 'Something went wrong. Try again.',
+  },
+  /** WS7-T10 (placement flow UI) section. */
+  placement: {
+    intro:
+      "Five quick calls on real historical questions — see how you'd have done, tap by tap.",
+    progressLabel: (index: number, total: number) => `Item ${index} of ${total}`,
+    loading: 'Loading your 5 items…',
+    loadErrorTitle: "Couldn't load placement",
+    emptyPoolMessage: 'No placement items are available right now.',
+    retry: 'Try again',
+    needsIdentityTitle: 'Make a pick first',
+    needsIdentityBody:
+      "Placement needs an existing pick on this device before it can start — answer today's question, then come back here.",
+    needsIdentityCta: "Go to today's question",
+    yourCallPrefix: 'You called',
+    resolvedPrefix: 'it resolved',
+    resolvedOnPrefix: 'Resolved',
+    nextButton: 'Next',
+    finishButton: 'See your results',
+    submitErrorFallback: 'Something went wrong. Please try again.',
+    completeTitle: 'Your starting profile is ready',
+    completeBody: (correct: number, total: number) =>
+      `You called ${correct} of ${total} right. Those answers just seeded your starting profile.`,
+    completeCta: "Go to today's question",
   },
 } as const;
 
