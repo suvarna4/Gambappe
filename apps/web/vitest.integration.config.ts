@@ -7,6 +7,9 @@ export default defineConfig({
     // Mirrors tsconfig.json's `"@/*": ["./*"]` (see vitest.config.ts for why this is needed).
     alias: { '@': fileURLToPath(new URL('.', import.meta.url)) },
   },
+  // WS8-T1: see vitest.config.ts — matches Next's automatic JSX runtime for the satori
+  // OG templates exercised by the /api/og/* integration tests.
+  esbuild: { jsx: 'automatic' },
   test: {
     include: ['test/integration/**/*.test.ts'],
     environment: 'node',

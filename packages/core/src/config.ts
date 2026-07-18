@@ -262,6 +262,22 @@ export const REVALIDATE_PATH_ALLOWLIST: readonly RegExp[] = [
   /^\/duos\/[a-z0-9-]+$/,
 ];
 
+// --- WS8: OG images + spectator ISR (§10.1, §10.2, §10.5) ------------------------------------
+
+/** Immutable content-addressed OG/card image cache lifetime, seconds (§10.5). */
+export const OG_CACHE_S_MAXAGE_S = 86400;
+
+/** Default public GET cache-control for /api/v1 resources (§9.1 convention), seconds. */
+export const PUBLIC_GET_S_MAXAGE_S = 30;
+export const PUBLIC_GET_SWR_S = 300;
+
+/** ISR `revalidate` seconds per public route kind (§10.1 route table). */
+export const ISR_REVALIDATE_QUESTION_S = 30;
+export const ISR_REVALIDATE_ARCHIVE_S = 86400;
+export const ISR_REVALIDATE_PROFILE_S = 60;
+export const ISR_REVALIDATE_PAIRING_S = 30;
+export const ISR_REVALIDATE_DUO_S = 60;
+
 // --- Data lifecycle (§11.5 table; centralized here per §0.1 rule 4) --------------------------
 
 /** Ghost profiles unseen this long are pruned/anonymized by `maintenance:prune`. */
@@ -359,6 +375,14 @@ export const CONFIG = {
   RL_FAIL_CLOSED_FRACTION,
   PAGINATION_MAX_LIMIT,
   REVALIDATE_MAX_PATHS,
+  OG_CACHE_S_MAXAGE_S,
+  PUBLIC_GET_S_MAXAGE_S,
+  PUBLIC_GET_SWR_S,
+  ISR_REVALIDATE_QUESTION_S,
+  ISR_REVALIDATE_ARCHIVE_S,
+  ISR_REVALIDATE_PROFILE_S,
+  ISR_REVALIDATE_PAIRING_S,
+  ISR_REVALIDATE_DUO_S,
   RETENTION_GHOST_UNSEEN_MONTHS,
   RETENTION_PRICE_SNAPSHOTS_DAYS,
   RETENTION_ANALYTICS_MONTHS,

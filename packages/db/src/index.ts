@@ -26,4 +26,6 @@ export * from './repositories/fingerprints.js';
 export * from './repositories/moderation.js';
 export * from './repositories/notifications.js';
 export * from './repositories/profile-page.js';
+export * from './repositories/pairings.js';
+export * from './repositories/duos.js';
 export * from './streak-replay.js';

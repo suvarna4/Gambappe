@@ -1618,6 +1618,13 @@ The P0 (48-hour) cut is the subset tagged P0 below, in the same wave order — s
 | `QUIET_HOURS_START_LOCAL` / `QUIET_HOURS_END_LOCAL` | 22:00 / 08:00 (profile.timezone, default `SCHEDULE_TZ`) — added WS9-T1, not in the original table | §13.2 |
 | `MARKETING_EMAIL_DAILY_CAP` | 1 per profile per local day (reveal/nemesis/duo exempt) — added WS9-T1, not in the original table | §13.2 |
 | `HOUSE_MIN_PROFILES` | 500 | §8.11 |
+| `OG_CACHE_S_MAXAGE_S` | 86400 | §10.5 (WS8-T1 contract-change) |
+| `PUBLIC_GET_S_MAXAGE_S` / `PUBLIC_GET_SWR_S` | 30 / 300 | §9.1 (WS8-T1 contract-change; names the §9.1 convention text's literal values) |
+| `ISR_REVALIDATE_QUESTION_S` | 30 | §10.1 (WS8-T3 contract-change) |
+| `ISR_REVALIDATE_ARCHIVE_S` | 86400 | §10.1 (`/q` archive, "ISR daily") |
+| `ISR_REVALIDATE_PROFILE_S` | 60 | §10.1 (`/p/[handle]`) |
+| `ISR_REVALIDATE_PAIRING_S` | 30 | §10.1 (`/vs/[pairingId]`) |
+| `ISR_REVALIDATE_DUO_S` | 60 | §10.1 (`/duos/[id]`, `/ladder`) |
 
 ## Appendix E — Red-team resolution log
 
