@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T09:21:18.665Z",
+  "updated_at": "2026-07-18T09:21:20.524Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -97,13 +97,13 @@
         "WS0-T6"
       ],
       "mock_start_ok": false,
-      "note": null,
-      "status": "claimed",
-      "owner": "test-agent-A",
-      "branch": "feat/ws1-t1-http-client",
+      "note": "test claim, released",
+      "status": "available",
+      "owner": null,
+      "branch": null,
       "pr": null,
-      "claimed_at": "2026-07-18T09:20:52.710Z",
-      "updated_at": "2026-07-18T09:20:52.710Z"
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:21:20.524Z"
     },
     "WS1-T2": {
       "title": "Kalshi adapter",
