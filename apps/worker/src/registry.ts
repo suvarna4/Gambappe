@@ -20,6 +20,7 @@ import { SCHEDULE_TZ } from '@receipts/core';
 import type { JobHandler } from './heartbeat.js';
 import { analyticsRollupHandler } from './jobs/analytics-rollup.js';
 import { botScoreHandler } from './jobs/bot-score.js';
+import { duoMatchmakerHandler } from './jobs/duo-matchmaker.js';
 import { maintenancePruneHandler } from './jobs/maintenance-prune.js';
 import { settlementPollHandler } from './jobs/settlement-poll.js';
 import { stubHandler } from './jobs/stubs.js';
@@ -132,7 +133,7 @@ export const JOB_REGISTRY: readonly JobDefinition[] = [
     name: 'duo:matchmaker',
     owner: 'WS6-T1',
     cron: '* * * * *', // every 30s per spec; minute cron + WS6-T1 self-requeue (see header)
-    handler: stubHandler('duo:matchmaker', 'WS6-T1'),
+    handler: duoMatchmakerHandler,
   },
   {
     name: 'duo:window-roll',
