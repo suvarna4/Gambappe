@@ -4,13 +4,14 @@ import { defineConfig } from 'vitest/config';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
-/** Unit tests only — Playwright owns e2e/ (§17.1); integration/ needs a live Postgres. */
+/** Integration tests need a live Postgres (docker-compose or CI service). */
 export default defineConfig({
   test: {
-    include: ['test/**/*.test.ts'],
-    exclude: ['test/integration/**'],
-    passWithNoTests: true,
+    include: ['test/integration/**/*.test.ts'],
     environment: 'node',
+    fileParallelism: false,
+    testTimeout: 30_000,
+    hookTimeout: 60_000,
   },
   resolve: {
     alias: { '@': dirname },
