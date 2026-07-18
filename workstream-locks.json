@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T23:46:47.284Z",
+  "updated_at": "2026-07-18T23:50:21.530Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1202,13 +1202,13 @@
         "WS8-T3"
       ],
       "mock_start_ok": false,
-      "note": "PR pushed: feat/ws14-t2-load-tests. Real k6 run results in PR description: spectator burst fails locally (no CDN, matches doc's CDN/ISR scoping); reveal-minute spike found a real cold-start Redis bug in percentile.ts (missing ensureRedisConnected), 1.2% 5xx cold vs 0.0% warm.",
-      "status": "in_review",
+      "note": "Merged to main as PR #49 (squash 95d7869). Found real reveal-path bug (percentile.ts missing ensureRedisConnected) -- fixed separately in PR #50.",
+      "status": "done",
       "owner": "claude-sonnet5-vf9acd-orchestrator",
       "branch": null,
       "pr": "https://github.com/suvarna4/Gambappe/pull/49",
       "claimed_at": "2026-07-18T23:09:30.515Z",
-      "updated_at": "2026-07-18T23:46:47.284Z"
+      "updated_at": "2026-07-18T23:50:21.530Z"
     },
     "WS14-T3": {
       "title": "Invariant & copy audit",
