@@ -1,7 +1,9 @@
 /**
- * `notify:dispatch` (WS9-T1 owns this; §7.6 "every 30s (outbox)", §13.2). Picks up queued,
- * due, EMAIL notifications and either sends them, defers them, or cancels them:
+ * `notify:dispatch` (WS9-T1 owns email; WS9-T2 extends it with push; §7.6 "every 30s
+ * (outbox)", §13.2). Picks up queued, due notifications and either sends them, defers them, or
+ * cancels them.
  *
+ * EMAIL (`channel = 'email'`):
  *  1. No linked/verified email for the recipient profile → `failed` (data anomaly; a claimed
  *     profile should always have one).
  *  2. Recipient opted out of this kind+channel (§9.4 ProfileSettings.notifications) → `cancelled`.
@@ -12,8 +14,19 @@
  *  5. Otherwise: render + send via the injected `EmailTransport`; `sent` on success, `failed`
  *     on a thrown error (never crashes the batch — one bad row doesn't block the rest).
  *
- * Push (`channel = 'push'`) rows are never touched here — WS9-T2 (web push/VAPID) hasn't
- * landed, so those rows just sit `queued` harmlessly until that workstream extends this job.
+ * PUSH (`channel = 'push'`, WS9-T2):
+ *  1. No active `push_subscriptions` row for the profile → `cancelled` (unlike email, never
+ *     having subscribed is the normal case, not a data anomaly).
+ *  2. Recipient opted out of this kind+channel → `cancelled` (same settings check as email;
+ *     `notificationSettingsKey` returns `null` for the `product` category on `push` — §9.4 has
+ *     no `push_product` setting at all, so product-category push never sends).
+ *  3. Non-reveal kind scheduled inside quiet hours → rescheduled, stays `queued` (§13.2's quiet
+ *     hours rule isn't channel-specific; the `MARKETING_EMAIL_DAILY_CAP` IS email-specific by
+ *     name and isn't applied to push).
+ *  4. Otherwise: send to every active subscription for the profile (a user may have several
+ *     devices) via the injected `PushTransport`. The outbox row is `sent` if at least one
+ *     device accepted it, `failed` if every device errored. A 404/410 from any device revokes
+ *     that device's `push_subscriptions` row (§5.6) regardless of the row's own outcome.
  *
  * 30s cadence: pg-boss cron is minute-granular (`registry.ts`'s file-header note). The minute
  * cron run processes the queue once, then self-requeues ONE follow-up run 30s later
@@ -34,20 +47,26 @@ import {
 import { signUnsubscribeToken } from '@receipts/core/server';
 import {
   getEmailRecipientForNotification,
+  getProfileById,
+  listActivePushSubscriptionsForProfile,
   listDueQueuedEmailNotifications,
+  listDueQueuedPushNotifications,
   listSentEmailKindsSince,
   markNotificationCancelled,
   markNotificationFailed,
   markNotificationSent,
   rescheduleNotification,
+  revokePushSubscriptionByEndpoint,
   type Db,
   type NotificationRow,
 } from '@receipts/db';
 import type { JobHandler } from '../heartbeat.js';
 import { logger } from '../logger.js';
 import { defaultEmailTransport, type EmailTransport } from '../lib/email-transport.js';
+import { defaultPushTransport, type PushTransport } from '../lib/push-transport.js';
 import { zonedDateString, zonedLocalTimeToUtc } from '../lib/day-window.js';
 import { renderNotificationEmail, type NotificationEmailPayload } from '../lib/notification-email-template.js';
+import { renderNotificationPush } from '../lib/notification-push-template.js';
 import { resolveQuietHoursDeferral } from '../lib/quiet-hours.js';
 
 /** Bounds one dispatch pass — an ops safety valve, not a product constant (§0.1 rule 4 is about
@@ -197,6 +216,109 @@ export async function runNotifyDispatch(
   return report;
 }
 
+export interface PushDispatchReport {
+  checked: number;
+  sent: number;
+  cancelledOptOut: number;
+  /** No active `push_subscriptions` row for the profile — never subscribed, not an anomaly. */
+  cancelledNoSubscription: number;
+  deferredQuietHours: number;
+  /** Every device the row was sent to either errored or reported gone. */
+  failed: number;
+}
+
+async function dispatchOnePush(
+  db: Db,
+  transport: PushTransport,
+  row: NotificationRow,
+  at: Date,
+  report: PushDispatchReport,
+): Promise<void> {
+  const settingsKey = notificationSettingsKey(row.kind, 'push');
+  const profile = await getProfileById(db, row.profileId);
+  const parsedSettings = profileSettingsSchema.safeParse(profile?.settings ?? {});
+  const notificationSettings = parsedSettings.success
+    ? parsedSettings.data.notifications
+    : PROFILE_SETTINGS_DEFAULTS.notifications;
+  if (settingsKey === null || notificationSettings[settingsKey] === false) {
+    await markNotificationCancelled(db, row.id);
+    report.cancelledOptOut++;
+    return;
+  }
+
+  const category = notificationCategoryForKind(row.kind);
+  const timezone = profile?.timezone ?? SCHEDULE_TZ;
+  if (category !== 'reveal') {
+    const deferUntil = resolveQuietHoursDeferral(row.scheduledAt, timezone);
+    if (deferUntil) {
+      await rescheduleNotification(db, row.id, deferUntil);
+      report.deferredQuietHours++;
+      return;
+    }
+  }
+
+  const subscriptions = await listActivePushSubscriptionsForProfile(db, row.profileId);
+  if (subscriptions.length === 0) {
+    await markNotificationCancelled(db, row.id);
+    report.cancelledNoSubscription++;
+    return;
+  }
+
+  const rendered = renderNotificationPush(row.kind, (row.payload ?? {}) as NotificationEmailPayload);
+  let anySent = false;
+  for (const subscription of subscriptions) {
+    try {
+      const result = await transport.send({
+        subscription: { endpoint: subscription.endpoint, keys: subscription.keys as { p256dh: string; auth: string } },
+        title: rendered.title,
+        body: rendered.body,
+        url: rendered.url,
+      });
+      if (result.revoked) {
+        await revokePushSubscriptionByEndpoint(db, subscription.endpoint, at);
+      } else {
+        anySent = true;
+      }
+    } catch (err) {
+      logger.warn(
+        { err, notificationId: row.id, kind: row.kind },
+        'notify:dispatch push send failed for one device',
+      );
+    }
+  }
+
+  if (anySent) {
+    await markNotificationSent(db, row.id, at);
+    report.sent++;
+  } else {
+    await markNotificationFailed(db, row.id);
+    report.failed++;
+  }
+}
+
+export async function runPushNotifyDispatch(
+  db: Db,
+  transport: PushTransport,
+  at: Date = now(),
+): Promise<PushDispatchReport> {
+  const report: PushDispatchReport = {
+    checked: 0,
+    sent: 0,
+    cancelledOptOut: 0,
+    cancelledNoSubscription: 0,
+    deferredQuietHours: 0,
+    failed: 0,
+  };
+
+  const due = await listDueQueuedPushNotifications(db, at, DISPATCH_BATCH_SIZE);
+  report.checked = due.length;
+  for (const row of due) {
+    await dispatchOnePush(db, transport, row, at, report);
+  }
+
+  return report;
+}
+
 interface NotifyDispatchJobData {
   /** Set on the self-requeued 30s-later run so it doesn't chain a further self-requeue. */
   selfRequeue?: boolean;
@@ -206,6 +328,10 @@ export const notifyDispatchHandler: JobHandler = async (ctx, data) => {
   const transport = defaultEmailTransport();
   const report = await runNotifyDispatch(ctx.db, transport);
   logger.info({ report }, 'notify:dispatch complete');
+
+  const pushTransport = defaultPushTransport();
+  const pushReport = await runPushNotifyDispatch(ctx.db, pushTransport);
+  logger.info({ report: pushReport }, 'notify:dispatch (push) complete');
 
   const jobData = (data ?? {}) as NotifyDispatchJobData;
   if (!jobData.selfRequeue) {

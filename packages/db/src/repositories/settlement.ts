@@ -79,17 +79,46 @@ export async function gradeResolvedQuestionTx(
   };
 }
 
+/** Voids every non-void pick for a question (§6.5 "all picks result='void'") — shared by
+ * `voidQuestionTx` below and WS10-T3's post-reveal admin void path (paired there with
+ * `voidRevealedQuestionTx`, `../repositories/questions.ts`, which only flips the question's own
+ * status and explicitly defers pick-handling to this file). Returns the affected profile ids so
+ * a post-reveal caller can replay their streaks (§6.6) — picks voided before reveal never had
+ * their streak mutated in the first place (§6.6: "all streak mutation happens at reveal time or
+ * later"), so pre-reveal callers can safely ignore the return value. */
+export async function voidAllPicksForQuestionTx(
+  tx: Db,
+  questionId: string,
+  at: Date,
+): Promise<{ affectedProfileIds: string[] }> {
+  const voided = await tx.execute(sql`
+    UPDATE picks
+    SET result = 'void', edge = NULL, graded_at = ${at.toISOString()}::timestamptz
+    WHERE question_id = ${questionId} AND result != 'void'
+    RETURNING profile_id
+  `);
+  return { affectedProfileIds: (voided.rows as Array<{ profile_id: string }>).map((r) => r.profile_id) };
+}
+
 export interface VoidQuestionResult {
-  /** False when already voided (idempotent re-run: status wasn't 'locked'). */
+  /** False when not eligible (idempotent re-run: status was already voided, or is 'revealed' —
+   * see `voidRevealedQuestionTx`/WS10-T3 for that separately-gated path). */
   voided: boolean;
   voidedPickCount: number;
 }
 
 /**
- * Voids a question inside `tx` (§6.5): question → `voided` (guarded on `status = 'locked'` —
- * idempotent re-run is a no-op), all pending picks → `result='void', edge=null`. Unlike
- * resolution, voiding is immediate (no reveal gate) — void days never count for/against
- * streaks (§6.6), so there's nothing to keep hidden until a synchronized moment.
+ * Voids a question inside `tx` (§6.5: "voided reachable from scheduled|open|locked") — question
+ * → `voided`, every non-void pick → `result='void', edge=null`. Voiding is immediate (no reveal
+ * gate) for these pre-reveal states — void days never count for/against streaks (§6.6), so
+ * there's nothing to keep hidden until a synchronized moment, and (per §6.6 "all streak
+ * mutation happens at reveal time or later") no streak replay is ever needed for this path: a
+ * question that never reached `revealed` never mutated any streak to begin with. Originally
+ * scoped to `status='locked'` only (WS1-T5, `settlement:poll`'s venue-triggered void) and to
+ * `result='pending'` picks only; WS10-T3 broadened both — the status set to cover the admin's
+ * pre-reveal override (scheduled/open questions can be voided too), and the pick filter to
+ * `!= 'void'` (a `locked` question can already be graded — win/loss picks, per §6.5's
+ * publication rule — before reveal fires; those must be voided too, not left stranded).
  */
 export async function voidQuestionTx(
   tx: Db,
@@ -100,16 +129,61 @@ export async function voidQuestionTx(
   const updated = await tx.execute(sql`
     UPDATE questions
     SET status = 'voided', void_reason = ${voidReason}, updated_at = ${at.toISOString()}::timestamptz
-    WHERE id = ${questionId} AND status = 'locked'
+    WHERE id = ${questionId} AND status IN ('scheduled', 'open', 'locked')
     RETURNING id
   `);
   if ((updated.rowCount ?? 0) === 0) return { voided: false, voidedPickCount: 0 };
 
-  const voidedPicks = await tx.execute(sql`
-    UPDATE picks
-    SET result = 'void', edge = NULL, graded_at = ${at.toISOString()}::timestamptz
-    WHERE question_id = ${questionId} AND result = 'pending'
+  const { affectedProfileIds } = await voidAllPicksForQuestionTx(tx, questionId, at);
+  return { voided: true, voidedPickCount: affectedProfileIds.length };
+}
+
+export interface RegradeResult {
+  /** False when not eligible (idempotent re-run guard: question wasn't `revealed`). */
+  regraded: boolean;
+  /** Profile ids whose pick was re-scored — caller replays each one's streak (§6.6) and
+   * recomputes percentiles when this is non-empty. */
+  affectedProfileIds: string[];
+}
+
+/**
+ * Regrades an already-revealed question inside `tx` (§6.5 "admin can flip an outcome within
+ * REGRADE_WINDOW_H"; the window itself is the caller's (WS10-T3) responsibility to check
+ * against `revealed_at` before calling this — this function only enforces the state guard).
+ * Re-scores every non-void pick for the question (not just `pending` ones, unlike
+ * `gradeResolvedQuestionTx` — a revealed question's picks are always already win/loss, never
+ * pending) against the new outcome. The `result != 'void'` guard is defensive: a `revealed`
+ * question can't currently HAVE a void pick (the only pick-voiding paths void the whole
+ * question first, and that fails this function's own `status = 'revealed'` guard), but a future
+ * per-pick void (moderation, account deletion) must never get silently resurrected to win/loss
+ * by a later regrade. Scope: daily questions only in this wave — nemesis/duo bonus questions
+ * don't exist yet (matches `grade:followup`'s own SPEC-GAP), so the "any pairing/duo scoring
+ * that consumed it" + deep-regrade rating-restoration paths (§6.5) have nothing to restore
+ * against; the caller refuses non-daily regrade rather than silently under-scoring a future
+ * pairing/match.
+ */
+export async function regradeRevealedQuestionTx(
+  tx: Db,
+  questionId: string,
+  newOutcome: 'yes' | 'no',
+  at: Date,
+): Promise<RegradeResult> {
+  const updated = await tx.execute(sql`
+    UPDATE questions
+    SET outcome = ${newOutcome}, updated_at = ${at.toISOString()}::timestamptz
+    WHERE id = ${questionId} AND status = 'revealed'
     RETURNING id
   `);
-  return { voided: true, voidedPickCount: voidedPicks.rowCount ?? 0 };
+  if ((updated.rowCount ?? 0) === 0) return { regraded: false, affectedProfileIds: [] };
+
+  const regraded = await tx.execute(sql`
+    UPDATE picks
+    SET result = (CASE WHEN side = ${newOutcome} THEN 'win' ELSE 'loss' END)::pick_result,
+        edge = (CASE WHEN side = ${newOutcome} THEN 1 ELSE 0 END)
+               - (CASE WHEN side = 'yes' THEN yes_price_at_entry ELSE 1 - yes_price_at_entry END),
+        graded_at = ${at.toISOString()}::timestamptz
+    WHERE question_id = ${questionId} AND result != 'void'
+    RETURNING profile_id
+  `);
+  return { regraded: true, affectedProfileIds: (regraded.rows as Array<{ profile_id: string }>).map((r) => r.profile_id) };
 }

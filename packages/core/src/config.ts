@@ -72,6 +72,13 @@ export const W_CAT = 0.75;
 
 /** Glicko-2 system constant τ. */
 export const GLICKO_TAU = 0.5;
+/**
+ * Minimum lifetime graded picks for `ratings.accuracy_percentile` eligibility ("nightly, rank
+ * of lifetime accuracy among profiles with ≥10 graded picks; display-only", §8.3). Not in the
+ * doc's original Appendix D table — added by WS4-T7 since §0.1 rule 4 requires every magic
+ * number to live here; see the matching Appendix D row added in this same PR.
+ */
+export const ACCURACY_PERCENTILE_MIN_PICKS = 10;
 
 // --- Matchmaking (§8.4, §8.5) ----------------------------------------------------------------
 
@@ -302,6 +309,7 @@ export const CONFIG = {
   W_TIMING,
   W_CAT,
   GLICKO_TAU,
+  ACCURACY_PERCENTILE_MIN_PICKS,
   NEMESIS_MIN_PICKS,
   DUO_MIN_PICKS,
   NEMESIS_BAND_BASE,
