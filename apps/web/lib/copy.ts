@@ -3,10 +3,10 @@
  * lives in `apps/web/lib/copy.ts` (single reviewable file; no scattered literals) including
  * narration templates' rendered strings (§13.3)." — WS14-T3 scans this file for money words).
  *
- * Seeded independently by WS7-T2 (the `copy` object below, home + question page) and WS7-T5
- * (the flat `CLAIM_*` exports, claim flow UI) before either had landed on `main` — merged here
- * on rebase. Later tasks should add their own section to this file rather than starting a
- * second copy file.
+ * Seeded independently by WS7-T2 (the `copy` object below, home + question page), WS7-T5
+ * (the flat `CLAIM_*` exports, claim flow UI), and WS7-T6 (`nemesisCopy`, nemesis UI) before
+ * any had landed on `main` — merged here on rebase. Later tasks should add their own section
+ * to this file rather than starting a second copy file.
  *
  * Rules enforced in review (§10.6):
  *  - No money amounts, "bets", stake sizes, or venue balances (INV-8) — say "pick"/"call".
@@ -118,4 +118,26 @@ export const copy = {
     RATE_LIMITED: 'Too many attempts — try again shortly.',
     generic: 'Something went wrong. Try again.',
   },
+} as const;
+
+/** WS7-T6 (nemesis UI) section. */
+export const nemesisCopy = {
+  /** Shown on the "Meet your nemesis" assignment-reveal card (§2.3: Monday 09:00 ET). */
+  assignmentHeading: (isRematch: boolean) => (isRematch ? 'Rematch is on' : 'Meet your nemesis'),
+  assignmentBody: (opponentHandle: string, isRematch: boolean) =>
+    isRematch
+      ? `You and ${opponentHandle} are running it back this week.`
+      : `${opponentHandle} is your nemesis this week. Same daily questions, head to head.`,
+  viewMatchupCta: 'View matchup',
+
+  requestRematchCta: 'Request rematch',
+  rematchPendingLabel: (opponentHandle: string) =>
+    `Rematch requested — waiting on ${opponentHandle}`,
+  rematchIncomingLabel: (requesterHandle: string) => `${requesterHandle} wants a rematch`,
+  rematchAcceptCta: 'Accept',
+  rematchDeclineCta: 'Decline',
+  rematchAcceptedLabel: "Rematch confirmed — you'll be paired starting next week",
+  rematchDeclinedLabel: 'Rematch declined',
+
+  historyEmpty: 'No nemesis history yet — your first assignment lands Monday 9am ET.',
 } as const;
