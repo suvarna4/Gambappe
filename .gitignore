@@ -24,5 +24,8 @@ blob-report/
 .idea/
 .vscode/
 
+# agent tooling (isolated worktrees for background/parallel agent sessions)
+.claude/
+
 # local redis-server dumps (e.g. manual dev testing outside docker-compose)
 *.rdb
