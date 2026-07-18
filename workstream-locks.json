@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T12:28:21.642Z",
+  "updated_at": "2026-07-18T12:28:46.294Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1019,12 +1019,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "in_review",
+      "status": "done",
       "owner": "claude-code-web-session-35b05898",
       "branch": "feat/ws10-t5-ops-dashboard",
       "pr": "https://github.com/suvarna4/Gambappe/pull/15",
       "claimed_at": "2026-07-18T12:07:15.633Z",
-      "updated_at": "2026-07-18T12:19:17.631Z"
+      "updated_at": "2026-07-18T12:28:46.294Z"
     },
     "WS11-T1": {
       "title": "Rate limiter middleware",
