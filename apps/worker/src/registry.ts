@@ -23,6 +23,7 @@ import { botScoreHandler } from './jobs/bot-score.js';
 import { duoMatchmakerHandler } from './jobs/duo-matchmaker.js';
 import { gradeFollowupHandler } from './jobs/grade-followup.js';
 import { maintenancePruneHandler } from './jobs/maintenance-prune.js';
+import { nemesisLastdayHandler } from './jobs/nemesis-lastday.js';
 import { notifyDispatchHandler } from './jobs/notify-dispatch.js';
 import { questionLockHandler } from './jobs/question-lock.js';
 import { questionOpenHandler } from './jobs/question-open.js';
@@ -123,7 +124,7 @@ export const JOB_REGISTRY: readonly JobDefinition[] = [
     name: 'nemesis:lastday',
     owner: 'WS9-T3',
     cron: '0 9 * * 0', // Sun 09:00 ET
-    handler: stubHandler('nemesis:lastday', 'WS9-T3'),
+    handler: nemesisLastdayHandler,
   },
   {
     name: 'nemesis:assign',

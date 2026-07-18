@@ -10,6 +10,14 @@
  * "answered" (non-void) pick on a voided day, so every eligible profile is swept, and the final
  * `replayStreak` call inside `applyStreakForNonParticipant` already advances `last_counted_date`
  * across a voided day without incrementing (§6.6 "Voided day D") — see `streak-replay.ts`.
+ *
+ * SPEC-GAP(WS9-T3): `applyStreakForNonParticipant` can also newly consume a freeze (a
+ * non-participant's gap gets bridged) — a second real trigger site for the `streak_freeze_used`
+ * beat (§13.3), symmetric with `reveal:fire`'s participant case. WS9-T3's task scope explicitly
+ * enumerated only `reveal:fire` for this beat, so it is not wired here; a follow-up task should
+ * decide whether a silently-bridged non-participant should also be notified and, if so, hook
+ * `applyStreakForNonParticipant`'s returned `freezeUsedForGap`/`freezeBankAfter` the same way
+ * `reveal-fire.ts` does.
  */
 import type pg from 'pg';
 import { now } from '@receipts/core';
