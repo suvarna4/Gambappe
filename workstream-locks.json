@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T18:52:57.733Z",
+  "updated_at": "2026-07-18T18:53:02.476Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -464,13 +464,13 @@
         "WS4-T1"
       ],
       "mock_start_ok": false,
-      "note": "PR #4 open against main. Fixed a CI-caught flaky perf test (675510d): reordered isEligiblePair's cheap/expensive checks + widened the 1000-profile matcher benchmark's threshold for CI-runner variance. pnpm verify green.",
-      "status": "in_review",
+      "note": "PR #4 merged 2026-07-18T11:59:53Z; registry entry was stale, corrected during a status check.",
+      "status": "done",
       "owner": null,
       "branch": "claude/wave-2-ws-1-2-4-woo118",
       "pr": "https://github.com/suvarna4/Gambappe/pull/4",
       "claimed_at": null,
-      "updated_at": "2026-07-18T10:36:33.838Z"
+      "updated_at": "2026-07-18T18:53:02.469Z"
     },
     "WS4-T7": {
       "title": "Engine job wiring",
