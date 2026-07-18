@@ -182,6 +182,24 @@ export const WALLET_SIZE_BUCKETS = [
 /** Conservative per-venue token-bucket limit, requests/second. */
 export const VENUE_RATE_LIMIT_RPS = 4;
 
+// --- Notifications (§13.2, WS9-T1 contract-change) --------------------------------------------
+
+/**
+ * Local HH:mm window (profile.timezone, default SCHEDULE_TZ) during which non-reveal
+ * notifications are deferred to QUIET_HOURS_END_LOCAL rather than sent immediately (§13.2:
+ * "Quiet hours: non-reveal notifications deferred to 08:00 local ... if scheduled 22:00-08:00").
+ * Not in the doc's original Appendix D table — added by WS9-T1 since §0.1 rule 4 requires
+ * every magic number to live here; see the matching Appendix D row added in this same PR.
+ */
+export const QUIET_HOURS_START_LOCAL = '22:00';
+export const QUIET_HOURS_END_LOCAL = '08:00';
+/**
+ * Hard cap: at most this many non-transactional ("marketing-ish") emails per profile per local
+ * day (§13.2: "Hard cap: ≤ 1 marketing-ish email/day/user"). Transactional kinds
+ * (reveal/nemesis/duo) are exempt — see `isTransactionalNotificationKind` in `notifications.ts`.
+ */
+export const MARKETING_EMAIL_DAILY_CAP = 1;
+
 // --- Houses (P2 stretch, §8.11) --------------------------------------------------------------
 
 export const HOUSE_MIN_PROFILES = 500;
@@ -319,6 +337,9 @@ export const CONFIG = {
   WALLET_RELINK_COOLDOWN_D,
   WALLET_SIZE_BUCKETS,
   VENUE_RATE_LIMIT_RPS,
+  QUIET_HOURS_START_LOCAL,
+  QUIET_HOURS_END_LOCAL,
+  MARKETING_EMAIL_DAILY_CAP,
   HOUSE_MIN_PROFILES,
   RL_GHOST_MINT_IP_DAY,
   RL_PICK_PROFILE_H,
