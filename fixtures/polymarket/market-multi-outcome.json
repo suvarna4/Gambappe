@@ -1,0 +1,16 @@
+{
+  "id": "PM-MULTI-1",
+  "question": "Which candidate wins the test primary?",
+  "slug": "test-primary-winner",
+  "category": "Politics",
+  "endDate": "2026-07-20T09:00:00Z",
+  "liquidity": "3000.00",
+  "volume": "8000.00",
+  "active": true,
+  "closed": false,
+  "archived": false,
+  "outcomes": "[\"Candidate A\", \"Candidate B\", \"Candidate C\"]",
+  "outcomePrices": "[\"0.5\", \"0.3\", \"0.2\"]",
+  "clobTokenIds": "[\"777777777777777777\", \"888888888888888888\", \"999999999999999999\"]",
+  "umaResolutionStatus": null
+}

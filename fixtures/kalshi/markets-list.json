@@ -1,0 +1,73 @@
+{
+  "cursor": "",
+  "markets": [
+    {
+      "ticker": "KX-KNOWN-1",
+      "event_ticker": "KX-KNOWN",
+      "market_type": "binary",
+      "title": "Will the test event resolve yes by close?",
+      "category": "Politics",
+      "status": "open",
+      "result": "",
+      "open_time": "2026-07-18T09:00:00Z",
+      "close_time": "2026-07-20T09:00:00Z",
+      "expiration_time": "2026-07-20T10:00:00Z",
+      "yes_bid": 60,
+      "yes_ask": 64,
+      "no_bid": 36,
+      "no_ask": 40,
+      "last_price": 62,
+      "liquidity": 500000,
+      "volume": 12000
+    },
+    {
+      "ticker": "KX-FAR-1",
+      "event_ticker": "KX-FAR",
+      "market_type": "binary",
+      "title": "Will the far-future test event resolve yes?",
+      "category": "Economics",
+      "status": "open",
+      "result": "",
+      "open_time": "2026-07-18T09:00:00Z",
+      "close_time": "2026-07-27T20:00:00Z",
+      "yes_bid": 40,
+      "yes_ask": 44,
+      "no_bid": 56,
+      "no_ask": 60,
+      "last_price": 42,
+      "liquidity": 200000,
+      "volume": 3000
+    },
+    {
+      "ticker": "KX-ILLIQUID-1",
+      "event_ticker": "KX-ILLIQUID",
+      "market_type": "binary",
+      "title": "Will the illiquid test event resolve yes?",
+      "category": "Sports",
+      "status": "open",
+      "result": "",
+      "open_time": "2026-07-18T09:00:00Z",
+      "close_time": "2026-07-19T22:00:00Z",
+      "yes_bid": 20,
+      "yes_ask": 24,
+      "no_bid": 76,
+      "no_ask": 80,
+      "last_price": 22,
+      "liquidity": 5000,
+      "volume": 50
+    },
+    {
+      "ticker": "KX-MULTI-1",
+      "event_ticker": "KX-MULTI",
+      "market_type": "multiple_choice",
+      "title": "Which candidate wins the test primary?",
+      "category": "Politics",
+      "status": "open",
+      "result": "",
+      "open_time": "2026-07-18T09:00:00Z",
+      "close_time": "2026-07-20T09:00:00Z",
+      "liquidity": 300000,
+      "volume": 8000
+    }
+  ]
+}

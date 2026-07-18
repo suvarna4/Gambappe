@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "VenueAdapter contract + shared contract-test suite + MockVenueAdapter (design doc §7.1, WS0-T6). Real kalshi/polymarket adapters are WS1 scope.",
+  "description": "VenueAdapter contract + shared contract-test suite + MockVenueAdapter + real Kalshi/Polymarket adapters (design doc §7, WS0-T6 + WS1).",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -16,6 +16,14 @@
     "./mock": {
       "types": "./dist/mock/index.d.ts",
       "default": "./dist/mock/index.js"
+    },
+    "./kalshi": {
+      "types": "./dist/kalshi/index.d.ts",
+      "default": "./dist/kalshi/index.js"
+    },
+    "./polymarket": {
+      "types": "./dist/polymarket/index.d.ts",
+      "default": "./dist/polymarket/index.js"
     }
   },
   "files": [

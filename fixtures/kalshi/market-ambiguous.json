@@ -1,0 +1,20 @@
+{
+  "market": {
+    "ticker": "KX-AMBIGUOUS-1",
+    "event_ticker": "KX-AMBIGUOUS",
+    "market_type": "binary",
+    "title": "Test event with an unrecognized result token",
+    "category": "Science and Technology",
+    "status": "finalized",
+    "result": "draw",
+    "open_time": "2026-07-10T09:00:00Z",
+    "close_time": "2026-07-12T09:00:00Z",
+    "yes_bid": 50,
+    "yes_ask": 52,
+    "no_bid": 48,
+    "no_ask": 50,
+    "last_price": 51,
+    "liquidity": 10000,
+    "volume": 500
+  }
+}

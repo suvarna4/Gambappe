@@ -68,3 +68,17 @@ export async function updateProfileById(
   if (!updated) throw new Error(`updateProfileById: no row for id=${id}`);
   return updated;
 }
+
+/** Nightly bot-score write (§14.2, WS11-T2) — one transaction so a partial failure never
+ * leaves last night's scores mixed with tonight's for some profiles but not others. */
+export async function updateProfileBotScores(
+  db: Db,
+  scores: { profileId: string; score: number }[],
+): Promise<void> {
+  if (scores.length === 0) return;
+  await db.transaction(async (tx) => {
+    for (const { profileId, score } of scores) {
+      await tx.update(profiles).set({ botScore: score, updatedAt: new Date() }).where(eq(profiles.id, profileId));
+    }
+  });
+}

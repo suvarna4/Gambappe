@@ -1,0 +1,21 @@
+{
+  "market": {
+    "ticker": "KX-RESOLVED-YES-1",
+    "event_ticker": "KX-RESOLVED-YES",
+    "market_type": "binary",
+    "title": "Did the test event resolve yes?",
+    "category": "Sports",
+    "status": "finalized",
+    "result": "yes",
+    "open_time": "2026-07-10T09:00:00Z",
+    "close_time": "2026-07-12T09:00:00Z",
+    "expiration_time": "2026-07-12T10:00:00Z",
+    "yes_bid": 99,
+    "yes_ask": 99,
+    "no_bid": 1,
+    "no_ask": 1,
+    "last_price": 99,
+    "liquidity": 100000,
+    "volume": 40000
+  }
+}

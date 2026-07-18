@@ -1,0 +1,20 @@
+{
+  "market": {
+    "ticker": "KX-VOIDED-1",
+    "event_ticker": "KX-VOIDED",
+    "market_type": "binary",
+    "title": "Was the test event cancelled?",
+    "category": "Economics",
+    "status": "finalized",
+    "result": "void",
+    "open_time": "2026-07-05T09:00:00Z",
+    "close_time": "2026-07-06T09:00:00Z",
+    "yes_bid": null,
+    "yes_ask": null,
+    "no_bid": null,
+    "no_ask": null,
+    "last_price": 50,
+    "liquidity": 0,
+    "volume": 0
+  }
+}

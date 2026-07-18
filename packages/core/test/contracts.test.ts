@@ -23,13 +23,16 @@ import { createPickBodySchema } from '../src/schemas/picks.js';
 import { normalizedMarketSchema } from '../src/types/market.js';
 
 describe('errors (Appendix C)', () => {
-  it('has all 20 codes with the spec HTTP statuses', () => {
-    expect(Object.keys(ERROR_CODES)).toHaveLength(20);
+  it('has all 21 codes with the spec HTTP statuses', () => {
+    expect(Object.keys(ERROR_CODES)).toHaveLength(21);
     expect(ERROR_CODES.VALIDATION_FAILED).toBe(400);
     expect(ERROR_CODES.REVEAL_NOT_READY).toBe(423);
     expect(ERROR_CODES.PRICE_UNAVAILABLE).toBe(503);
     expect(ERROR_CODES.WALLET_ALREADY_LINKED).toBe(409);
     expect(ERROR_CODES.AGE_ATTESTATION_REQUIRED).toBe(422);
+    // WS10-T2 contract-change (§15.2): duplicate daily question is its own 409, not a
+    // generic VALIDATION_FAILED — matches ALREADY_PICKED/CLAIM_CONFLICT's "already exists" shape.
+    expect(ERROR_CODES.DUPLICATE_DAILY_QUESTION).toBe(409);
   });
 
   it('ApiError carries code/status and produces a valid envelope', () => {
@@ -54,7 +57,7 @@ describe('errors (Appendix C)', () => {
 });
 
 describe('flags (§4.6)', () => {
-  it('has exactly the 8 spec flags, all defaulting off', () => {
+  it('has exactly the 9 spec flags, all defaulting off', () => {
     expect(FLAG_NAMES.sort()).toEqual(
       [
         'confidence_slider',
@@ -63,6 +66,9 @@ describe('flags (§4.6)', () => {
         'web_push',
         'nemesis',
         'divergence_display',
+        // kalshi_ws_ticker added by WS1-T6 (§7.3 P1.5) — named explicitly in the design
+        // doc's task table, per the flag-naming convention this test pins.
+        'kalshi_ws_ticker',
         'houses',
         'passkeys',
       ].sort(),

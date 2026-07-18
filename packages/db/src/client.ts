@@ -21,8 +21,13 @@ export function createPool(options: CreateDbOptions = {}): pg.Pool {
   return new pg.Pool({ connectionString, max: options.max ?? 10 });
 }
 
-export function createDb(pool: pg.Pool): Db {
-  return drizzle(pool, { schema });
+/**
+ * Accepts a Pool OR a single checked-out PoolClient/Client (drizzle-orm's `NodePgClient`
+ * union) — WS1-T5 grading needs a `Db` bound to one pg-boss-transactional client, not the
+ * whole pool (§6.5 "same transaction" enqueue).
+ */
+export function createDb(client: pg.Pool | pg.PoolClient | pg.Client): Db {
+  return drizzle(client, { schema });
 }
 
 /** Convenience for scripts/workers: pool + db in one call. */

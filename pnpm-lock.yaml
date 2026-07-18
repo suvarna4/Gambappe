@@ -53,6 +53,9 @@ importers:
       pg:
         specifier: ^8.16.0
         version: 8.22.0
+      pino:
+        specifier: ^9.14.0
+        version: 9.14.0
       react:
         specifier: ^19.1.0
         version: 19.2.7
@@ -60,10 +63,10 @@ importers:
         specifier: ^19.1.0
         version: 19.2.7(react@19.2.7)
       uuidv7:
-        specifier: ^1.0.0
+        specifier: ^1.2.1
         version: 1.2.1
       zod:
-        specifier: ^3.25.0
+        specifier: ^3.25.76
         version: 3.25.76
     devDependencies:
       '@playwright/test':
@@ -88,7 +91,7 @@ importers:
         specifier: ^19.1.0
         version: 19.2.3(@types/react@19.2.17)
       drizzle-orm:
-        specifier: ^0.44.0
+        specifier: ^0.44.7
         version: 0.44.7(@types/pg@8.20.0)(pg@8.22.0)
       tailwindcss:
         specifier: ^4.3.3
@@ -108,6 +111,9 @@ importers:
       '@receipts/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@receipts/venues':
+        specifier: workspace:*
+        version: link:../../packages/venues
       drizzle-orm:
         specifier: ^0.44.7
         version: 0.44.7(@types/pg@8.20.0)(pg@8.22.0)

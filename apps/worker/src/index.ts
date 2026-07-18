@@ -8,6 +8,7 @@ import { connect } from '@receipts/db';
 import { withHeartbeat } from './heartbeat.js';
 import type { JobContext } from './context.js';
 import { logger } from './logger.js';
+import { getRedis } from './redis.js';
 import { JOB_REGISTRY, SCHEDULE_TIMEZONE } from './registry.js';
 
 async function main(): Promise<void> {
@@ -22,7 +23,8 @@ async function main(): Promise<void> {
   boss.on('error', (err) => logger.error({ err }, 'pg-boss error'));
 
   await boss.start();
-  const ctx: JobContext = { db, pool, boss };
+  const redis = getRedis();
+  const ctx: JobContext = { db, pool, boss, redis };
 
   for (const job of JOB_REGISTRY) {
     await boss.createQueue(job.name);
@@ -45,6 +47,7 @@ async function main(): Promise<void> {
     try {
       await boss.stop({ graceful: true, timeout: 10_000 });
       await pool.end();
+      redis.disconnect();
     } finally {
       process.exit(0);
     }
