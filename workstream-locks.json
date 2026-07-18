@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T21:20:35.366Z",
+  "updated_at": "2026-07-18T21:20:57.967Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -819,13 +819,13 @@
         "WS3-T4"
       ],
       "mock_start_ok": true,
-      "note": "PR #29 (bundled with WS8-T3). All 6 templates + ?v= abuse guard + rate limit. Rebased onto main after WS3/WS6-T1/WS7-T4 merged; dropped duplicate getQuestionById/getPickById in favor of WS3's. SPEC-GAPs: nodejs runtime not edge (DB/Redis need TCP), ASCII glyphs not design-system unicode (avoids satori's Google Fonts network fetch), no brand fonts yet. pnpm verify green.",
+      "note": "Rebased onto merged WS7-T2/WS9-T2/WS9-T3; reconciled /q/[slug] mock scaffold with WS7-T2's real page (kept real page, wired og:image, dropped dead scaffold module). Full suite green post-rebase.",
       "status": "in_review",
       "owner": "claude-code-web-session-9c961fec",
       "branch": "feat-ws8-t1-t3-og-isr",
       "pr": "https://github.com/suvarna4/Gambappe/pull/29",
       "claimed_at": "2026-07-18T10:55:11.391Z",
-      "updated_at": "2026-07-18T20:38:54.935Z"
+      "updated_at": "2026-07-18T21:20:57.967Z"
     },
     "WS8-T2": {
       "title": "Share cards + share sheet",
