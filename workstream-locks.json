@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T19:04:20.448Z",
+  "updated_at": "2026-07-18T19:22:51.004Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1064,12 +1064,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-code-web-session-35b05898",
       "branch": "feat/ws11-t3-reports-autopause",
-      "pr": null,
+      "pr": "https://github.com/suvarna4/Gambappe/pull/21",
       "claimed_at": "2026-07-18T18:56:12.836Z",
-      "updated_at": "2026-07-18T18:56:12.836Z"
+      "updated_at": "2026-07-18T19:22:51.004Z"
     },
     "WS11-T4": {
       "title": "Duplicate-account heuristics",
