@@ -70,7 +70,9 @@ function buildProviders(): NextAuthConfig['providers'] {
       // though `sendVerificationRequest` is fully overridden below and never reads
       // `provider.server` (it only calls `createTransport(provider.server)` in the library's
       // own default implementation, which we never reach). This placeholder is provably never
-      // used to connect anywhere; its only job is to satisfy that falsy-check.
+      // used to connect anywhere; its only job is to satisfy that falsy-check. A bug WS2-T2
+      // shipped unnoticed since nothing before exercised `auth()` from a live route/page (every
+      // existing integration test calls lib functions directly, bypassing the route layer).
       server: { host: 'localhost', port: 25, auth: { user: '', pass: '' } },
       from: process.env.EMAIL_FROM ?? 'noreply@receipts.example',
       maxAge: MAGIC_LINK_TTL_MIN * 60,

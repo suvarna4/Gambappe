@@ -7,6 +7,8 @@ import {
   StreakFlame,
   TicketCard,
 } from '@receipts/ui';
+import ClaimPromptEngine from '@/components/claim/ClaimPromptEngine';
+import ClaimSheetGalleryDemo from './ClaimSheetGalleryDemo';
 
 /**
  * `/dev/ui` — the WS7-T1 design-system gallery (design doc §19.3 AC: "gallery renders all
@@ -73,6 +75,23 @@ export default function UiGalleryPage() {
       <section data-testid="gallery-barcode" className="space-y-3">
         <h2 className="text-muted text-sm font-semibold uppercase">Barcode</h2>
         <Barcode path="/q/2026-07-19-world-cup-final" />
+      </section>
+
+      <section data-testid="gallery-claim-prompt-streak" className="space-y-3">
+        <h2 className="text-muted text-sm font-semibold uppercase">
+          ClaimPromptEngine (WS7-T5, streak trigger)
+        </h2>
+        <ClaimPromptEngine
+          isGhost
+          streakCurrent={3}
+          pickCount={1}
+          viewingNemesisOrDuoSurfaceAsGhost={false}
+        />
+      </section>
+
+      <section data-testid="gallery-claim-sheet" className="space-y-3">
+        <h2 className="text-muted text-sm font-semibold uppercase">ClaimSheet (WS7-T5)</h2>
+        <ClaimSheetGalleryDemo />
       </section>
     </main>
   );
