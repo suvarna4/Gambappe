@@ -190,10 +190,16 @@ describe('settlement:poll — voided (§6.5)', () => {
       expect(row['edge']).toBeNull();
     }
 
-    // Idempotent re-run.
+    // Idempotent re-run: the question is no longer `status='locked'` (it's `voided`), so
+    // `listLockedQuestionsForSettlement` excludes it entirely on the next poll — it's not
+    // re-processed as "already graded", it's simply out of scope from here on.
     const again = await runSettlementPoll(db, pool, boss, [adapter], NOW);
     expect(again.voided).toBe(0);
-    expect(again.alreadyGraded).toBe(1);
+
+    const qAgain = await db.execute(
+      sql`SELECT status FROM questions WHERE id = ${scenario.questionId}`,
+    );
+    expect(qAgain.rows[0]!['status']).toBe('voided');
   });
 });
 
@@ -204,7 +210,13 @@ describe('settlement:poll — unresolved (§6.5)', () => {
     adapter.addMarket({ venueMarketId: scenario.venueMarketId }); // never resolved
 
     const report = await runSettlementPoll(db, pool, boss, [adapter], NOW);
-    expect(report.unresolved).toBe(1);
+    // >=1, not ===1: earlier describe blocks in this file leave their own `status='locked'`
+    // rows behind by design (§6.5 — grading/resolution doesn't advance status, only
+    // `reveal:fire` does), so this poll (over ALL locked questions in the shared test DB) can
+    // pick up leftovers whose market this adapter doesn't know about — themselves reported
+    // `unresolved` per the "ambiguous → unresolved, never guess" contract. The row-level
+    // assertions below are what actually pin down this scenario's behavior.
+    expect(report.unresolved).toBeGreaterThanOrEqual(1);
 
     const q = await db.execute(
       sql`SELECT status, outcome, settled_at FROM questions WHERE id = ${scenario.questionId}`,
