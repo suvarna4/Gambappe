@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T20:08:06.844Z",
+  "updated_at": "2026-07-18T20:16:22.446Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -912,12 +912,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-code-web-session-35b05898",
       "branch": "feat/ws9-t2-web-push",
-      "pr": null,
+      "pr": "https://github.com/suvarna4/Gambappe/pull/26",
       "claimed_at": "2026-07-18T19:58:18.202Z",
-      "updated_at": "2026-07-18T19:58:18.202Z"
+      "updated_at": "2026-07-18T20:16:22.446Z"
     },
     "WS9-T3": {
       "title": "Beat wiring",
