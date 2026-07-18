@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T20:50:22.135Z",
+  "updated_at": "2026-07-18T20:55:08.395Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -738,13 +738,13 @@
         "WS5-T4"
       ],
       "mock_start_ok": true,
-      "note": "Mock-start OK vs WS5-T4 (§19.2).",
-      "status": "claimed",
+      "note": "Draft PR #31. Built against the REAL packages/core zod contract (WS0-T2, already merged) for pairings/history/rematch — only route handlers + pairing data are mocked (lib/nemesis/mock-api.ts), not the shape. SPEC-GAPs documented inline + in PR description: no rating on pairingPublicSchema.a/b (composes GET /profiles/:slug per side), no GET endpoint for discovering incoming rematch requests, mutual-accept semantics (create=consent#1, target-accept=consent#2), acceptance is not synchronous pairing creation (next nemesis:assign run). Mock-vs-WS5-T4, not real data.",
+      "status": "in_review",
       "owner": "claude-code-web-session-9c961fec",
       "branch": "feat-ws7-t6-nemesis-ui",
-      "pr": null,
+      "pr": "https://github.com/suvarna4/Gambappe/pull/31",
       "claimed_at": "2026-07-18T19:48:09.000Z",
-      "updated_at": "2026-07-18T19:48:09.000Z"
+      "updated_at": "2026-07-18T20:55:08.394Z"
     },
     "WS7-T7": {
       "title": "Duo UI",
