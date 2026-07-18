@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T22:45:07.437Z",
+  "updated_at": "2026-07-18T22:46:06.903Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -800,13 +800,13 @@
         "WS4-T8"
       ],
       "mock_start_ok": false,
-      "note": null,
-      "status": "in_review",
+      "note": "Merged to main as PR #36 (squash 7b10793)",
+      "status": "done",
       "owner": "claude-sonnet5-vf9acd-orchestrator",
       "branch": "feat/ws7-t10-placement-ui",
       "pr": "https://github.com/suvarna4/Gambappe/pull/36",
       "claimed_at": "2026-07-18T20:23:07.581Z",
-      "updated_at": "2026-07-18T21:24:22.948Z"
+      "updated_at": "2026-07-18T22:46:06.902Z"
     },
     "WS8-T1": {
       "title": "OG image service",
