@@ -110,3 +110,29 @@ export async function applyDuoTierMovements(
     await db.update(duos).set({ tier: movement.toTier, updatedAt: at }).where(eq(duos.id, movement.duoId));
   }
 }
+
+// --- WS6-T4 addition (§9.2 `GET /duo/ladder`) ----------------------------------------------------
+
+/** Every active duo's tier/rating with no season/wins attached — the season-less fallback below.
+ * Deliberately a small literal duplicate of `listDuoSeasonStandings`'s own `activeDuos`
+ * sub-query rather than a refactor of that already-shipped WS6-T3 function's internals. */
+export async function listActiveDuoTierRatings(db: Db): Promise<Array<{ duoId: string; tier: number; rating: number }>> {
+  const rows = await db.select({ id: duos.id, tier: duos.tier, rating: duos.glickoRating }).from(duos).where(eq(duos.status, 'active'));
+  return rows.map((d) => ({ duoId: d.id, tier: d.tier, rating: d.rating }));
+}
+
+/**
+ * The live tier-standings view (§9.2 `GET /duo/ladder`): reuses `listDuoSeasonStandings`'s
+ * exact wins-within-season definition — matching §8.10's own "top ... by match wins ... within
+ * tier at each season end" scope — for the `duo` season currently covering `todayEt`
+ * (`YYYY-MM-DD`, ET). Falls back to every active duo with `wins: 0` when no `duo` season row
+ * exists yet (pre-bootstrap, before the first `duo:window-roll`/season-insert run) rather than
+ * inventing a second, lifetime-wins metric for display.
+ */
+export async function listCurrentDuoLadderStandings(db: Db, todayEt: string): Promise<DuoSeasonStanding[]> {
+  const season = await getDuoSeasonCoveringDate(db, todayEt);
+  if (season) return listDuoSeasonStandings(db, season.startsOn, season.endsOn);
+
+  const active = await listActiveDuoTierRatings(db);
+  return active.map((d) => ({ ...d, wins: 0 }));
+}

@@ -1,12 +1,18 @@
 /**
  * `DuoRow`/`DuoMatchRow` → `duoPublicSchema`/`duoMatchPublicSchema` (design doc §9.2
- * `GET /duo/current`, WS6-T1). Public duo page serialization (`GET /duos/:id`) is WS6-T4 scope,
- * but this same shape is what it will need too.
+ * `GET /duo/current`, WS6-T1). Public duo page serialization (`GET /duos/:id`, WS6-T4) is added
+ * at the bottom of this file — same shapes, one more assembly step (+ match history).
  */
 import type { z } from 'zod';
-import { getProfileById, type Db, type ProfileRow } from '@receipts/db';
-import type { duoMatchPublicSchema, duoPublicSchema } from '@receipts/core';
+import { getDuoWithProfiles, getProfileById, listDuoMatchHistory, type Db, type ProfileRow } from '@receipts/db';
+import type { duoMatchPublicSchema, duoPublicSchema, getDuoResponseSchema } from '@receipts/core';
 import type { DuoMatchRow, DuoRow } from './duo-queue';
+
+/** Default cap on `GET /duos/:id`'s `match_history` array (§9.2 — a plain array, not a paginated
+ * list; a duo plays at most one match per window, §8.10, so MVP history is naturally small).
+ * Appendix D pins no specific number here — SPEC-GAP(ws6-t4), same class of gap as
+ * `profile-page.ts`'s `PROFILE_PICKS_DEFAULT_LIMIT`. */
+export const DUO_MATCH_HISTORY_LIMIT = 50;
 
 function profileRef(p: ProfileRow): z.infer<typeof duoPublicSchema>['partners'][number] {
   return {
@@ -48,4 +54,31 @@ export function toDuoMatchPublic(match: DuoMatchRow): z.infer<typeof duoMatchPub
     score: { a: match.scoreA, b: match.scoreB },
     winner_duo_id: match.winnerDuoId as z.infer<typeof duoMatchPublicSchema>['winner_duo_id'],
   };
+}
+
+// --- WS6-T4: public duo page (`GET /duos/:id`, §9.2) --------------------------------------------
+
+/**
+ * Assembles the whole `GET /duos/:id` response: the duo itself (§9.2 "partners, tier, rating,
+ * chemistry") plus `match_history` (its past `completed`/`cancelled` matches — see
+ * `duo-matches.ts`'s `listDuoMatchHistory` header for why the live match is excluded here). A
+ * `disbanded` duo still resolves (public, `auth: none`, §9.2 doesn't call for hiding it — its
+ * page is exactly what "disband, partner notified" leaves behind for both sides and any
+ * spectator to look back on, matching the receipts-culture INV-6 "artifacts persist" ethos).
+ * `null` for an unknown duo id (route maps that to 404).
+ */
+export async function getDuoPublicPage(
+  db: Db,
+  duoId: string,
+  historyLimit: number,
+): Promise<z.infer<typeof getDuoResponseSchema> | null> {
+  const found = await getDuoWithProfiles(db, duoId);
+  if (!found) return null;
+
+  const [duoPublic, history] = await Promise.all([
+    toDuoPublic(db, found.duo),
+    listDuoMatchHistory(db, duoId, historyLimit),
+  ]);
+
+  return { duo: duoPublic, match_history: history.map(toDuoMatchPublic) };
 }
