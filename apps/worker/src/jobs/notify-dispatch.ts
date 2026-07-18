@@ -30,8 +30,8 @@ import {
   PROFILE_SETTINGS_DEFAULTS,
   profileSettingsSchema,
   SCHEDULE_TZ,
-  signUnsubscribeToken,
 } from '@receipts/core';
+import { signUnsubscribeToken } from '@receipts/core/server';
 import {
   getEmailRecipientForNotification,
   listDueQueuedEmailNotifications,

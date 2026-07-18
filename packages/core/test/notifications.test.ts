@@ -1,14 +1,12 @@
 /**
- * WS9-T1: notification kind classification + one-click unsubscribe token round-trip (§13.2,
- * §13.3, §9.4).
+ * WS9-T1: notification kind classification (§13.3, §9.4). Unsubscribe-token tests live in
+ * `notifications-token.test.ts` (split alongside the crypto-based signing code).
  */
 import { describe, expect, it } from 'vitest';
 import {
   isTransactionalNotificationKind,
   notificationCategoryForKind,
   notificationSettingsKey,
-  signUnsubscribeToken,
-  verifyUnsubscribeToken,
 } from '../src/notifications.js';
 
 describe('notificationCategoryForKind (§13.3 beat catalog)', () => {
@@ -62,38 +60,5 @@ describe('notificationSettingsKey (§9.4 ProfileSettings.notifications)', () => 
 
   it('push has no "product" setting at MVP — returns null (no opt-out control exists)', () => {
     expect(notificationSettingsKey('streak_milestone', 'push')).toBeNull();
-  });
-});
-
-describe('unsubscribe token sign/verify round-trip', () => {
-  const secret = 'test-unsub-secret';
-
-  it('round-trips profileId + category', () => {
-    const token = signUnsubscribeToken({ profileId: 'abc-123', category: 'nemesis' }, secret);
-    expect(verifyUnsubscribeToken(token, secret)).toEqual({
-      profileId: 'abc-123',
-      category: 'nemesis',
-    });
-  });
-
-  it('rejects a token signed with a different secret', () => {
-    const token = signUnsubscribeToken({ profileId: 'abc-123', category: 'duo' }, secret);
-    expect(verifyUnsubscribeToken(token, 'wrong-secret')).toBeNull();
-  });
-
-  it('rejects a tampered payload (signature no longer matches)', () => {
-    const token = signUnsubscribeToken({ profileId: 'abc-123', category: 'product' }, secret);
-    const [payloadB64, signature] = token.split('.') as [string, string];
-    const tamperedPayload = Buffer.from(
-      JSON.stringify({ profileId: 'someone-else', category: 'product' }),
-    ).toString('base64url');
-    expect(verifyUnsubscribeToken(`${tamperedPayload}.${signature}`, secret)).toBeNull();
-    expect(payloadB64).not.toBe(tamperedPayload);
-  });
-
-  it('rejects malformed tokens without throwing', () => {
-    expect(verifyUnsubscribeToken('not-a-token', secret)).toBeNull();
-    expect(verifyUnsubscribeToken('', secret)).toBeNull();
-    expect(verifyUnsubscribeToken('a.b.c', secret)).toBeNull();
   });
 });
