@@ -25,6 +25,7 @@ import {
   type StreakReplayResult,
 } from '../streak-replay.js';
 import { getPicksForProfile } from './picks.js';
+import { listRevealedOrVoidedDailyThrough } from './questions.js';
 
 interface ProfileStreakFields {
   freezeBank: number;
@@ -255,4 +256,37 @@ export async function grantFreezeTx(
         updated_at = ${at.toISOString()}::timestamptz
     WHERE id = ${profileId}
   `);
+}
+
+/**
+ * Full streak rebuild for one profile (§6.6 "Replay procedure (used by merge, regrade,
+ * post-reveal void)", WS10-T3): re-derives `current_streak`/`best_streak`/`last_counted_date`/
+ * win streaks from scratch against the profile's CURRENT pick history — unlike
+ * `applyStreakForParticipant`/`applyStreakForNonParticipant`, this never decides NEW freeze
+ * consumption (existing `streak_freeze_uses` rows are honored exactly as recorded, per §6.6),
+ * so it's safe to call after a pick's result changed underneath a profile (a regraded outcome
+ * flip, or a pick voided by an admin's post-reveal void) without double-consuming freezes.
+ * `freeze_bank` itself is left untouched, matching the merge (§6.4 step 4) precedent this reuses.
+ */
+export async function replayStreakForProfileTx(tx: Db, profileId: string, at: Date): Promise<StreakReplayResult> {
+  const throughDate = at.toISOString().slice(0, 10);
+  const dailyQuestions = await listRevealedOrVoidedDailyThrough(tx, throughDate);
+  const picks: ReplayPick[] = await getPicksForProfile(tx, profileId);
+  const freezeUses = await getFreezeUses(tx, profileId);
+
+  const result = replayStreak(dailyQuestions, picks, freezeUses);
+
+  await tx
+    .update(profiles)
+    .set({
+      currentStreak: result.currentStreak,
+      bestStreak: result.bestStreak,
+      lastCountedDate: result.lastCountedDate,
+      currentWinStreak: result.currentWinStreak,
+      bestWinStreak: result.bestWinStreak,
+      updatedAt: at,
+    })
+    .where(eq(profiles.id, profileId));
+
+  return result;
 }
