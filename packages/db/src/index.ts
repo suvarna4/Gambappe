@@ -20,4 +20,5 @@ export * from './repositories/metric-rollups.js';
 export * from './repositories/ops-dashboard.js';
 export * from './repositories/duplicate-accounts.js';
 export * from './repositories/streaks.js';
+export * from './repositories/leaderboards.js';
 export * from './streak-replay.js';
