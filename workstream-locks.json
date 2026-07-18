@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T10:36:35.094Z",
+  "updated_at": "2026-07-18T10:36:36.430Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1109,13 +1109,13 @@
         "WS4-T1"
       ],
       "mock_start_ok": false,
-      "note": "Draft PR #9, stacked on #4/#6/#7/#8 — diff shrinks once those merge. pnpm verify green.",
+      "note": "Draft PR #9, stacked on #4/#7/#8 (#6 already merged) — diff shrinks as those merge. Picked up the WS4-T4 perf-test fix. pnpm verify green.",
       "status": "in_review",
       "owner": null,
       "branch": "claude/wave-2-ws-1-2-4-woo118",
       "pr": "https://github.com/suvarna4/Gambappe/pull/9",
       "claimed_at": null,
-      "updated_at": "2026-07-18T10:32:02.626Z"
+      "updated_at": "2026-07-18T10:36:36.430Z"
     },
     "WS12-T3": {
       "title": "Badge + settings + unlink",
