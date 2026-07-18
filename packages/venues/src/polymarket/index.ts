@@ -16,3 +16,19 @@ export {
   type PolymarketClobMidpoint,
   type PolymarketGammaMarket,
 } from './schemas.js';
+export {
+  PolymarketDataApiClient,
+  polymarketActivitySchema,
+  polymarketPositionSchema,
+  type PolymarketActivity,
+  type PolymarketDataApiOptions,
+  type PolymarketPosition,
+} from './data-api.js';
+export {
+  computeCreate2ProxyAddress,
+  resolvePolymarketProxy,
+  saltFromOwner,
+  POLYMARKET_PROXY_FACTORY_ADDRESS,
+  POLYMARKET_PROXY_INIT_CODE_HASH,
+  type ProxyResolution,
+} from './proxy.js';

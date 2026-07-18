@@ -3,8 +3,36 @@
  * no transactions, no approvals, no keys (INV-2). Flag `wallet_linking`.
  */
 import { z } from 'zod';
+import type { WALLET_SIZE_BUCKET_KEYS } from '../types/wallet.js';
+import { MARKET_CATEGORY } from '../enums.js';
 
 export const zEthAddress = z.string().regex(/^0x[0-9a-fA-F]{40}$/, 'invalid EOA address');
+
+/**
+ * Runtime shape-check for `wallet_links.enrichment` (§12.4, INV-7) — the ONLY jsonb ever
+ * persisted there. Used by the worker before writing and by tests walking every persisted
+ * shape for stray numeric fields. NEVER exported as part of a client-facing response schema —
+ * `buckets` is internal-only (see `walletBadgeSchema` in `schemas/profiles.ts` for the public
+ * allowlisted shape instead).
+ */
+const zBucketCount = z.number().int().nonnegative();
+
+export const walletEnrichmentSchema = z.object({
+  trades: z.number().int().nonnegative(),
+  buckets: z.object({
+    xs: zBucketCount,
+    s: zBucketCount,
+    m: zBucketCount,
+    l: zBucketCount,
+    xl: zBucketCount,
+  }) satisfies z.ZodType<Record<(typeof WALLET_SIZE_BUCKET_KEYS)[number], number>>,
+  categories: z.record(z.enum(MARKET_CATEGORY), z.number().min(0).max(1)),
+  chalkPrior: z.number().min(-1).max(1).nullable(),
+  firstSeen: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/)
+    .nullable(),
+});
 
 // --- POST /wallet/nonce (claimed) → full SIWE message to sign (§12.2 step 1) ------------------
 
@@ -30,6 +58,7 @@ export const walletVerifyBodySchema = z
   .strict();
 
 export const walletVerifyRequestSchema = z.object({ body: walletVerifyBodySchema });
+export type WalletVerifyBody = z.infer<typeof walletVerifyBodySchema>;
 
 /**
  * Response is intentionally minimal: ingestion is async (§12.2 step 4). Any enrichment summary

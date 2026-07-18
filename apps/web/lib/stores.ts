@@ -1,8 +1,9 @@
 /**
- * Store singletons for route handlers (pg pool + ioredis), HMR-safe via globalThis.
+ * Store singletons for route handlers (pg pool + ioredis + pg-boss), HMR-safe via globalThis.
  * Prod DB access goes through pooled connections (§10.2/§18); locally this is a small pool.
  */
 import { Redis } from 'ioredis';
+import PgBoss from 'pg-boss';
 import type pg from 'pg';
 import { createDb, createPool, type Db } from '@receipts/db';
 
@@ -10,6 +11,8 @@ interface StoreCache {
   pool?: pg.Pool;
   db?: Db;
   redis?: Redis;
+  boss?: PgBoss;
+  bossStarted?: Promise<PgBoss>;
 }
 
 const globalCache = globalThis as typeof globalThis & { __receiptsStores?: StoreCache };
@@ -49,4 +52,20 @@ export async function ensureRedisConnected(redis: Redis): Promise<Redis> {
     await redis.connect();
   }
   return redis;
+}
+
+/**
+ * Started, cached pg-boss client (§2.2: apps/web enqueues, apps/worker consumes/schedules).
+ * `.start()` is idempotent (migration check) but not cheap enough to call per-request, so it's
+ * memoized process-wide via the same globalThis HMR-safe pattern as the other stores above.
+ */
+export function getBoss(): Promise<PgBoss> {
+  if (!cache.bossStarted) {
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) throw new Error('DATABASE_URL is not set (see .env.example)');
+    const boss = new PgBoss({ connectionString, schema: 'pgboss' });
+    cache.boss = boss;
+    cache.bossStarted = boss.start();
+  }
+  return cache.bossStarted;
 }

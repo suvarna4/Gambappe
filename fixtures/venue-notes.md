@@ -112,3 +112,42 @@ against a live response. In particular:
 None of the above blocks WS1-T3 (contract suite + unit ACs all pass against the hand-authored
 fixtures), but production cutover should re-verify this file against current Polymarket docs
 first (design doc R1 risk row).
+
+## Polymarket wallet import (`packages/venues/src/polymarket/data-api.ts`, `proxy.ts`, WS12-T2, §12.3–12.4)
+
+A SEPARATE surface from the Gamma/CLOB adapter above — read-only position/trade history for
+wallet-link enrichment (never market data). No network egress to `data-api.polymarket.com` or
+to a Polygon RPC endpoint was available in this sandbox to verify either piece below.
+
+**SPEC-GAP(WS12-T2-1) — data API response shape.** `data-api.ts`'s `polymarketPositionSchema`/
+`polymarketActivitySchema` are best-effort reconstructions from training-data knowledge of the
+public `GET {POLYMARKET_DATA_BASE}/positions?user=` and `GET {POLYMARKET_DATA_BASE}/activity?user=`
+endpoints (fields: `conditionId`, `title`, `category`, `outcome`, `size`, `avgPrice`,
+`initialValue` for positions; `type`, `timestamp`, `usdcSize`, `price` for activity). Not
+verified against a live response. Every field beyond the bare minimum is optional so an
+unexpected-but-plausible real shape degrades a position's contribution to the derived priors
+rather than throwing; `getPositions` still throws on a genuine non-404 HTTP/network failure
+(never a silently-wrong empty "success"), while `getActivity` is treated as a secondary,
+best-effort source and never throws (§12.4 "timing prior... null if unavailable").
+
+**SPEC-GAP(WS12-T2-2) — Polymarket proxy-wallet factory constants, deliberately left unset.**
+Per the design doc's own instruction ("must not be guessed"), `proxy.ts`'s
+`POLYMARKET_PROXY_FACTORY_ADDRESS` / `POLYMARKET_PROXY_INIT_CODE_HASH` are `null`, not a
+guessed value — no live docs/contract were reachable to confirm them in this sandbox. The
+documented §12.3 fallback ("query the data API for the EOA address only, badge reads 'wallet
+verified' without imported history") is therefore this module's SAFE DEFAULT today, not a
+degraded/error path — `resolvePolymarketProxy` always returns `{proxyAddress: null, verified:
+false}` until a human fills in the two constants above from a verified source. The CREATE2
+derivation itself (`computeCreate2ProxyAddress`, EIP-1014 via viem) and the assumed
+"salt = keccak256(owner address)" convention (`saltFromOwner`) are implemented and
+unit-tested for correctness/determinism against viem's own address derivation, but the salt
+convention itself is ALSO unverified against Polymarket's actual factory contract — a human
+wiring in the real constants should double-check the salt scheme matches before flipping
+`verified: true` on for real. The AC calling for verification "against 2 known real address
+pairs" could not be met here for the same no-network-egress reason; that verification step is
+left for whoever supplies the real constants.
+
+None of the above blocks WS12-T2 (the privacy/bucketing unit tests and the fallback-path test
+pass without any real Polymarket data), but wallet-import history should not be trusted to
+actually populate (beyond the empty-history fallback) until both SPEC-GAPs above are resolved
+against live Polymarket sources.

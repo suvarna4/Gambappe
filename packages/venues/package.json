@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "@receipts/core": "workspace:*",
+    "viem": "^2.21.0",
     "zod": "^3.25.0"
   },
   "devDependencies": {
