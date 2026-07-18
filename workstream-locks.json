@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T19:47:14.239Z",
+  "updated_at": "2026-07-18T19:48:07.618Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -582,12 +582,12 @@
       ],
       "mock_start_ok": true,
       "note": "Mock-start OK vs WS11-T3 (§19.2).",
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-code-web-session-9c961fec",
+      "branch": "feat-ws5-t5-rematch-block",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-18T09:35:00Z"
+      "claimed_at": "2026-07-18T19:48:07.618Z",
+      "updated_at": "2026-07-18T19:48:07.618Z"
     },
     "WS6-T1": {
       "title": "Queue API + matchmaker job",
