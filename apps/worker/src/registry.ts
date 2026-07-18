@@ -21,12 +21,14 @@ import type { JobHandler } from './heartbeat.js';
 import { analyticsRollupHandler } from './jobs/analytics-rollup.js';
 import { botScoreHandler } from './jobs/bot-score.js';
 import { duoMatchmakerHandler } from './jobs/duo-matchmaker.js';
+import { fingerprintNightlyHandler } from './jobs/fingerprint-nightly.js';
 import { gradeFollowupHandler } from './jobs/grade-followup.js';
 import { maintenancePruneHandler } from './jobs/maintenance-prune.js';
 import { nemesisLastdayHandler } from './jobs/nemesis-lastday.js';
 import { notifyDispatchHandler } from './jobs/notify-dispatch.js';
 import { questionLockHandler } from './jobs/question-lock.js';
 import { questionOpenHandler } from './jobs/question-open.js';
+import { ratingsWeeklyHandler } from './jobs/ratings-weekly.js';
 import { revealFireHandler } from './jobs/reveal-fire.js';
 import { settlementPollHandler } from './jobs/settlement-poll.js';
 import { streakFreezeGrantHandler } from './jobs/streak-freeze-grant.js';
@@ -106,13 +108,13 @@ export const JOB_REGISTRY: readonly JobDefinition[] = [
     name: 'fingerprint:nightly',
     owner: 'WS4-T7',
     cron: '0 3 * * *', // daily 03:00 ET
-    handler: stubHandler('fingerprint:nightly', 'WS4-T7'),
+    handler: fingerprintNightlyHandler,
   },
   {
     name: 'ratings:weekly',
     owner: 'WS4-T7',
     cron: '0 23 * * 0', // Sun 23:00 ET
-    handler: stubHandler('ratings:weekly', 'WS4-T7'),
+    handler: ratingsWeeklyHandler,
   },
   {
     name: 'nemesis:conclude',
