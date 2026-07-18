@@ -16,8 +16,14 @@ export function isBinaryKalshiMarket(market: KalshiMarket): boolean {
   return market.market_type === undefined || market.market_type === 'binary';
 }
 
-function clampPrice(p: number): number {
+export function clampPrice(p: number): number {
   return Math.min(YES_PRICE_MAX, Math.max(YES_PRICE_MIN, p));
+}
+
+/** Cents [0,100] → probability [0.01,0.99] (§7.3), shared by REST normalization and the
+ * WS ticker's tick-level bid/ask updates (WS1-T6). */
+export function centsToProb(cents: number): number {
+  return clampPrice(cents / 100);
 }
 
 /** Midpoint of yes bid/ask when both present, else last price (§7.3); cents → [0,1]. */
@@ -27,7 +33,7 @@ export function kalshiYesPrice(market: KalshiMarket): number | undefined {
       ? (market.yes_bid + market.yes_ask) / 2
       : (market.last_price ?? undefined);
   if (cents === undefined) return undefined;
-  return clampPrice(cents / 100);
+  return centsToProb(cents);
 }
 
 /**

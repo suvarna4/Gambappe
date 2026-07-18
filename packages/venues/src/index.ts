@@ -13,5 +13,10 @@ export type {
   VenueHttpRequestOptions,
 } from './http-client.js';
 export { KalshiAdapter, type KalshiAdapterOptions } from './kalshi/index.js';
+export {
+  KalshiWsTicker,
+  type KalshiTickerQuote,
+  type KalshiWsTickerOptions,
+} from './kalshi/ws-ticker.js';
 export { PolymarketAdapter, type PolymarketAdapterOptions } from './polymarket/index.js';
-export { computeDivergence, type DivergenceResult } from './divergence.js';
+export { computeDivergence, type DivergenceResult, type VenuePriceReading } from './divergence.js';
