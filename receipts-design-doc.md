@@ -1593,6 +1593,7 @@ The P0 (48-hour) cut is the subset tagged P0 below, in the same wave order — s
 | `PRIOR_WEIGHT` | 5 | §8.1 |
 | `W_CHALK / W_CONTRA / W_TIMING / W_CAT` | 1.0 / 1.0 / 0.5 / 0.75 | §8.2 |
 | `GLICKO_TAU` | 0.5 | §8.3 |
+| `ACCURACY_PERCENTILE_MIN_PICKS` | 10 — added WS4-T7, not in the original table | §8.3 |
 | `NEMESIS_MIN_PICKS` / `DUO_MIN_PICKS` | 5 / 10 | §8.4/8.5 |
 | `NEMESIS_BAND_BASE` / `DUO_BAND_BASE` | 150 / 150 | §8.4/8.5 |
 | `DUO_BAND_WIDEN` / `DUO_BAND_CAP` | 25 per 30s tick / 400 | §8.5 |

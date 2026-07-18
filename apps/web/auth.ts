@@ -65,6 +65,13 @@ function buildProviders(): NextAuthConfig['providers'] {
     Nodemailer({
       id: 'email',
       name: 'Email',
+      // `@auth/core`'s Nodemailer provider throws synchronously — unconditionally, on every
+      // `auth()` call, since this factory re-runs per request — if `server` is falsy, even
+      // though `sendVerificationRequest` is fully overridden below and never reads
+      // `provider.server` (it only calls `createTransport(provider.server)` in the library's
+      // own default implementation, which we never reach). This placeholder is provably never
+      // used to connect anywhere; its only job is to satisfy that falsy-check.
+      server: { host: 'localhost', port: 25, auth: { user: '', pass: '' } },
       from: process.env.EMAIL_FROM ?? 'noreply@receipts.example',
       maxAge: MAGIC_LINK_TTL_MIN * 60,
       async sendVerificationRequest({ identifier, url }) {

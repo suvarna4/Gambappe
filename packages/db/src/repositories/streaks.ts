@@ -13,7 +13,7 @@
  * consumption is newly decided," never "what the resulting streak length is" (§6.6, reusing the
  * WS2-T3 replay procedure per the WS3 task brief).
  */
-import { eq, sql } from 'drizzle-orm';
+import { eq, isNotNull, sql } from 'drizzle-orm';
 import type { Db } from '../client.js';
 import { profiles, streakFreezeUses } from '../schema/index.js';
 import {
@@ -25,6 +25,7 @@ import {
   type StreakReplayResult,
 } from '../streak-replay.js';
 import { getPicksForProfile } from './picks.js';
+import { listRevealedOrVoidedDailyThrough } from './questions.js';
 
 interface ProfileStreakFields {
   freezeBank: number;
@@ -81,6 +82,9 @@ async function persistNewFreezeUses(
 export interface StreakApplyResult extends StreakReplayResult {
   freezeUsedForGap: boolean;
   previousStreak: number;
+  /** `freeze_bank` after this call's consumption (WS9-T3: `streak_freeze_used` beat data,
+   * §13.3 "{n} left" — additive field, not itself new streak logic). */
+  freezeBankAfter: number;
 }
 
 /**
@@ -128,7 +132,12 @@ export async function applyStreakForParticipant(
     })
     .where(eq(profiles.id, profileId));
 
-  return { ...result, freezeUsedForGap: decision.newFreezeUses.length > 0, previousStreak: before.currentStreak };
+  return {
+    ...result,
+    freezeUsedForGap: decision.newFreezeUses.length > 0,
+    previousStreak: before.currentStreak,
+    freezeBankAfter: decision.freezeBankAfter,
+  };
 }
 
 /**
@@ -175,7 +184,12 @@ export async function applyStreakForNonParticipant(
     })
     .where(eq(profiles.id, profileId));
 
-  return { ...result, freezeUsedForGap: decision.newFreezeUses.length > 0, previousStreak: before.currentStreak };
+  return {
+    ...result,
+    freezeUsedForGap: decision.newFreezeUses.length > 0,
+    previousStreak: before.currentStreak,
+    freezeBankAfter: decision.freezeBankAfter,
+  };
 }
 
 export interface StreakSweepCandidate {
@@ -255,4 +269,62 @@ export async function grantFreezeTx(
         updated_at = ${at.toISOString()}::timestamptz
     WHERE id = ${profileId}
   `);
+}
+
+/**
+ * Full streak rebuild for one profile (§6.6 "Replay procedure (used by merge, regrade,
+ * post-reveal void)", WS10-T3): re-derives `current_streak`/`best_streak`/`last_counted_date`/
+ * win streaks from scratch against the profile's CURRENT pick history — unlike
+ * `applyStreakForParticipant`/`applyStreakForNonParticipant`, this never decides NEW freeze
+ * consumption (existing `streak_freeze_uses` rows are honored exactly as recorded, per §6.6),
+ * so it's safe to call after a pick's result changed underneath a profile (a regraded outcome
+ * flip, or a pick voided by an admin's post-reveal void) without double-consuming freezes.
+ * `freeze_bank` itself is left untouched, matching the merge (§6.4 step 4) precedent this reuses.
+ */
+export async function replayStreakForProfileTx(tx: Db, profileId: string, at: Date): Promise<StreakReplayResult> {
+  const throughDate = at.toISOString().slice(0, 10);
+  const dailyQuestions = await listRevealedOrVoidedDailyThrough(tx, throughDate);
+  const picks: ReplayPick[] = await getPicksForProfile(tx, profileId);
+  const freezeUses = await getFreezeUses(tx, profileId);
+
+  const result = replayStreak(dailyQuestions, picks, freezeUses);
+
+  await tx
+    .update(profiles)
+    .set({
+      currentStreak: result.currentStreak,
+      bestStreak: result.bestStreak,
+      lastCountedDate: result.lastCountedDate,
+      currentWinStreak: result.currentWinStreak,
+      bestWinStreak: result.bestWinStreak,
+      updatedAt: at,
+    })
+    .where(eq(profiles.id, profileId));
+
+  return result;
+}
+
+/**
+ * Every profile with ANY streak history (`last_counted_date IS NOT NULL`) — used by WS10-T3's
+ * post-reveal void to find non-participants who need a streak replay too, not just the voided
+ * question's own pick-holders. Why this is necessary: `streak:sweep` runs daily at 03:30 ET,
+ * inside the 48h post-reveal void window, and BREAKS a non-participant's streak against a day
+ * that (per §6.6: "void days never count for/against streaks") must never break anything once
+ * that day is voided. There is no ledger of "which profiles the sweep touched for date D" —
+ * sweep only writes the RESULTING streak fields, and a broken profile's `current_streak` is
+ * already 0 by the time an admin void runs, so a `current_streak > 0` filter (which would find
+ * the CANDIDATES *before* a sweep breaks them) can't find the ones already broken *after*.
+ * Replaying every profile with any streak history is the only reliable catch-all: `replayStreak`
+ * (§6.6, `../streak-replay.js`) already treats a `voided` day correctly (advances through it
+ * without breaking or incrementing) once the daily's status flip is visible to it, so re-running
+ * it for a profile untouched by this date is simply a no-op, not a correctness risk — only a
+ * cost. Accepted here because post-reveal void is a rare, deliberate admin action, not a hot
+ * path; this does not scale to "replay everyone" on every ordinary grading/reveal.
+ */
+export async function listProfileIdsWithStreakHistory(db: Db): Promise<string[]> {
+  const rows = await db
+    .select({ id: profiles.id })
+    .from(profiles)
+    .where(isNotNull(profiles.lastCountedDate));
+  return rows.map((r) => r.id);
 }

@@ -4,6 +4,11 @@
  * algorithm (`matchNemeses`, WS4-T4) and week scoring (`scoreNemesisWeek`, WS4-T6) are pure
  * functions in `@receipts/engine` that the caller (apps/worker's `nemesis:assign` job, and
  * `apps/worker/src/lib/pairing-lifecycle.ts`) invokes with the data these helpers load.
+ *
+ * `listActiveNemesisPairings` below is WS9-T3's earlier, minimal mock-start placeholder for this
+ * same file (§7.6 `nemesis:lastday` needed *some* real-pairing read before WS5 landed) — kept
+ * verbatim rather than replaced, since `apps/worker/src/jobs/nemesis-lastday.ts` already depends
+ * on its exact shape via the `@receipts/db` barrel.
  */
 import { and, asc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import type { MarketCategory } from '@receipts/core';
@@ -290,4 +295,31 @@ export async function getFullPairingSharedQuestionPicks(
     byQuestion.set(questionId, existing);
   }
   return [...byQuestion.values()];
+}
+
+// --- WS9-T3's mock-start read (kept verbatim, see file header) ----------------------------------
+
+export interface ActiveNemesisPairing {
+  id: string;
+  weekStart: string;
+  profileAId: string;
+  profileBId: string;
+  scoreA: number;
+  scoreB: number;
+}
+
+/** Pairings currently `status = 'active'` — the mock-start query for `nemesis:lastday` (§7.6). */
+export async function listActiveNemesisPairings(db: Db): Promise<ActiveNemesisPairing[]> {
+  const rows = await db
+    .select({
+      id: nemesisPairings.id,
+      weekStart: nemesisPairings.weekStart,
+      profileAId: nemesisPairings.profileAId,
+      profileBId: nemesisPairings.profileBId,
+      scoreA: nemesisPairings.scoreA,
+      scoreB: nemesisPairings.scoreB,
+    })
+    .from(nemesisPairings)
+    .where(eq(nemesisPairings.status, 'active'));
+  return rows;
 }
