@@ -13,6 +13,7 @@ import {
   type CachedPick,
 } from '@/lib/pick-storage';
 import { PickButtons } from './PickButtons';
+import { QuestionThread } from './QuestionThread';
 import { RevealSequence } from './RevealSequence';
 
 export interface ViewerStripProps {
@@ -123,10 +124,16 @@ export function ViewerStrip({ question }: ViewerStripProps) {
   }, [pick, question.id]);
 
   if (question.status === 'revealed') {
-    // WS7-T3: the choreographed reveal sequence replaces the generic pick-cache view — a
-    // revealed question's "your pick" is a result (win/loss/streak/percentile), not a
-    // still-pending receipt with a now-meaningless undo control.
-    return <RevealSequence question={question} />;
+    return (
+      <div className="space-y-4">
+        {/* WS7-T3: the choreographed reveal sequence replaces the generic pick-cache view — a
+            revealed question's "your pick" is a result (win/loss/streak/percentile), not a
+            still-pending receipt with a now-meaningless undo control. */}
+        <RevealSequence question={question} />
+        {/* WS7-T8 (§10.3 `revealed` state: "thread"): the post-reveal discussion + reactions. */}
+        <QuestionThread questionId={question.id} questionSlug={question.slug} />
+      </div>
+    );
   }
 
   if (me.status === 'loading') {

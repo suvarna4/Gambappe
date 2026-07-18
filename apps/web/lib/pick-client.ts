@@ -63,7 +63,9 @@ export interface ApiResult<T> {
  * produces a spurious "two different types with this name exist" error under `tsc` once that
  * assumption breaks.
  */
-async function request<S extends z.ZodTypeAny>(
+/** Exported for reuse by other client-side typed fetch wrappers (e.g. `thread-client.ts`) that
+ * want the same envelope-unwrap/error-mapping behavior without duplicating it. */
+export async function request<S extends z.ZodTypeAny>(
   input: string,
   init: RequestInit,
   schema: S,

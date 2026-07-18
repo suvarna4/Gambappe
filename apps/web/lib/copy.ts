@@ -170,3 +170,27 @@ export const nemesisCopy = {
 
   historyEmpty: 'No nemesis history yet — your first assignment lands Monday 9am ET.',
 } as const;
+
+/** WS7-T8 (threads + reactions UI) section. */
+export const threadCopy = {
+  heading: 'Thread',
+  empty: 'No posts yet — be the first to say something.',
+  loadMore: 'Load more',
+  /** Textarea placeholder — the post box itself (§9.2 AC: "post box gated with claim prompt";
+   * the box is always visible, only submitting/focusing it while unclaimed opens the prompt). */
+  postPlaceholder: 'Add to the thread…',
+  postSubmit: 'Post',
+  postClaimGateCta: 'Claim your account to post',
+  postError: 'Could not post that — try again.',
+  reactionError: 'Could not react — try again.',
+  loadError: 'Could not load the thread — try again.',
+  /** Accessible labels for the four `REACTION_SET` emoji (§5.6/Appendix D) — plain-word
+   * descriptions rather than the raw glyph, so a screen reader announces something meaningful
+   * (mirrors §10.4's "never color alone" ethos: an emoji alone isn't a sufficient label). */
+  reactionLabels: {
+    '🔥': 'Fire',
+    '💀': 'Skull',
+    '🧾': 'Receipt',
+    '🫡': 'Salute',
+  } as const,
+} as const;
