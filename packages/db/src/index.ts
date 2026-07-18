@@ -8,3 +8,5 @@ export * from './repositories/profiles.js';
 export * from './repositories/questions.js';
 export * from './repositories/picks.js';
 export * from './repositories/heartbeats.js';
+export * from './repositories/venue-sync.js';
+export * from './repositories/settlement.js';
