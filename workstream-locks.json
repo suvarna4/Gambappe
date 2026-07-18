@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T23:09:30.515Z",
+  "updated_at": "2026-07-18T23:10:34.135Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -769,13 +769,13 @@
         "WS7-T2"
       ],
       "mock_start_ok": false,
-      "note": "PR pushed: feat/ws7-t8-threads-reactions-ui @ https://github.com/suvarna4/Gambappe/pull/42",
-      "status": "in_review",
+      "note": "Merged to main as PR #42 (squash 23412bf)",
+      "status": "done",
       "owner": "claude-sonnet5-vf9acd-orchestrator",
       "branch": null,
       "pr": "https://github.com/suvarna4/Gambappe/pull/42",
       "claimed_at": "2026-07-18T22:28:40.982Z",
-      "updated_at": "2026-07-18T23:07:40.621Z"
+      "updated_at": "2026-07-18T23:10:34.135Z"
     },
     "WS7-T9": {
       "title": "Settings UI",
