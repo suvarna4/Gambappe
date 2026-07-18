@@ -22,29 +22,52 @@ import { serializePick } from './serialize-pick';
 import { getViewerPercentile } from './percentile';
 
 /**
- * "Delta"/"freeze_used" aren't columns anywhere — `profiles` only holds current state. Both are
- * reconstructed on demand by replaying the profile's history up to (excluding) `questionDate`
- * and diffing against the (already-updated-by-reveal:fire) current state — no separate
- * per-reveal ledger needed (reuses `streak-replay.ts`, not re-derived).
+ * "Delta"/"freeze_used" aren't columns anywhere — `profiles` only holds LIVE current state,
+ * which can already reflect days AFTER `questionDate` by the time a viewer opens this reveal
+ * (subsequent reveals/sweeps keep mutating `profiles.current_streak`). Both are instead
+ * reconstructed by replaying up to and including `questionDate` (`after`) and up to but
+ * excluding it (`before`), and diffing the two — never the live profile row (reuses
+ * `streak-replay.ts`, not re-derived).
  */
 async function computeViewerStreakBlock(
   db: Db,
-  profile: { id: string; currentStreak: number; bestStreak: number },
+  profileId: string,
   questionDate: string,
 ): Promise<RevealViewer['streak']> {
   const dayBefore = addDaysToDateString(questionDate, -1);
-  const [historyBefore, picks, freezeUses] = await Promise.all([
+  const [historyBefore, historyThrough, picks, freezeUses] = await Promise.all([
     listRevealedOrVoidedDailyThrough(db, dayBefore),
-    getPicksForProfile(db, profile.id),
-    getFreezeUsesForProfile(db, profile.id),
+    listRevealedOrVoidedDailyThrough(db, questionDate),
+    getPicksForProfile(db, profileId),
+    getFreezeUsesForProfile(db, profileId),
   ]);
   const before = replayStreak(historyBefore, picks, freezeUses);
-  const delta = profile.currentStreak - before.currentStreak;
-  const freezeUsed =
-    before.lastCountedDate !== null &&
-    freezeUses.some((f) => f.coveredDate > before.lastCountedDate! && f.coveredDate < questionDate);
+  const after = replayStreak(historyThrough, picks, freezeUses);
+  const delta = after.currentStreak - before.currentStreak;
 
-  return { current: profile.currentStreak, best: profile.bestStreak, delta, freeze_used: freezeUsed };
+  // NOT `before.lastCountedDate`: replayStreak's non-participant branch ADVANCES
+  // lastCountedDate across every freeze-covered gap day, so by the time replay finishes it
+  // already sits at (or past) any freeze-covered date before `questionDate` — the strict
+  // `coveredDate > lastCountedDate` check below could then never match the freeze that
+  // actually bridged today's gap. Anchor on the last daily the profile truly ANSWERED
+  // instead (mirrors replayStreak's own `answered` predicate: a non-void pick on a revealed,
+  // not voided, daily) — freeze coverage between that date and today is what "freeze_used"
+  // for this reveal means.
+  const pickByQuestionId = new Map(picks.map((p) => [p.questionId, p] as const));
+  const lastAnsweredDate = historyBefore
+    .filter((q) => q.status === 'revealed')
+    .filter((q) => {
+      const pick = pickByQuestionId.get(q.id);
+      return pick !== undefined && pick.result !== 'void';
+    })
+    .map((q) => q.questionDate)
+    .sort()
+    .at(-1);
+  const freezeUsed = freezeUses.some(
+    (f) => (lastAnsweredDate === undefined || f.coveredDate > lastAnsweredDate) && f.coveredDate < questionDate,
+  );
+
+  return { current: after.currentStreak, best: after.bestStreak, delta, freeze_used: freezeUsed };
 }
 
 /**
@@ -93,7 +116,7 @@ export async function buildRevealPayload(args: BuildRevealPayloadArgs): Promise<
         const impliedProb = pick.side === 'yes' ? pick.yesPriceAtEntry : 1 - pick.yesPriceAtEntry;
         const badges: RevealViewer['badges'] = pick.result === 'win' && isCalledIt(impliedProb) ? ['called_it'] : [];
         const streak = question.questionDate
-          ? await computeViewerStreakBlock(db, profile, question.questionDate)
+          ? await computeViewerStreakBlock(db, profile.id, question.questionDate)
           : { current: profile.currentStreak, best: profile.bestStreak, delta: 0, freeze_used: false };
 
         viewer = {

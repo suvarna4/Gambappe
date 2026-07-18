@@ -15,7 +15,17 @@ import { sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Redis } from 'ioredis';
 import type pg from 'pg';
-import { connect, getMarketById, getQuestionById, markets, picks, profiles, questions, type Db } from '@receipts/db';
+import {
+  connect,
+  getMarketById,
+  getQuestionById,
+  markets,
+  picks,
+  profiles,
+  questions,
+  streakFreezeUses,
+  type Db,
+} from '@receipts/db';
 import { buildMarket, buildPick, buildProfile, buildQuestion, computeEdge } from '@receipts/db/testing';
 import { buildRevealPayload } from '@/lib/reveal-payload';
 
@@ -156,5 +166,158 @@ describe('buildRevealPayload (§6.7)', () => {
       at: new Date(),
     });
     expect(payload.viewer).toBeUndefined();
+  });
+
+  it('viewer.streak.freeze_used is true when a freeze covered the gap since the last answered daily', async () => {
+    const market = buildMarket({ status: 'resolved', outcome: 'yes' });
+    await db.insert(markets).values(market);
+
+    // Day1: answered. Day2: missed, freeze-covered. Day3: today's reveal, answered.
+    const day1 = buildQuestion(market.id as string, {
+      questionDate: '2026-08-10',
+      status: 'revealed',
+      outcome: 'yes',
+      settledAt: new Date('2026-08-10T20:00:00Z'),
+      revealedAt: new Date('2026-08-10T20:00:00Z'),
+      slug: '2026-08-10-freeze-used-day1',
+    });
+    const day2 = buildQuestion(market.id as string, {
+      questionDate: '2026-08-11',
+      status: 'revealed',
+      outcome: 'yes',
+      settledAt: new Date('2026-08-11T20:00:00Z'),
+      revealedAt: new Date('2026-08-11T20:00:00Z'),
+      slug: '2026-08-11-freeze-used-day2',
+    });
+    const day3 = buildQuestion(market.id as string, {
+      questionDate: '2026-08-12',
+      status: 'revealed',
+      outcome: 'yes',
+      settledAt: new Date('2026-08-12T20:00:00Z'),
+      revealedAt: new Date('2026-08-12T20:00:00Z'),
+      slug: '2026-08-12-freeze-used-day3',
+    });
+    await db.insert(questions).values([day1, day2, day3]);
+
+    // Post-reveal:fire state: Day1 counted, Day2 freeze-covered (no break), Day3 counted -> 2.
+    const viewer = buildProfile({ currentStreak: 2, bestStreak: 2 });
+    await db.insert(profiles).values(viewer);
+    await db.insert(picks).values([
+      buildPick(day1.id as string, viewer.id as string, {
+        side: 'yes',
+        yesPriceAtEntry: 0.6,
+        result: 'win',
+        edge: computeEdge('yes', 0.6, true),
+        gradedAt: day1.settledAt!,
+      }),
+      buildPick(day3.id as string, viewer.id as string, {
+        side: 'yes',
+        yesPriceAtEntry: 0.6,
+        result: 'win',
+        edge: computeEdge('yes', 0.6, true),
+        gradedAt: day3.settledAt!,
+      }),
+    ]);
+    await db.insert(streakFreezeUses).values({
+      profileId: viewer.id as string,
+      coveredDate: '2026-08-11',
+      usedAt: new Date('2026-08-12T03:30:00Z'),
+    });
+
+    const question = await getQuestionById(db, day3.id as string);
+    const market3 = await getMarketById(db, market.id as string);
+
+    const payload = await buildRevealPayload({
+      db,
+      redis,
+      question: question!,
+      market: market3!,
+      viewerProfileId: viewer.id as string,
+      appUrl: 'https://receipts.example',
+      at: new Date('2026-08-12T20:05:00Z'),
+    });
+
+    expect(payload.viewer?.streak.freeze_used).toBe(true);
+    expect(payload.viewer?.streak.current).toBe(2);
+    expect(payload.viewer?.streak.delta).toBe(1); // before (through day2) was 1, now 2
+  });
+
+  it('a late-opened reveal reflects streak state AS OF that day, not the live profile (which may have advanced further since)', async () => {
+    const market = buildMarket({ status: 'resolved', outcome: 'yes' });
+    await db.insert(markets).values(market);
+
+    // Day1 and Day2 (the reveal under test) both answered; Day3 (already revealed/counted by
+    // the time this viewer opens Day2's reveal) is a THIRD day the live profile has moved past.
+    const day1 = buildQuestion(market.id as string, {
+      questionDate: '2026-09-01',
+      status: 'revealed',
+      outcome: 'yes',
+      settledAt: new Date('2026-09-01T20:00:00Z'),
+      revealedAt: new Date('2026-09-01T20:00:00Z'),
+      slug: '2026-09-01-late-reveal-day1',
+    });
+    const day2 = buildQuestion(market.id as string, {
+      questionDate: '2026-09-02',
+      status: 'revealed',
+      outcome: 'yes',
+      settledAt: new Date('2026-09-02T20:00:00Z'),
+      revealedAt: new Date('2026-09-02T20:00:00Z'),
+      slug: '2026-09-02-late-reveal-day2',
+    });
+    const day3 = buildQuestion(market.id as string, {
+      questionDate: '2026-09-03',
+      status: 'revealed',
+      outcome: 'yes',
+      settledAt: new Date('2026-09-03T20:00:00Z'),
+      revealedAt: new Date('2026-09-03T20:00:00Z'),
+      slug: '2026-09-03-late-reveal-day3',
+    });
+    await db.insert(questions).values([day1, day2, day3]);
+
+    // Live profile state reflects Day3 already having counted (currentStreak=3) — a viewer
+    // opening Day2's reveal AFTER Day3 has fired should still see Day2's own state (2), not 3.
+    const viewer = buildProfile({ currentStreak: 3, bestStreak: 3 });
+    await db.insert(profiles).values(viewer);
+    await db.insert(picks).values([
+      buildPick(day1.id as string, viewer.id as string, {
+        side: 'yes',
+        yesPriceAtEntry: 0.6,
+        result: 'win',
+        edge: computeEdge('yes', 0.6, true),
+        gradedAt: day1.settledAt!,
+      }),
+      buildPick(day2.id as string, viewer.id as string, {
+        side: 'yes',
+        yesPriceAtEntry: 0.6,
+        result: 'win',
+        edge: computeEdge('yes', 0.6, true),
+        gradedAt: day2.settledAt!,
+      }),
+      buildPick(day3.id as string, viewer.id as string, {
+        side: 'yes',
+        yesPriceAtEntry: 0.6,
+        result: 'win',
+        edge: computeEdge('yes', 0.6, true),
+        gradedAt: day3.settledAt!,
+      }),
+    ]);
+
+    const question = await getQuestionById(db, day2.id as string);
+    const market2 = await getMarketById(db, market.id as string);
+
+    // "Late" relative to day2's reveal — well after day3 has already fired too.
+    const payload = await buildRevealPayload({
+      db,
+      redis,
+      question: question!,
+      market: market2!,
+      viewerProfileId: viewer.id as string,
+      appUrl: 'https://receipts.example',
+      at: new Date('2026-09-04T12:00:00Z'),
+    });
+
+    expect(payload.viewer?.streak.current).toBe(2); // as of day2, not the live 3
+    expect(payload.viewer?.streak.best).toBe(2);
+    expect(payload.viewer?.streak.delta).toBe(1); // before (through day1) was 1, now 2
   });
 });
