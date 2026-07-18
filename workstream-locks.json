@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T09:41:59.148Z",
+  "updated_at": "2026-07-18T09:42:00.892Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -158,13 +158,13 @@
         "WS1-T4"
       ],
       "mock_start_ok": false,
-      "note": null,
-      "status": "available",
+      "note": "Implemented together with the rest of its workstream on this branch (owner: claude-code-web-session-9c961fec). pnpm verify in progress. Branch not yet merged to main — do not treat as buildable-against-main until updated to done.",
+      "status": "claimed",
       "owner": null,
-      "branch": null,
+      "branch": "claude/wave-2-ws-1-2-4-woo118",
       "pr": null,
       "claimed_at": null,
-      "updated_at": "2026-07-18T09:35:00Z"
+      "updated_at": "2026-07-18T09:42:00.891Z"
     },
     "WS1-T6": {
       "title": "Kalshi WS ticker",
