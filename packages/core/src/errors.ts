@@ -16,6 +16,8 @@ export const ERROR_CODES = {
   WALLET_ALREADY_LINKED: 409,
   /** WS10-T2 (§15.2): a daily question already exists for that question_date. */
   DUPLICATE_DAILY_QUESTION: 409,
+  /** WS10-T4 (§15.4): the report was already resolved (dismissed/actioned) by another call. */
+  REPORT_ALREADY_RESOLVED: 409,
   QUESTION_LOCKED: 422,
   UNDO_EXPIRED: 422,
   HANDLE_COOLDOWN: 422,
