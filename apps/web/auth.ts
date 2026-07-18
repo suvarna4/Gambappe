@@ -67,6 +67,17 @@ function buildProviders(): NextAuthConfig['providers'] {
       name: 'Email',
       from: process.env.EMAIL_FROM ?? 'noreply@receipts.example',
       maxAge: MAGIC_LINK_TTL_MIN * 60,
+      // The `Nodemailer()` provider factory throws at construction time ("Nodemailer requires
+      // a `server` configuration") if `server` is omitted — it doesn't defer that check to
+      // send time, so every call to `NextAuth(...)`'s lazy config function (i.e. every request
+      // that touches `auth`/`signIn`/`handlers`, not just an actual email sign-in) crashed
+      // without this, a bug WS2-T2 shipped unnoticed since nothing before WS7-T5 exercised
+      // `auth()` from a live route/page (every existing integration test calls lib functions
+      // directly, bypassing the route layer). This placeholder transport is never actually
+      // used to send mail: `sendVerificationRequest` below is fully overridden and returns
+      // (dev/test) or throws (prod) before ever reaching the real `createTransport(server)`
+      // call inside the library's default implementation.
+      server: { host: 'localhost', port: 25 },
       async sendVerificationRequest({ identifier, url }) {
         // WS2-T2 stub: real Resend sending is WS9 scope (§13.2). Outside production, store the
         // link in the in-memory mailbox so test harnesses and local dev can read it back
