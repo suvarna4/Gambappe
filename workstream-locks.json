@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T22:07:46.889Z",
+  "updated_at": "2026-07-18T22:07:48.315Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -943,12 +943,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-code-web-session-9c961fec",
+      "branch": "feat-ws9-t4-reveal-reminders",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-18T09:35:00Z"
+      "claimed_at": "2026-07-18T22:07:48.314Z",
+      "updated_at": "2026-07-18T22:07:48.314Z"
     },
     "WS10-T1": {
       "title": "Admin shell + roles + audit",
