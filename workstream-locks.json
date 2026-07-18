@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T19:49:50.063Z",
+  "updated_at": "2026-07-18T19:50:11.890Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -674,13 +674,13 @@
         "WS3-T2"
       ],
       "mock_start_ok": true,
-      "note": "Claiming ahead via /goal continuation. Dependencies (WS1/WS2/WS3/WS4) implemented on branch claude/wave-2-ws-1-2-4-woo118; PRs open against main. Building directly on top of that branch.",
+      "note": "Reclaiming stale entry (was on abandoned claude/wave-2-ws-1-2-4-woo118 branch, never delivered). Rebuilding fresh off latest main; WS7-T1 (design system) and WS3-T2 (daily question APIs) are merged.",
       "status": "claimed",
       "owner": "claude-code-web-session-9c961fec",
-      "branch": "claude/wave-2-ws-1-2-4-woo118",
+      "branch": "feat-ws7-t2-home-question-page",
       "pr": null,
       "claimed_at": "2026-07-18T10:55:10.010Z",
-      "updated_at": "2026-07-18T10:55:10.010Z"
+      "updated_at": "2026-07-18T19:50:11.886Z"
     },
     "WS7-T3": {
       "title": "Reveal experience",
