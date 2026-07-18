@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T19:37:43.658Z",
+  "updated_at": "2026-07-18T19:40:37.889Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1003,13 +1003,13 @@
         "WS11-T3"
       ],
       "mock_start_ok": true,
-      "note": "Rebased onto main after WS11-T3 merged; genuinely ready (no longer mock-start). Verified: pnpm verify, 22 moderation integration tests (7 WS11-T3 + 15 WS10-T4 admin), full integration suite (68/68), e2e (9/9).",
-      "status": "in_review",
+      "note": "Merged PR #18 (f323980).",
+      "status": "done",
       "owner": "claude-code-web-session-35b05898",
       "branch": "feat/ws10-t4-moderation-queues",
       "pr": "https://github.com/suvarna4/Gambappe/pull/18",
       "claimed_at": "2026-07-18T19:32:13.651Z",
-      "updated_at": "2026-07-18T19:32:19.987Z"
+      "updated_at": "2026-07-18T19:40:37.873Z"
     },
     "WS10-T5": {
       "title": "Ops dashboard",
