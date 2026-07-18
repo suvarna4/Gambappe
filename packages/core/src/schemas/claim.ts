@@ -11,6 +11,12 @@ export const claimBodySchema = z
   .object({
     /** Required (literal true) when `users.age_attested_at` is null (INV-9). */
     age_attested: z.literal(true).optional(),
+    /**
+     * Shared-device guard (§6.3): "This isn't me" — caller explicitly disclaims the ghost
+     * cookie on the request. Ghost cookie is cleared and the flow proceeds as case B/D instead
+     * of A/C. Additive field (WS2-T3); no other workstream depends on claim.ts.
+     */
+    not_me: z.literal(true).optional(),
   })
   .strict();
 

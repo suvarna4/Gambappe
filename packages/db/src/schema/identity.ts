@@ -100,6 +100,11 @@ export const profiles = pgTable(
     /** Server-only: §8.4 leftovers; cleared after next assignment. Never client-writable. */
     matchmakingPriority: boolean('matchmaking_priority').notNull().default(false),
     handleIsGenerated: boolean('handle_is_generated').notNull().default(true),
+    /**
+     * When the handle was last changed (WS2-T4, §6.1.2 cooldown). Null for a never-changed
+     * (still-generated) handle. Added by WS2 — no other workstream reads/writes this column.
+     */
+    handleChangedAt: timestamp('handle_changed_at', { withTimezone: true }),
     userId: uuid('user_id')
       .unique()
       .references(() => users.id, { onDelete: 'set null' }),
