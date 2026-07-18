@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T18:55:53.113Z",
+  "updated_at": "2026-07-18T18:56:11.432Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -722,13 +722,13 @@
         "WS2-T3"
       ],
       "mock_start_ok": true,
-      "note": "Resumed mock-start unilaterally after a genuine deadlock: /goal's Stop hook demanded continuous progress while every ready task needed an unmerged sibling PR, and the user's own clarifying question tool errored out twice rather than being answered. Builds against packages/core's already-merged claim.ts schema, not WS2's unmerged route/PR #7. Draft PR, not to be merged until WS7-T2 + WS2-T3 land.",
-      "status": "claimed",
-      "owner": "claude-code-web-session-35b05898",
-      "branch": "feat/ws7-t5-claim-flow-ui",
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
       "pr": null,
-      "claimed_at": "2026-07-18T18:54:55.681Z",
-      "updated_at": "2026-07-18T18:55:15.026Z"
+      "claimed_at": null,
+      "updated_at": "2026-07-18T18:56:11.432Z"
     },
     "WS7-T6": {
       "title": "Nemesis UI",
