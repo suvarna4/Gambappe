@@ -1,15 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { ApiError } from '@receipts/core';
+import { useEffect, useState } from 'react';
 import { nemesisCopy } from '@/lib/copy';
-import {
-  acceptRematchRequest,
-  createRematchRequest,
-  declineRematchRequest,
-  getIncomingRematchRequest,
-  getOutgoingRematchRequest,
-} from '@/lib/nemesis/mock-api';
 import type { RematchRequest } from '@/lib/nemesis/types';
 
 export interface RematchPanelProps {
@@ -20,63 +12,120 @@ export interface RematchPanelProps {
 
 type ConfirmPhase = 'idle' | 'confirming';
 
+const BASE = '/api/mock/nemesis/rematch-requests';
+
+/** Matches the §9.1 error envelope shape `{error: {code, message}}` without importing the
+ * `ApiError` class from `@receipts/core` — see this file's SPEC-GAP note below for why. */
+async function readJson<T>(res: Response): Promise<T> {
+  const body = (await res.json()) as { data?: T; error?: { message?: string } };
+  if (!res.ok) throw new Error(body.error?.message ?? `request failed (${res.status})`);
+  return body.data as T;
+}
+
 /**
  * The rematch-request flow (button + confirmation + pending-request state; design doc §8.4
  * step 0, §9.2 `POST /rematch-requests` + `/accept|decline`). "Mutual accept" = the
- * requester's creation call (implicit consent) + the target's explicit accept
- * (`mock-api.ts` enforces only the target may accept/decline). Acceptance does not create a
+ * requester's creation call (implicit consent) + the target's explicit accept (the mock
+ * routes below enforce only the target may accept/decline). Acceptance does not create a
  * pairing on the spot — the real `nemesis:assign` batch (Monday 09:00 ET) does that — so this
  * panel's copy says "you'll be paired starting next week," never "paired now."
  *
- * SPEC-GAP(WS7-T6): reads/writes go straight to the in-memory `mock-api.ts` module (this is
- * a client component, so this runs in the browser's own JS runtime) rather than `fetch()`ing
- * a real endpoint — there is no `/api/v1/rematch-requests*` route on this branch (WS5-T5).
- * State here does not persist across a page reload or sync with the server-rendered
- * `/vs/[pairingId]` page, which is a real limitation of mocking client-side; a real
- * integration wouldn't have that problem since both would hit the same database.
+ * SPEC-GAP(WS7-T6): talks to `/api/mock/nemesis/rematch-requests*` — MOCK-ONLY routes (see
+ * their file headers) that wrap `lib/nemesis/mock-api.ts` server-side, not the real
+ * `/api/v1/rematch-requests*` (WS5-T5, not built). This component intentionally imports
+ * nothing from `@receipts/core` or `mock-api.ts` directly: `@receipts/core` gained a
+ * `notifications.ts` module (WS9-T1) that imports `node:crypto`, and since `@receipts/core`
+ * has only one export path (no subpaths), any client-bundled import from it fails webpack —
+ * routing through a server-side API boundary sidesteps that entirely, and is what a real
+ * integration would do anyway (fetch, not a shared in-process function call).
  */
 export function RematchPanel({ viewerProfileId, opponent, className = '' }: RematchPanelProps) {
   const [error, setError] = useState<string | null>(null);
   const [confirmPhase, setConfirmPhase] = useState<ConfirmPhase>('idle');
-  const [outgoing, setOutgoing] = useState<RematchRequest | null>(() =>
-    getOutgoingRematchRequest(viewerProfileId, opponent.profile_id),
-  );
-  const [incoming, setIncoming] = useState<RematchRequest | null>(() => {
-    const req = getIncomingRematchRequest(viewerProfileId);
-    return req?.requester_profile_id === opponent.profile_id ? req : null;
-  });
+  const [loaded, setLoaded] = useState(false);
+  const [outgoing, setOutgoing] = useState<RematchRequest | null>(null);
+  const [incoming, setIncoming] = useState<RematchRequest | null>(null);
 
-  function handleRequest() {
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const [out, inc] = await Promise.all([
+          fetch(
+            `${BASE}/outgoing?requester_profile_id=${encodeURIComponent(viewerProfileId)}&target_profile_id=${encodeURIComponent(opponent.profile_id)}`,
+          ).then((r) => readJson<{ request: RematchRequest | null }>(r)),
+          fetch(`${BASE}/incoming?profile_id=${encodeURIComponent(viewerProfileId)}`).then((r) =>
+            readJson<{ request: RematchRequest | null }>(r),
+          ),
+        ]);
+        if (cancelled) return;
+        setOutgoing(out.request);
+        setIncoming(inc.request?.requester_profile_id === opponent.profile_id ? inc.request : null);
+      } catch {
+        // Best-effort — leave both null (renders the default "Request rematch" state).
+      } finally {
+        if (!cancelled) setLoaded(true);
+      }
+    }
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [viewerProfileId, opponent.profile_id]);
+
+  async function handleRequest() {
     setError(null);
     try {
-      const { request } = createRematchRequest(viewerProfileId, opponent.profile_id);
+      const res = await fetch(BASE, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          requester_profile_id: viewerProfileId,
+          target_profile_id: opponent.profile_id,
+        }),
+      });
+      const { request } = await readJson<{ request: RematchRequest }>(res);
       setOutgoing(request);
       setConfirmPhase('idle');
     } catch (err) {
-      setError(ApiError.is(err) ? err.message : 'Something went wrong');
+      setError(err instanceof Error ? err.message : 'Something went wrong');
     }
   }
 
-  function handleAccept() {
+  async function handleAccept() {
     if (!incoming) return;
     setError(null);
     try {
-      const { request } = acceptRematchRequest(incoming.id, viewerProfileId);
+      const res = await fetch(`${BASE}/${incoming.id}/accept`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ acting_profile_id: viewerProfileId }),
+      });
+      const { request } = await readJson<{ request: RematchRequest }>(res);
       setIncoming(request);
     } catch (err) {
-      setError(ApiError.is(err) ? err.message : 'Something went wrong');
+      setError(err instanceof Error ? err.message : 'Something went wrong');
     }
   }
 
-  function handleDecline() {
+  async function handleDecline() {
     if (!incoming) return;
     setError(null);
     try {
-      const { request } = declineRematchRequest(incoming.id, viewerProfileId);
+      const res = await fetch(`${BASE}/${incoming.id}/decline`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ acting_profile_id: viewerProfileId }),
+      });
+      const { request } = await readJson<{ request: RematchRequest }>(res);
       setIncoming(request);
     } catch (err) {
-      setError(ApiError.is(err) ? err.message : 'Something went wrong');
+      setError(err instanceof Error ? err.message : 'Something went wrong');
     }
+  }
+
+  if (!loaded) {
+    return <div className={className} data-testid="rematch-loading" aria-hidden="true" />;
   }
 
   // An incoming request from THIS opponent takes priority over showing an outgoing-request

@@ -1,6 +1,3 @@
-'use client';
-
-import { useMemo } from 'react';
 import { NEMESIS_MIN_PICKS } from '@receipts/core';
 import { NemesisAssignmentCard } from '@/components/nemesis/NemesisAssignmentCard';
 import { NemesisHistoryList } from '@/components/nemesis/NemesisHistoryList';
@@ -18,48 +15,52 @@ import type { PairingSide } from '@/lib/nemesis/types';
  * route is this task's own addition, documented here and in the PR description rather than
  * silently invented. Rationale: `GET /pairings/current`, `GET /me/nemesis-history`, and
  * `POST /rematch-requests*` are all `claimed`-auth endpoints (§9.2) with no viewer-specific
- * data allowed on the public `/vs/[pairingId]` route (INV-10) — they need a private,
- * fully-client-rendered home, and the task brief explicitly asks for "the viewer's current
- * nemesis pairing" plus the rematch flow as one coherent page.
+ * data allowed on the public `/vs/[pairingId]` route (INV-10) — they need a private home,
+ * and the task brief explicitly asks for "the viewer's current nemesis pairing" plus the
+ * rematch flow as one coherent page.
+ *
+ * A plain (server) component, not `'use client'`: this task's mock backend
+ * (`lib/nemesis/mock-api.ts`) imports value-level `@receipts/core` exports, and
+ * `@receipts/core` gained a `notifications.ts` module (WS9-T1) that imports `node:crypto` —
+ * since the package has no subpath exports, ANY client-bundled import of it fails webpack.
+ * Server components never ship to the client bundle, so this page (and `mock-api.ts`) stay
+ * server-only; only the interactive pieces (`RematchPanel`, inside `NemesisHistoryList`) are
+ * `'use client'`, and they talk to the mock backend over `fetch()` to
+ * `/api/mock/nemesis/rematch-requests*` instead of importing it directly — see
+ * `RematchPanel.tsx`'s header for the full explanation.
  *
  * SPEC-GAP(WS7-T6): "the viewer" here is hardcoded to the mock's `VIEWER` fixture profile,
  * not resolved from a real session. `GET /me` (§9.2, `ghost+` auth) has no route handler on
  * this branch yet — once it does, this page should resolve the real viewer profile_id from
  * it (redirecting to `/claim` if not `claimed`) instead of importing a fixture constant.
  */
-export default function NemesisHomePage() {
-  const data = useMemo(() => {
-    const { pairing } = getCurrentPairing(VIEWER.profile_id);
-    const history = getNemesisHistory(VIEWER.profile_id).data;
+export default async function NemesisHomePage() {
+  const { pairing } = getCurrentPairing(VIEWER.profile_id);
+  const history = getNemesisHistory(VIEWER.profile_id).data;
 
-    let opponentSide: PairingSide | null = null;
-    let sides: { a: PairingSide; b: PairingSide } | null = null;
-    if (pairing) {
-      const opponentRef = pairing.a.profile_id === VIEWER.profile_id ? pairing.b : pairing.a;
-      const viewerRef = pairing.a.profile_id === VIEWER.profile_id ? pairing.a : pairing.b;
-      const opponentFull = getProfileRef(opponentRef.slug) ?? {
-        profile_id: opponentRef.profile_id,
-        handle: opponentRef.handle,
-        slug: opponentRef.slug,
-        rating: null,
-      };
-      const viewerFull = getProfileRef(viewerRef.slug) ?? {
-        profile_id: viewerRef.profile_id,
-        handle: viewerRef.handle,
-        slug: viewerRef.slug,
-        rating: null,
-      };
-      opponentSide = opponentFull;
-      sides =
-        pairing.a.profile_id === VIEWER.profile_id
-          ? { a: viewerFull, b: opponentFull }
-          : { a: opponentFull, b: viewerFull };
-    }
-
-    return { pairing, history, opponentSide, sides };
-  }, []);
-
-  const { pairing, history, opponentSide, sides } = data;
+  let opponentSide: PairingSide | null = null;
+  let sides: { a: PairingSide; b: PairingSide } | null = null;
+  if (pairing) {
+    const opponentRef = pairing.a.profile_id === VIEWER.profile_id ? pairing.b : pairing.a;
+    const viewerRef = pairing.a.profile_id === VIEWER.profile_id ? pairing.a : pairing.b;
+    const opponentFull = getProfileRef(opponentRef.slug) ?? {
+      profile_id: opponentRef.profile_id,
+      handle: opponentRef.handle,
+      slug: opponentRef.slug,
+      rating: null,
+    };
+    const viewerFull = getProfileRef(viewerRef.slug) ?? {
+      profile_id: viewerRef.profile_id,
+      handle: viewerRef.handle,
+      slug: viewerRef.slug,
+      rating: null,
+    };
+    opponentSide = opponentFull;
+    sides =
+      pairing.a.profile_id === VIEWER.profile_id
+        ? { a: viewerFull, b: opponentFull }
+        : { a: opponentFull, b: viewerFull };
+  }
 
   return (
     <main className="mx-auto max-w-xl space-y-8 px-6 py-10">

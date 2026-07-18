@@ -20,10 +20,16 @@
  * module, so a shape mismatch fails loudly (in tests, not silently in the UI) rather than
  * this mock quietly diverging from §9.2 as the real contract evolves.
  *
- * When WS5-T4 ships, callers of this module (components, `/vs/[pairingId]`, `/nemesis`)
- * should swap these calls for real `fetch()`s returning the same schema-shaped JSON — no
- * component prop shapes should need to change, because they're already typed against
- * `./types.ts`'s `z.infer` aliases over the real schemas, not this file's internals.
+ * When WS5-T4 ships, callers of this module should swap these calls for real `fetch()`s
+ * returning the same schema-shaped JSON — no component prop shapes should need to change,
+ * because they're already typed against `./types.ts`'s `z.infer` aliases over the real
+ * schemas, not this file's internals. Current callers: `/vs/[pairingId]` and `/nemesis`
+ * (both server components) import this module directly; the interactive rematch UI
+ * (`RematchPanel.tsx`, a client component) does NOT — it goes through
+ * `/api/mock/nemesis/rematch-requests*` (mock-only route handlers that wrap this module)
+ * instead, because `@receipts/core` gained a `node:crypto`-importing module (WS9-T1's
+ * `notifications.ts`) that breaks any client bundle importing this file transitively. See
+ * that route's file header for the full explanation.
  *
  * SPEC-GAP(WS7-T6) — open question for whoever builds WS5-T4: §9.2 lists no `GET` endpoint
  * for a profile's own outgoing/incoming rematch requests, so a real client has no documented
