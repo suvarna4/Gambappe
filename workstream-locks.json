@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T22:54:31.547Z",
+  "updated_at": "2026-07-18T22:55:44.597Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -942,13 +942,13 @@
         "WS9-T3"
       ],
       "mock_start_ok": false,
-      "note": null,
-      "status": "claimed",
+      "note": "Recovered from a background agent killed by an interruption event — work was already committed (940e6be), just resynced onto latest main, re-verified, and pushed. PR #41 opened.",
+      "status": "in_review",
       "owner": "claude-code-web-session-9c961fec",
       "branch": "feat-ws9-t4-reveal-reminders",
-      "pr": null,
+      "pr": "https://github.com/suvarna4/Gambappe/pull/41",
       "claimed_at": "2026-07-18T22:07:48.314Z",
-      "updated_at": "2026-07-18T22:07:48.314Z"
+      "updated_at": "2026-07-18T22:55:44.597Z"
     },
     "WS10-T1": {
       "title": "Admin shell + roles + audit",
