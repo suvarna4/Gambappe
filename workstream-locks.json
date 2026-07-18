@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T10:55:14.403Z",
+  "updated_at": "2026-07-18T11:01:41.016Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -956,12 +956,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": "P0 uses the ADMIN_STOPGAP_TOKEN stopgap and has no dependency; P1 additionally depends on WS2-T2 for Auth.js role auth (§19.5).",
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-code-web-session-35b05898",
       "branch": "feat/ws10-t1-admin-shell",
-      "pr": null,
+      "pr": "https://github.com/suvarna4/Gambappe/pull/11",
       "claimed_at": "2026-07-18T10:39:52.079Z",
-      "updated_at": "2026-07-18T10:39:52.079Z"
+      "updated_at": "2026-07-18T11:01:41.016Z"
     },
     "WS10-T2": {
       "title": "Curation tooling",
