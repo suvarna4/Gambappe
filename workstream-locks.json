@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T22:40:38.587Z",
+  "updated_at": "2026-07-18T22:44:12.474Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -785,12 +785,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-code-web-session-35b05898",
-      "branch": null,
+      "branch": "feat/ws7-t9-settings-ui",
       "pr": null,
       "claimed_at": "2026-07-18T22:28:25.043Z",
-      "updated_at": "2026-07-18T22:28:25.043Z"
+      "updated_at": "2026-07-18T22:44:12.474Z"
     },
     "WS7-T10": {
       "title": "Placement UI",
