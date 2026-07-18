@@ -1,7 +1,9 @@
 /**
- * `DELETE /api/v1/me` (design doc §11.4, §9.2, WS2-T5). Body `{confirm: handle}` — rejected
- * unless it exactly matches the caller's CURRENT handle (irreversible; confirm requires typing
- * the handle, mirroring the client's confirm modal).
+ * `GET /api/v1/me` (design doc §9.2 "ghost+"; see `@/lib/get-me.ts` for the SPEC-GAP note on why
+ * WS7-T5 is the one implementing this route) and `DELETE /api/v1/me` (design doc §11.4, §9.2,
+ * WS2-T5). Body `{confirm: handle}` on DELETE — rejected unless it exactly matches the caller's
+ * CURRENT handle (irreversible; confirm requires typing the handle, mirroring the client's
+ * confirm modal).
  */
 import type { NextResponse } from 'next/server';
 import { ApiError, deleteMeBodySchema, now } from '@receipts/core';
@@ -10,10 +12,25 @@ import { jsonSuccess, runRoute } from '@/lib/api-response';
 import { assertSameOrigin } from '@/lib/origin-check';
 import { resolveIdentityFromRequest } from '@/lib/identity-request';
 import { GHOST_COOKIE_NAME, clearedGhostCookieOptions } from '@/lib/ghost-cookie';
+import { buildMeResponse } from '@/lib/get-me';
 import { getDb } from '@/lib/stores';
 import { applyDuoMidWindowExit } from '@/lib/duo-match-lifecycle';
 
 export const runtime = 'nodejs';
+
+export async function GET(request: Request): Promise<NextResponse> {
+  return runRoute(async () => {
+    const { identity, clearGhostCookie } = await resolveIdentityFromRequest(request);
+    const data = await buildMeResponse(getDb(), identity);
+    const response = jsonSuccess(data);
+    // Same posture as every other cookie-reading route (§6.1.1): an invalid/stale ghost cookie
+    // is cleared, never surfaced as an error.
+    if (clearGhostCookie) {
+      response.cookies.set(GHOST_COOKIE_NAME, '', clearedGhostCookieOptions());
+    }
+    return response;
+  });
+}
 
 export async function DELETE(request: Request): Promise<NextResponse> {
   return runRoute(async () => {
