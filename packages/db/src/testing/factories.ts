@@ -7,7 +7,7 @@ import { uuidv7 } from 'uuidv7';
 import { slugifyHandle } from '@receipts/core';
 import type { Db } from '../client.js';
 import { markets, picks, profiles, questions } from '../schema/index.js';
-import type { placementAnswers, placementItems } from '../schema/index.js';
+import type { duoMatches, duos, nemesisPairings, placementAnswers, placementItems, seasons } from '../schema/index.js';
 
 export type ProfileRow = typeof profiles.$inferInsert;
 export type MarketRow = typeof markets.$inferInsert;
@@ -15,6 +15,10 @@ export type QuestionRow = typeof questions.$inferInsert;
 export type PickRow = typeof picks.$inferInsert;
 export type PlacementItemRow = typeof placementItems.$inferInsert;
 export type PlacementAnswerRow = typeof placementAnswers.$inferInsert;
+export type SeasonRow = typeof seasons.$inferInsert;
+export type NemesisPairingRow = typeof nemesisPairings.$inferInsert;
+export type DuoRow = typeof duos.$inferInsert;
+export type DuoMatchRow = typeof duoMatches.$inferInsert;
 
 let seq = 0;
 function nextSeq(): number {
@@ -217,4 +221,85 @@ export async function insertGradedQuestionScenario(
   await db.insert(profiles).values(scenario.profiles);
   await db.insert(picks).values(scenario.picks);
   return scenario;
+}
+
+/** A nemesis season (§5.4) — required FK for `nemesis_pairings`. */
+export function buildSeason(overrides: Partial<SeasonRow> = {}): SeasonRow {
+  return {
+    id: uuidv7(),
+    kind: 'nemesis',
+    startsOn: '2026-07-13',
+    endsOn: '2026-10-04',
+    name: 'Test Season',
+    ...overrides,
+  };
+}
+
+/**
+ * A `nemesis_pairings` row (§5.5, WS4-T7's `ratings:weekly` batch input). Defaults to
+ * `status='completed'` with `profileAId` as the winner and `rating_applied_at` unset — the
+ * shape the weekly rating batch consumes. Canonical order (a < b by uuid) is the CALLER's
+ * responsibility, matching how every other pairing-producing task (WS5) will build these.
+ */
+export function buildNemesisPairing(
+  seasonId: string,
+  profileAId: string,
+  profileBId: string,
+  overrides: Partial<NemesisPairingRow> = {},
+): NemesisPairingRow {
+  return {
+    id: uuidv7(),
+    seasonId,
+    weekStart: '2026-07-13',
+    profileAId,
+    profileBId,
+    status: 'completed',
+    scoreA: 2,
+    scoreB: 1,
+    edgeA: 0.3,
+    edgeB: 0.1,
+    winnerProfileId: profileAId,
+    verdict: { narrative_line: 'test verdict' },
+    isRematch: false,
+    ratingAppliedAt: null,
+    ...overrides,
+  };
+}
+
+/** A `duos` row (§5.5). Defaults to `status='active'` with default Glicko values. */
+export function buildDuo(profileAId: string, profileBId: string, overrides: Partial<DuoRow> = {}): DuoRow {
+  return {
+    id: uuidv7(),
+    profileAId,
+    profileBId,
+    status: 'active',
+    tier: 1,
+    glickoRating: 1500,
+    glickoRd: 350,
+    glickoVol: 0.06,
+    matchesPlayed: 0,
+    ...overrides,
+  };
+}
+
+/** A `duo_matches` row (§5.5, WS4-T7's `ratings:weekly` batch input for duo team ratings). */
+export function buildDuoMatch(
+  duoAId: string,
+  duoBId: string,
+  overrides: Partial<DuoMatchRow> = {},
+): DuoMatchRow {
+  return {
+    id: uuidv7(),
+    duoAId,
+    duoBId,
+    windowStart: '2026-07-14',
+    windowEnd: '2026-07-16',
+    status: 'completed',
+    scoreA: 4,
+    scoreB: 2,
+    winnerDuoId: duoAId,
+    ratingAppliedAt: null,
+    ratingSnapshot: null,
+    ...overrides,
+  };
 }
