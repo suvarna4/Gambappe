@@ -11,9 +11,13 @@
  *   - the job handler self-requeues a follow-up tick (sub-minute cadence workaround, §8.5 vs.
  *     pg-boss's 1-minute cron floor).
  *
- * Uses a DEDICATED test database (receipts_test_ws6t1) and Redis logical DB 6 — several agents
- * build against this repo concurrently (see CLAUDE.md / docs/workstream-locks.md); the shared
- * receipts/receipts_test resources are never touched here.
+ * Connects via TEST_DATABASE_URL (CI sets this to receipts_test — see .github/workflows/ci.yml
+ * and every other integration test's fallback default) and Redis logical DB 6 via TEST_REDIS_URL
+ * (any logical DB index is safe against CI's fresh redis7 container; no pre-creation needed,
+ * unlike Postgres). When developing locally alongside other concurrent agents on the same
+ * machine, export TEST_DATABASE_URL to point at a dedicated DB instead of changing this file's
+ * fallback — turbo.json's globalPassThroughEnv doesn't include TEST_DATABASE_URL, so CI relies
+ * on this literal default matching the shared convention.
  */
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -41,7 +45,7 @@ import { duoMatchmakerHandler, runDuoMatchmakerTick } from '../../src/jobs/duo-m
 import type { JobContext } from '../../src/context.js';
 
 const dbUrl =
-  process.env.TEST_DATABASE_URL ?? 'postgres://receipts:receipts@localhost:5432/receipts_test_ws6t1';
+  process.env.TEST_DATABASE_URL ?? 'postgres://receipts:receipts@localhost:5432/receipts_test';
 const redisUrl = process.env.TEST_REDIS_URL ?? 'redis://localhost:6379/6';
 
 const AT = new Date('2026-07-20T12:00:00Z');

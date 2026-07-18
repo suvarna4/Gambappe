@@ -6,8 +6,11 @@
  * (`claim-flow.test.ts`), since route auth (Auth.js session resolution) isn't this task's
  * concern and isn't mocked anywhere else in the repo yet.
  *
- * Uses a DEDICATED test database (receipts_test_ws6t1), not the shared receipts_test — several
- * agents build against this repo concurrently (see CLAUDE.md / docs/workstream-locks.md).
+ * Connects via TEST_DATABASE_URL (CI sets this to receipts_test — see .github/workflows/ci.yml
+ * and every other integration test's fallback default). When developing locally alongside other
+ * concurrent agents on the same machine, export TEST_DATABASE_URL to point at a dedicated DB
+ * instead of changing this file's fallback — turbo.json's globalPassThroughEnv doesn't include
+ * TEST_DATABASE_URL, so CI relies on this literal default matching the shared convention.
  */
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -39,7 +42,7 @@ import {
 } from '@/lib/duo-queue';
 
 const dbUrl =
-  process.env.TEST_DATABASE_URL ?? 'postgres://receipts:receipts@localhost:5432/receipts_test_ws6t1';
+  process.env.TEST_DATABASE_URL ?? 'postgres://receipts:receipts@localhost:5432/receipts_test';
 
 let pool: pg.Pool;
 let db: Db;
