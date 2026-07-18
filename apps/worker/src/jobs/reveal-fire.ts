@@ -29,6 +29,15 @@
  * revealed or voided"): if the prior calendar day's daily exists and hasn't settled into
  * revealed/voided yet, this run re-arms instead of proceeding — defensive; the structural
  * guarantee (REVEAL_MAX_DELAY_H + admin escalation) should make this unreachable in practice.
+ *
+ * Duo match completion hook (WS6-T2, §8.5/§8.9): a duo window's dailies are derived by date,
+ * never stored in `duo_match_questions` (§5.5) — so the "a daily's result stays hidden until
+ * reveal" rule (§6.5) means a daily-question's contribution to duo scoring only becomes real
+ * HERE, at reveal, not at grading (`grade:followup`, which only handles this for `duo_bonus`
+ * questions — see that job's header). Inside the SAME transaction as the reveal + streak writes:
+ * for every `scheduled`/`active` `duo_matches` row whose window covers this daily's date, check
+ * completion (`tryCompleteDuoMatch`, `duo-match-completion.ts`) — same one-transaction-or-none
+ * crash-safety the streak application already relies on.
  */
 import type pg from 'pg';
 import type PgBoss from 'pg-boss';
@@ -42,12 +51,14 @@ import {
   getProfileById,
   getQuestionById,
   insertAnalyticsEvent,
+  listOpenMatchIdsForWindowDate,
   listRevealedOrVoidedDailyThrough,
   revealQuestionTx,
   type Db,
 } from '@receipts/db';
 import type { JobHandler } from '../heartbeat.js';
 import { logger } from '../logger.js';
+import { tryCompleteDuoMatch } from './duo-match-completion.js';
 import { deriveRevealBeats } from '../notifications/reveal-beats.js';
 import { writeBeatsToOutbox } from '../notifications/write-outbox.js';
 
@@ -153,6 +164,13 @@ export async function runRevealFire(
         });
         const outboxReport = await writeBeatsToOutbox(tx, beats, at);
         beatsWritten += outboxReport.written;
+      }
+    }
+
+    if (question.questionDate) {
+      const matchIds = await listOpenMatchIdsForWindowDate(tx, question.questionDate);
+      for (const matchId of matchIds) {
+        await tryCompleteDuoMatch(tx, matchId, at);
       }
     }
 

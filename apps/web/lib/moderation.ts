@@ -27,6 +27,7 @@ import {
   type Db,
   type NewReportRow,
 } from '@receipts/db';
+import { applyDuoMidWindowExit } from './duo-match-lifecycle';
 
 function daysAgo(at: Date, days: number): Date {
   return new Date(at.getTime() - days * 24 * 3600_000);
@@ -89,10 +90,19 @@ function toGlickoGame(opponent: { rating: number; rd: number }, score: 0 | 0.5 |
  * only via the same pure `scoreNemesisWeek`/`updateGlicko2` functions the (not-yet-built)
  * `nemesis:conclude` job will use for its normal Sunday conclusion — so a block never erases
  * a pairing a player is already losing. Both sides get the neutral exit notification either way.
+ * Applies the SAME rule to the blocked profile's active DUO match, if any (§5.7: "mid-window
+ * exits follow the same early-conclusion rule as pairings", WS6-T2's
+ * `applyDuoMidWindowExit`) — a profile can have at most one active pairing AND one active duo
+ * match at once, so both checks always run, independently, on every block.
  */
 export async function applyBlock(db: Db, blockerProfileId: string, blockedProfileId: string, at: Date): Promise<void> {
   await db.transaction(async (tx) => {
     await insertBlock(tx, blockerProfileId, blockedProfileId);
+
+    // Nested transaction (Postgres SAVEPOINT, drizzle-orm) — same pattern as
+    // `packages/db/src/repositories/picks.ts`'s `placePickTx` — so the duo-match exit commits
+    // atomically with the block + pairing exit below rather than as an independent transaction.
+    await applyDuoMidWindowExit(tx, blockedProfileId, at);
 
     const pairing = await findActivePairingInvolving(tx, blockedProfileId);
     if (!pairing) return;

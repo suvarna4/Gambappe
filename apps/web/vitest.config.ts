@@ -10,8 +10,8 @@ export default defineConfig({
   },
   // tsconfig.json sets `"jsx": "preserve"` (Next's own bundler transforms it); Vitest's esbuild
   // pipeline needs its own JSX setting since it doesn't go through Next at all — automatic
-  // runtime matches React 19 (no `import React` needed in `.tsx` test files, WS7-T2's
-  // `question-state-view.test.tsx`).
+  // runtime matches React 19 (no `import React` needed in `.tsx` test files: WS7-T2's
+  // `question-state-view.test.tsx`, WS8-T1's satori OG templates).
   esbuild: { jsx: 'automatic' },
   test: {
     include: ['test/**/*.test.ts', 'test/**/*.test.tsx'],

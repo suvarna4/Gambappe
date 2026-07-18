@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import './globals.css';
+import { EIGHTEEN_PLUS_FOOTER_NOTICE } from '@/lib/copy';
 
 export const metadata: Metadata = {
   title: 'Receipts',
@@ -14,7 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         {/* INV-9: every page footer carries an 18+ notice. */}
         <footer className="text-muted border-surface border-t px-4 py-6 text-sm">
-          <p>18+ only. Receipts never holds money — picks are for competition, not wagers.</p>
+          <p>{EIGHTEEN_PLUS_FOOTER_NOTICE}</p>
         </footer>
       </body>
     </html>

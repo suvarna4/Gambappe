@@ -2,7 +2,7 @@
  * Pick repository helpers (WS0-T3 + WS3-T2/T5 additions). The full §6.2 pick algorithm (price
  * stamping, clock authority, counters) lives here as `placePickTx`/`undoPickTx`.
  */
-import { and, eq, or, sql } from 'drizzle-orm';
+import { and, count, eq, or, sql } from 'drizzle-orm';
 import { BOT_EXCLUDE_THRESHOLD } from '@receipts/core';
 import type { Db } from '../client.js';
 import { picks, questions } from '../schema/index.js';
@@ -241,4 +241,30 @@ export async function getGradedPicksForQuestion(db: Db, questionId: string): Pro
     side: r.side,
     yesPriceAtEntry: Number(r.yesPriceAtEntry),
   }));
+}
+
+export interface ProfilePickRecord {
+  wins: number;
+  losses: number;
+  voids: number;
+}
+
+/**
+ * WS8-T1 (§10.5 `profile` OG template — record summary): graded win/loss/void counts for a
+ * profile, straight off `picks` (no snapshot table at this scope — cheap enough for a
+ * once-per-render, cache-addressed image fetch).
+ */
+export async function getProfilePickRecord(db: Db, profileId: string): Promise<ProfilePickRecord> {
+  const rows = await db
+    .select({ result: picks.result, n: count() })
+    .from(picks)
+    .where(eq(picks.profileId, profileId))
+    .groupBy(picks.result);
+  const record: ProfilePickRecord = { wins: 0, losses: 0, voids: 0 };
+  for (const row of rows) {
+    if (row.result === 'win') record.wins = row.n;
+    else if (row.result === 'loss') record.losses = row.n;
+    else if (row.result === 'void') record.voids = row.n;
+  }
+  return record;
 }
