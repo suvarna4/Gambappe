@@ -1,21 +1,33 @@
 /**
- * Nemesis bonus question selection + authoring (design doc §8.8, §8.8.1, WS5-T1). Selects up to
- * a few `nemesis_eligible` markets from the pair's top overlapping categories, authoring a
+ * Nemesis bonus question selection + authoring (design doc §8.8, §8.8.1, WS5-T1/WS5-T2). Selects
+ * up to a few `nemesis_eligible` markets from the pair's top overlapping categories, authoring a
  * `nemesis_bonus` question for each (or reusing an already-`open` one for the same market, per
  * §8.8.1's dedup rule) — "a 0-bonus week is valid" if nothing fits.
  *
- * SPEC-GAP(ws5-t1): §8.8 says "the pairing's 2–3 nemesis_bonus questions" but Appendix D has no
- * `NEMESIS_BONUS_*` constant pinning an exact count/range, and this task's spec sections don't
- * name one either. Using 3 as the max-attempt count (0..3 actual, degrading gracefully with
- * however many eligible candidates exist — "skip bonus if none fit" is explicitly valid) rather
- * than inventing a stricter minimum. WS5-T2 (§19.3: "Bonus question selection", depends on this
- * task) owns the deeper AC here ("category-overlap-driven selection test") — this is a
- * best-effort implementation so `nemesis:assign` produces a complete, spec-shaped pairing today,
- * not a claim on WS5-T2's own AC.
+ * WS5-T2 note: the category-overlap-driven selection is split into two pieces so it's
+ * independently, deterministically testable (mirrors WS4-T4's pure `matchNemeses` pattern):
+ *   1. `rankOverlappingCategories` + `hasCategoryOverlap` — pure, no I/O. §8.8 says bonus markets
+ *      come "from the pair's top overlapping categories"; a category where one member has a 0%
+ *      share isn't "overlapping" at all, so `selectNemesisBonusQuestions` below only ever queries
+ *      candidates for categories with a genuine (>0) overlap — a pair with zero shared category
+ *      interest gets a 0-bonus week even if `nemesis_eligible` markets exist in categories
+ *      neither of them touches. SPEC-GAP(ws5-t2): §8.8's prose doesn't spell out this "zero
+ *      overlap → excluded, not just deprioritized" edge explicitly; it's the plain reading of
+ *      "top overlapping categories" and keeps "0-bonus is valid" meaningful rather than a rare
+ *      accident of an empty DB.
+ *   2. `selectBonusMarketCandidates` — pure, no I/O. Given already-ranked/filtered categories and
+ *      each one's already-fetched DB candidates, picks up to `MAX_BONUS_QUESTIONS` markets in
+ *      ranked-category order, deduplicating by market id. This is the function the WS5-T2
+ *      "category-overlap-driven selection test" AC exercises directly.
+ *
+ * SPEC-GAP(ws5-t1, still open): §8.8 says "the pairing's 2–3 nemesis_bonus questions" but
+ * Appendix D has no `NEMESIS_BONUS_*` constant pinning an exact count/range. Using 3 as the
+ * max-attempt count (0..3 actual, degrading gracefully with however many eligible candidates
+ * exist — "skip bonus if none fit" is explicitly valid) rather than inventing a stricter minimum.
  */
 import { uuidv7 } from 'uuidv7';
 import type { MarketCategory } from '@receipts/core';
-import { SCHEDULE_TZ, slugifyHandle } from '@receipts/core';
+import { MARKET_CATEGORY, SCHEDULE_TZ, slugifyHandle } from '@receipts/core';
 import {
   findOpenNemesisBonusQuestionForMarket,
   getQuestionById,
@@ -32,20 +44,63 @@ const MAX_BONUS_QUESTIONS = 3;
 /** Markets considered per category before moving to the next-best-overlap category. */
 const CANDIDATES_PER_CATEGORY = MAX_BONUS_QUESTIONS;
 
-const ALL_CATEGORIES: readonly MarketCategory[] = ['sports', 'politics', 'economics', 'culture', 'science', 'other'];
+/** `min(shareA[c], shareB[c])` (§8.2 `categoryOverlap`'s per-category term) — 0 means the pair
+ * doesn't genuinely share this category at all. */
+function categoryOverlapValue(
+  category: MarketCategory,
+  sharesA: Partial<Record<MarketCategory, number>>,
+  sharesB: Partial<Record<MarketCategory, number>>,
+): number {
+  return Math.min(sharesA[category] ?? 0, sharesB[category] ?? 0);
+}
 
 /** Categories ordered by `min(shareA[c], shareB[c])` descending (§8.2 `categoryOverlap` per
- * category) — "the pair's top overlapping categories" (§8.8). */
+ * category) — "the pair's top overlapping categories" (§8.8). Returns every input category
+ * (including zero-overlap ones) in ranked order; callers that want only genuinely overlapping
+ * categories should also filter with `hasCategoryOverlap`. */
 export function rankOverlappingCategories(
   categories: readonly MarketCategory[],
   sharesA: Partial<Record<MarketCategory, number>>,
   sharesB: Partial<Record<MarketCategory, number>>,
 ): MarketCategory[] {
-  return [...categories].sort((a, b) => {
-    const overlapA = Math.min(sharesA[a] ?? 0, sharesB[a] ?? 0);
-    const overlapB = Math.min(sharesA[b] ?? 0, sharesB[b] ?? 0);
-    return overlapB - overlapA;
-  });
+  return [...categories].sort(
+    (a, b) => categoryOverlapValue(b, sharesA, sharesB) - categoryOverlapValue(a, sharesA, sharesB),
+  );
+}
+
+/** True iff the pair has a genuine (>0) overlap in this category — see file header SPEC-GAP. */
+export function hasCategoryOverlap(
+  category: MarketCategory,
+  sharesA: Partial<Record<MarketCategory, number>>,
+  sharesB: Partial<Record<MarketCategory, number>>,
+): boolean {
+  return categoryOverlapValue(category, sharesA, sharesB) > 0;
+}
+
+/**
+ * Pure selection core (§8.8, WS5-T2 AC): walks `rankedCategories` in order, picking candidates
+ * from `candidatesByCategory` up to `maxCount`, deduplicating by id. No I/O — `rankedCategories`
+ * and `candidatesByCategory` are expected to already be filtered/fetched by the caller. This is
+ * what actually determines "category-overlap-driven selection": candidates in a higher-ranked
+ * category are always exhausted before a lower-ranked category is considered.
+ */
+export function selectBonusMarketCandidates<T extends { id: string }>(
+  rankedCategories: readonly MarketCategory[],
+  candidatesByCategory: ReadonlyMap<MarketCategory, readonly T[]>,
+  maxCount: number,
+): T[] {
+  const selected: T[] = [];
+  const usedIds = new Set<string>();
+  for (const category of rankedCategories) {
+    if (selected.length >= maxCount) break;
+    for (const candidate of candidatesByCategory.get(category) ?? []) {
+      if (selected.length >= maxCount) break;
+      if (usedIds.has(candidate.id)) continue;
+      selected.push(candidate);
+      usedIds.add(candidate.id);
+    }
+  }
+  return selected;
 }
 
 /** e.g. `nemesis-2026-07-20-will-the-fed-cut-rates-<shortid>` — a market may be picked as a
@@ -88,8 +143,9 @@ async function authorOrReuseBonusQuestion(
 
 /**
  * Authors (or reuses, §8.8.1 dedup) up to `MAX_BONUS_QUESTIONS` `nemesis_bonus` questions for
- * this pairing's week, from the pair's top overlapping categories. Never throws on a
- * market/authoring hiccup for one candidate — best-effort, "0-bonus is valid" (§8.8).
+ * this pairing's week, from the pair's top *genuinely overlapping* categories (see file header
+ * SPEC-GAP(ws5-t2)). Never throws on a market/authoring hiccup for one candidate — best-effort,
+ * "0-bonus is valid" (§8.8) — and returns `[]` outright when the pair shares no category at all.
  */
 export async function selectNemesisBonusQuestions(
   db: Db,
@@ -105,36 +161,32 @@ export async function selectNemesisBonusQuestions(
   const sundayNoonEtUtc = zonedLocalTimeToUtc(addDaysToDateStr(input.weekStart, 6), 12, 0, SCHEDULE_TZ);
   const openAt = new Date();
 
-  const rankedCategories = rankOverlappingCategories(ALL_CATEGORIES, input.sharesA, input.sharesB);
+  const rankedCategories = rankOverlappingCategories(MARKET_CATEGORY, input.sharesA, input.sharesB).filter((c) =>
+    hasCategoryOverlap(c, input.sharesA, input.sharesB),
+  );
 
-  const selected: QuestionRow[] = [];
-  const usedMarketIds = new Set<string>();
-
+  // Fetch each overlapping category's candidates (best-effort per category — one bad query must
+  // not abort the others) before handing off to the pure selection core.
+  const candidatesByCategory = new Map<MarketCategory, Awaited<ReturnType<typeof listNemesisEligibleMarketsForCategory>>>();
   for (const category of rankedCategories) {
-    if (selected.length >= MAX_BONUS_QUESTIONS) break;
-
-    let candidates: Awaited<ReturnType<typeof listNemesisEligibleMarketsForCategory>>;
     try {
-      candidates = await listNemesisEligibleMarketsForCategory(db, category, weekStartUtc, weekEndUtc, CANDIDATES_PER_CATEGORY);
+      const candidates = await listNemesisEligibleMarketsForCategory(db, category, weekStartUtc, weekEndUtc, CANDIDATES_PER_CATEGORY);
+      candidatesByCategory.set(category, candidates);
     } catch (err) {
       logger.warn({ err, category }, 'nemesis bonus: candidate market query failed for category — skipping');
-      continue;
     }
+  }
 
-    for (const market of candidates) {
-      if (selected.length >= MAX_BONUS_QUESTIONS) break;
-      if (usedMarketIds.has(market.id)) continue;
+  const chosenMarkets = selectBonusMarketCandidates(rankedCategories, candidatesByCategory, MAX_BONUS_QUESTIONS);
 
-      try {
-        const question = await authorOrReuseBonusQuestion(db, input.weekStart, sundayNoonEtUtc, openAt, market);
-        if (question) {
-          selected.push(question);
-          usedMarketIds.add(market.id);
-        }
-      } catch (err) {
-        // Best-effort (§8.8: "0-bonus week is valid") — one bad market must not abort the run.
-        logger.warn({ err, marketId: market.id }, 'nemesis bonus: authoring failed for market — skipping');
-      }
+  const selected: QuestionRow[] = [];
+  for (const market of chosenMarkets) {
+    try {
+      const question = await authorOrReuseBonusQuestion(db, input.weekStart, sundayNoonEtUtc, openAt, market);
+      if (question) selected.push(question);
+    } catch (err) {
+      // Best-effort (§8.8: "0-bonus week is valid") — one bad market must not abort the run.
+      logger.warn({ err, marketId: market.id }, 'nemesis bonus: authoring failed for market — skipping');
     }
   }
 
