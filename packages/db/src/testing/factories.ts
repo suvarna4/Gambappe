@@ -6,17 +6,15 @@
 import { uuidv7 } from 'uuidv7';
 import { slugifyHandle } from '@receipts/core';
 import type { Db } from '../client.js';
-import {
-  markets,
-  picks,
-  profiles,
-  questions,
-} from '../schema/index.js';
+import { markets, picks, profiles, questions } from '../schema/index.js';
+import type { placementAnswers, placementItems } from '../schema/index.js';
 
 export type ProfileRow = typeof profiles.$inferInsert;
 export type MarketRow = typeof markets.$inferInsert;
 export type QuestionRow = typeof questions.$inferInsert;
 export type PickRow = typeof picks.$inferInsert;
+export type PlacementItemRow = typeof placementItems.$inferInsert;
+export type PlacementAnswerRow = typeof placementAnswers.$inferInsert;
 
 let seq = 0;
 function nextSeq(): number {
@@ -175,6 +173,38 @@ export function buildGradedQuestionScenario(
     }),
   ];
   return { market, question, profiles: [p1, p2, p3], picks: pickRows };
+}
+
+/** A curated historical placement item (§5.5, WS4-T8). Test-fixture defaults, not production content. */
+export function buildPlacementItem(overrides: Partial<PlacementItemRow> = {}): PlacementItemRow {
+  const n = nextSeq();
+  return {
+    id: uuidv7(),
+    title: `Test placement item #${n}`,
+    category: 'sports',
+    yesLabel: 'Yes',
+    noLabel: 'No',
+    historicalYesPrice: 0.6,
+    historicalCrowdYesPct: 55,
+    outcome: 'yes',
+    resolvedOn: '2024-01-01',
+    active: true,
+    ...overrides,
+  };
+}
+
+export function buildPlacementAnswer(
+  profileId: string,
+  placementItemId: string,
+  overrides: Partial<PlacementAnswerRow> = {},
+): PlacementAnswerRow {
+  return {
+    profileId,
+    placementItemId,
+    side: 'yes',
+    answeredAt: T0,
+    ...overrides,
+  };
 }
 
 /** Persist a scenario (FK-ordered) — used by integration tests. */

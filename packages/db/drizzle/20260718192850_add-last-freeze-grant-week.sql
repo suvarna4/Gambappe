@@ -1,0 +1,1 @@
+ALTER TABLE "profiles" ADD COLUMN "last_freeze_grant_week" date;
