@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T21:20:57.967Z",
+  "updated_at": "2026-07-18T21:20:59.354Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -850,13 +850,13 @@
         "WS3-T4"
       ],
       "mock_start_ok": true,
-      "note": "PR #29 (bundled with WS8-T1). /internal/revalidate hardened (bearer+allowlist+cap+global rate limit) + /q/[slug] ISR scaffold. WS7-T2 still in progress elsewhere as of this PR — /q/[slug] is a documented mock; question-page-view.ts's cookie-free loader signature is the load-bearing contract for whoever lands WS7-T2. Cache-key guarantee tested structurally (integration) + via e2e (untested locally, no browser binaries).",
+      "note": "Same PR #29 as WS8-T1 — see that lock's note.",
       "status": "in_review",
       "owner": "claude-code-web-session-9c961fec",
       "branch": "feat-ws8-t1-t3-og-isr",
       "pr": "https://github.com/suvarna4/Gambappe/pull/29",
       "claimed_at": "2026-07-18T10:55:12.717Z",
-      "updated_at": "2026-07-18T20:38:56.346Z"
+      "updated_at": "2026-07-18T21:20:59.354Z"
     },
     "WS8-T4": {
       "title": "oEmbed + meta + sitemap",
