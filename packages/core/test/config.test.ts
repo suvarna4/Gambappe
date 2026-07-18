@@ -35,6 +35,7 @@ describe('Appendix D constants', () => {
         "LEADERBOARD_MIN_PICKS": 3,
         "LONGSHOT_THRESHOLD": 0.2,
         "MAGIC_LINK_TTL_MIN": 15,
+        "MARKETING_EMAIL_DAILY_CAP": 1,
         "MATCHER_2OPT_PASSES": 3,
         "NEMESIS_BAND_BASE": 150,
         "NEMESIS_MIN_PICKS": 5,
@@ -46,6 +47,8 @@ describe('Appendix D constants', () => {
         "PRICE_MAX_STALENESS_S": 60,
         "PRIORITY_BONUS": 0.1,
         "PRIOR_WEIGHT": 5,
+        "QUIET_HOURS_END_LOCAL": "08:00",
+        "QUIET_HOURS_START_LOCAL": "22:00",
         "RD_PENALTY": 0.0002,
         "REACTION_SET": [
           "🔥",

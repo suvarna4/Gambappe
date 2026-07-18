@@ -22,6 +22,7 @@ import { analyticsRollupHandler } from './jobs/analytics-rollup.js';
 import { botScoreHandler } from './jobs/bot-score.js';
 import { gradeFollowupHandler } from './jobs/grade-followup.js';
 import { maintenancePruneHandler } from './jobs/maintenance-prune.js';
+import { notifyDispatchHandler } from './jobs/notify-dispatch.js';
 import { questionLockHandler } from './jobs/question-lock.js';
 import { questionOpenHandler } from './jobs/question-open.js';
 import { revealFireHandler } from './jobs/reveal-fire.js';
@@ -151,7 +152,7 @@ export const JOB_REGISTRY: readonly JobDefinition[] = [
     name: 'notify:dispatch',
     owner: 'WS9-T1',
     cron: '* * * * *', // every 30s per spec; minute cron + WS9-T1 self-requeue (see header)
-    handler: stubHandler('notify:dispatch', 'WS9-T1'),
+    handler: notifyDispatchHandler,
   },
   {
     name: 'bot:score',

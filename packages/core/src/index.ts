@@ -14,5 +14,6 @@ export * from './duplicate-accounts.js';
 export * from './pricing.js';
 export * from './percentile.js';
 export * from './et-date.js';
+export * from './notifications.js';
 export * from './types/index.js';
 export * from './schemas/index.js';
