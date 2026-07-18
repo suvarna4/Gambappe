@@ -124,4 +124,52 @@ describe('matchDuoVsDuo', () => {
     );
     expect(involvesTier2).toBe(true);
   });
+
+  // WS6-T3 AC: odd-duo sit-out priority (§8.10).
+  describe('odd-duo sit-out priority (§8.10, WS6-T3)', () => {
+    it('a duo flagged matchmakingPriority (sat out last time) is NOT the one to sit out again when a non-priority alternative exists', () => {
+      const duos: DuoTeam[] = [
+        { duoId: 'a', rating: 1000, tier: 1 },
+        { duoId: 'b', rating: 1050, tier: 1 },
+        { duoId: 'c', rating: 1900, tier: 1, matchmakingPriority: true }, // sat out last window
+      ];
+      const result = matchDuoVsDuo(duos);
+      // Without priority, 'c' (highest rated) would sit out again — see the plain test above.
+      // With priority, 'b' (highest-rated among the non-priority remainder) sits out instead,
+      // and 'c' gets paired.
+      expect(result.oddOneOut).toEqual(['b']);
+      expect(result.pairings).toHaveLength(1);
+      expect([result.pairings[0]?.duoAId, result.pairings[0]?.duoBId].sort()).toEqual(['a', 'c']);
+    });
+
+    it('when every duo in the tier carries priority, falls back to the highest-rated rule', () => {
+      const duos: DuoTeam[] = [
+        { duoId: 'a', rating: 1000, tier: 1, matchmakingPriority: true },
+        { duoId: 'b', rating: 1050, tier: 1, matchmakingPriority: true },
+        { duoId: 'c', rating: 1900, tier: 1, matchmakingPriority: true },
+      ];
+      const result = matchDuoVsDuo(duos);
+      expect(result.oddOneOut).toEqual(['c']);
+    });
+
+    it('with two non-priority duos and one priority duo, the higher-rated non-priority duo sits out', () => {
+      const duos: DuoTeam[] = [
+        { duoId: 'low', rating: 1000, tier: 1 },
+        { duoId: 'high', rating: 2000, tier: 1 },
+        { duoId: 'priority', rating: 1500, tier: 1, matchmakingPriority: true },
+      ];
+      const result = matchDuoVsDuo(duos);
+      expect(result.oddOneOut).toEqual(['high']);
+      expect([result.pairings[0]?.duoAId, result.pairings[0]?.duoBId].sort()).toEqual(['low', 'priority']);
+    });
+
+    it('an absent matchmakingPriority field behaves identically to false (backward compatible)', () => {
+      const duos: DuoTeam[] = [
+        { duoId: 'a', rating: 1000, tier: 1 },
+        { duoId: 'b', rating: 1050, tier: 1 },
+        { duoId: 'c', rating: 1900, tier: 1, matchmakingPriority: false },
+      ];
+      expect(matchDuoVsDuo(duos).oddOneOut).toEqual(['c']);
+    });
+  });
 });

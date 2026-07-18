@@ -1,0 +1,1 @@
+ALTER TABLE "duos" ADD COLUMN "matchmaking_priority" boolean DEFAULT false NOT NULL;

@@ -31,5 +31,6 @@ export * from './repositories/profile-page.js';
 export * from './repositories/pairings.js';
 export * from './repositories/duos.js';
 export * from './repositories/duo-matches.js';
+export * from './repositories/duo-ladder.js';
 export * from './repositories/push-subscriptions.js';
 export * from './streak-replay.js';
