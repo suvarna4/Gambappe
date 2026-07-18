@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T10:54:21.037Z",
+  "updated_at": "2026-07-18T10:54:22.452Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -327,13 +327,13 @@
         "WS3-T3"
       ],
       "mock_start_ok": false,
-      "note": "Claiming ahead via /goal continuation. Actual dependencies (WS1/WS2/WS4) are fully implemented+verified on branch claude/wave-2-ws-1-2-4-woo118 (owner: claude-code-web-session-9c961fec) even though registry shows them 'claimed' not 'done' (not yet merged to main). Building directly on top of that branch, not against mocks.",
-      "status": "claimed",
+      "note": "Draft PR #10, stacked on #4/#7/#8/#9 (#6 already merged) — diff shrinks as those merge. Validated against real Postgres+Redis during implementation. pnpm verify green.",
+      "status": "in_review",
       "owner": null,
       "branch": "claude/wave-2-ws-1-2-4-woo118",
-      "pr": null,
+      "pr": "https://github.com/suvarna4/Gambappe/pull/10",
       "claimed_at": null,
-      "updated_at": "2026-07-18T09:49:27.604Z"
+      "updated_at": "2026-07-18T10:54:22.452Z"
     },
     "WS3-T5": {
       "title": "Percentiles",
