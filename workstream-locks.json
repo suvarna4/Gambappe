@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T09:24:01.367Z",
+  "updated_at": "2026-07-18T09:24:34.241Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1255,6 +1255,21 @@
       "pr": null,
       "claimed_at": null,
       "updated_at": "2026-07-18T09:24:01.366Z"
+    },
+    "WS15-T2": {
+      "title": "dependent test",
+      "phase": "P1",
+      "depends_on": [
+        "WS15-T1"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:24:34.241Z"
     }
   }
 }
