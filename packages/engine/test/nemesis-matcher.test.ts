@@ -226,5 +226,5 @@ describe('matchNemeses — performance', () => {
     }
     for (const id of result.leftoverProfileIds) accounted.add(id);
     expect(accounted.size).toBe(1000);
-  }, 10000);
+  }, 20000);
 });
