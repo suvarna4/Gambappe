@@ -23,3 +23,6 @@ blob-report/
 .DS_Store
 .idea/
 .vscode/
+
+# agent worktrees (background task working dirs, not repo content)
+.claude/worktrees/
