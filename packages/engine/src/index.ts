@@ -9,3 +9,4 @@
  */
 export * from './fingerprint.js';
 export * from './glicko2.js';
+export * from './style.js';
