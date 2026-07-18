@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T21:09:32.480Z",
+  "updated_at": "2026-07-18T21:20:00.683Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -987,13 +987,13 @@
         "WS3-T3"
       ],
       "mock_start_ok": false,
-      "note": null,
-      "status": "in_review",
+      "note": "merged suvarna4/Gambappe#30 (squash 637996e)",
+      "status": "done",
       "owner": "claude-code-web-session-35b05898",
       "branch": "feat/ws10-t3-settlement-void-regrade",
       "pr": "https://github.com/suvarna4/Gambappe/pull/30",
       "claimed_at": "2026-07-18T20:16:46.056Z",
-      "updated_at": "2026-07-18T20:50:22.135Z"
+      "updated_at": "2026-07-18T21:20:00.681Z"
     },
     "WS10-T4": {
       "title": "Moderation queues",
