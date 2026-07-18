@@ -64,7 +64,7 @@ export async function gradeResolvedQuestionTx(
 
   const graded = await tx.execute(sql`
     UPDATE picks
-    SET result = CASE WHEN side = ${outcome} THEN 'win' ELSE 'loss' END,
+    SET result = (CASE WHEN side = ${outcome} THEN 'win' ELSE 'loss' END)::pick_result,
         edge = (CASE WHEN side = ${outcome} THEN 1 ELSE 0 END)
                - (CASE WHEN side = 'yes' THEN yes_price_at_entry ELSE 1 - yes_price_at_entry END),
         graded_at = ${settledAt.toISOString()}::timestamptz
