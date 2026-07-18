@@ -38,9 +38,15 @@ importers:
       '@receipts/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@receipts/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
       '@receipts/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@receipts/venues':
+        specifier: workspace:*
+        version: link:../../packages/venues
       ioredis:
         specifier: ^5.6.0
         version: 5.11.1
