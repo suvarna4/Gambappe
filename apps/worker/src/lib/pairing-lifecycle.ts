@@ -84,7 +84,7 @@ export async function applyPairingMidWeekExit(
     if (!anyGraded) {
       await updatePairingConclusion(tx, pairing.id, { status: 'cancelled', verdict: { reason } }, at);
     } else {
-      const { scoreA, scoreB, edgeA, edgeB, winner } = scoreNemesisWeek(
+      const { scoreA, scoreB, edgeA, edgeB, winner, excludedQuestionIds } = scoreNemesisWeek(
         sharedQuestions.map((q) => ({
           questionId: q.questionId,
           isVoid: q.isVoid,
@@ -118,7 +118,7 @@ export async function applyPairingMidWeekExit(
           edgeA,
           edgeB,
           winnerProfileId,
-          verdict: { reason, scoreA, scoreB, winner },
+          verdict: { reason, scoreA, scoreB, winner, excludedQuestionIds },
           ratingAppliedAt: at,
         },
         at,
