@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T23:08:22.709Z",
+  "updated_at": "2026-07-18T23:08:38.999Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -628,13 +628,13 @@
         "WS6-T2"
       ],
       "mock_start_ok": false,
-      "note": "PR pushed: feat/ws6-t3-ladder-windows @ https://github.com/suvarna4/Gambappe/pull/40",
-      "status": "in_review",
+      "note": "Merged to main as PR #40 (squash 6d25c63)",
+      "status": "done",
       "owner": "claude-sonnet5-vf9acd-orchestrator",
       "branch": "feat/ws6-t3-ladder-windows",
       "pr": "https://github.com/suvarna4/Gambappe/pull/40",
       "claimed_at": "2026-07-18T22:28:39.097Z",
-      "updated_at": "2026-07-18T22:54:31.547Z"
+      "updated_at": "2026-07-18T23:08:38.998Z"
     },
     "WS6-T4": {
       "title": "Duo public/self APIs",
