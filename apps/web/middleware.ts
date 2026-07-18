@@ -8,10 +8,14 @@ import type { NextRequest } from 'next/server';
 import { isAdminRequestAuthorized } from '@/lib/admin-auth';
 
 export function middleware(request: NextRequest): NextResponse {
-  const authorized = isAdminRequestAuthorized(request.headers, {
-    ADMIN_STOPGAP_TOKEN: process.env.ADMIN_STOPGAP_TOKEN,
-    ADMIN_STOPGAP_IP_ALLOWLIST: process.env.ADMIN_STOPGAP_IP_ALLOWLIST,
-  });
+  const authorized = isAdminRequestAuthorized(
+    request.headers,
+    {
+      ADMIN_STOPGAP_TOKEN: process.env.ADMIN_STOPGAP_TOKEN,
+      ADMIN_STOPGAP_IP_ALLOWLIST: process.env.ADMIN_STOPGAP_IP_ALLOWLIST,
+    },
+    request.nextUrl.searchParams.get('token'),
+  );
   if (!authorized) {
     return new NextResponse(null, { status: 404 });
   }

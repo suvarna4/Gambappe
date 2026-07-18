@@ -14,6 +14,8 @@ export const ERROR_CODES = {
   ALREADY_PICKED: 409,
   CLAIM_CONFLICT: 409,
   WALLET_ALREADY_LINKED: 409,
+  /** WS10-T2 (§15.2): a daily question already exists for that question_date. */
+  DUPLICATE_DAILY_QUESTION: 409,
   QUESTION_LOCKED: 422,
   UNDO_EXPIRED: 422,
   HANDLE_COOLDOWN: 422,

@@ -107,4 +107,23 @@ describe('isAdminRequestAuthorized', () => {
     const headers = new Headers({ 'x-forwarded-for': '1.2.3.4' });
     expect(isAdminRequestAuthorized(headers, env)).toBe(false);
   });
+
+  it('accepts the token via ?token= when no header is present (WS10-T2 browser-nav fallback)', () => {
+    const headers = new Headers({ 'x-forwarded-for': '1.2.3.4' });
+    expect(isAdminRequestAuthorized(headers, env, 'the-real-token')).toBe(true);
+  });
+
+  it('still enforces the IP allowlist for the query-token path', () => {
+    const headers = new Headers({ 'x-forwarded-for': '9.9.9.9' });
+    expect(isAdminRequestAuthorized(headers, env, 'the-real-token')).toBe(false);
+  });
+
+  it('prefers the header token over the query token when both are present', () => {
+    const headers = new Headers({
+      authorization: 'Bearer wrong-token',
+      'x-forwarded-for': '1.2.3.4',
+    });
+    // Header wins and is wrong -> rejected, even though the query token would be valid.
+    expect(isAdminRequestAuthorized(headers, env, 'the-real-token')).toBe(false);
+  });
 });

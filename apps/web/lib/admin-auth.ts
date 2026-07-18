@@ -46,12 +46,24 @@ export interface AdminAuthEnv {
 /**
  * True only when both the bearer token matches AND the caller's IP is on the allowlist.
  * Fails closed on any missing configuration (no token configured → nobody is admin).
+ *
+ * `queryToken` (WS10-T2): the P0 stopgap has no login form and browsers don't attach
+ * custom headers on plain navigation, so a curator can't reach an `/admin` *page* with the
+ * Authorization header alone — only API tooling (curl, fetch with manual headers) can. A
+ * `?token=` fallback lets a human open an emailed/pasted admin link directly. This is a
+ * deliberate P0-only convenience: the token then appears in browser history and, if
+ * request URLs are ever logged, in logs — acceptable only alongside the IP allowlist and
+ * only until P1's Auth.js session replaces this whole scheme (§19.5).
  */
-export function isAdminRequestAuthorized(headers: Headers, env: AdminAuthEnv): boolean {
+export function isAdminRequestAuthorized(
+  headers: Headers,
+  env: AdminAuthEnv,
+  queryToken?: string | null,
+): boolean {
   const expectedToken = env.ADMIN_STOPGAP_TOKEN;
   if (!expectedToken) return false;
 
-  const providedToken = extractBearerToken(headers);
+  const providedToken = extractBearerToken(headers) ?? queryToken ?? null;
   if (!providedToken || !constantTimeEqual(providedToken, expectedToken)) return false;
 
   const allowlist = parseAllowlist(env.ADMIN_STOPGAP_IP_ALLOWLIST);
