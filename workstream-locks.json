@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T10:23:13.217Z",
+  "updated_at": "2026-07-18T10:23:14.532Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -158,13 +158,13 @@
         "WS1-T4"
       ],
       "mock_start_ok": false,
-      "note": "PR #6 open against main. Fixed a CI-caught bug (e23d28f): settlement grading CASE expression needed an explicit ::pick_result cast — CI re-running now.",
+      "note": "PR #6 open against main. Two CI-caught fixes pushed: (1) c30193d/e23d28f: enum-cast + two flaky test assertions in settlement-poll integration tests. CI re-running.",
       "status": "in_review",
       "owner": null,
       "branch": "claude/wave-2-ws-1-2-4-woo118",
       "pr": "https://github.com/suvarna4/Gambappe/pull/6",
       "claimed_at": null,
-      "updated_at": "2026-07-18T10:19:11.826Z"
+      "updated_at": "2026-07-18T10:23:14.532Z"
     },
     "WS1-T6": {
       "title": "Kalshi WS ticker",
