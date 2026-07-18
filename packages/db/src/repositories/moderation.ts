@@ -1,5 +1,7 @@
 /**
- * Reports, blocks, and the pairing mid-week exit rule (design doc §14.3, §5.7, WS11-T3).
+ * Reports, blocks, and the pairing mid-week exit rule (design doc §14.3, §5.7, WS11-T3),
+ * plus the admin moderation queues (§15.4, WS10-T4): reports queue, bot-flag review list,
+ * and auto-pause review list read/resolve on top of the same tables.
  *
  * Scope note: the mid-week exit rule is implemented here for NEMESIS PAIRINGS only (the
  * literal WBS AC: "block cancels active pairing"). §5.7 says duo matches "follow the same
@@ -8,7 +10,7 @@
  * wires up WS6, mirroring how WS2-T5's account-deletion deferred this exact rule for the same
  * reason before WS5's schema was exercised.
  */
-import { and, eq, gte, lt, lte, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, lt, lte, or, sql } from 'drizzle-orm';
 import { uuidv7 } from 'uuidv7';
 import type { Db } from '../client.js';
 import {
@@ -17,6 +19,7 @@ import {
   notifications,
   pairingQuestions,
   picks,
+  posts,
   profiles,
   questions,
   ratings,
@@ -27,6 +30,7 @@ import {
 export type ReportRow = typeof reports.$inferSelect;
 export type NewReportRow = typeof reports.$inferInsert;
 export type BlockRow = typeof blocks.$inferSelect;
+type ProfileRow = typeof profiles.$inferSelect;
 
 export async function insertReport(db: Db, row: NewReportRow): Promise<ReportRow> {
   const [inserted] = await db.insert(reports).values(row).returning();
@@ -231,4 +235,68 @@ export async function insertNeutralExitNotification(db: Db, profileId: string, a
     channel: 'email',
     scheduledAt: at,
   });
+}
+
+/** Oldest-first — the 48h-review SLA (§15.4 runbook note) starts from `created_at`. */
+export async function listOpenReports(db: Db): Promise<ReportRow[]> {
+  return db.select().from(reports).where(eq(reports.status, 'open')).orderBy(asc(reports.createdAt));
+}
+
+export async function getReportById(db: Db, id: string): Promise<ReportRow | null> {
+  const [row] = await db.select().from(reports).where(eq(reports.id, id)).limit(1);
+  return row ?? null;
+}
+
+export interface ResolveReportInput {
+  status: 'actioned' | 'dismissed';
+  resolvedByUserId: string | null;
+  resolvedAt: Date;
+}
+
+export async function resolveReport(db: Db, id: string, input: ResolveReportInput): Promise<ReportRow | null> {
+  const [row] = await db
+    .update(reports)
+    .set({ status: input.status, resolvedByUserId: input.resolvedByUserId, resolvedAt: input.resolvedAt })
+    .where(eq(reports.id, id))
+    .returning();
+  return row ?? null;
+}
+
+export async function updatePostStatus(
+  db: Db,
+  postId: string,
+  status: 'removed_by_mod',
+): Promise<void> {
+  await db.update(posts).set({ status, updatedAt: new Date() }).where(eq(posts.id, postId));
+}
+
+export async function updateProfileStatus(
+  db: Db,
+  profileId: string,
+  status: 'active' | 'paused_matchmaking' | 'suspended',
+): Promise<ProfileRow | null> {
+  const [row] = await db
+    .update(profiles)
+    .set({ status, updatedAt: new Date() })
+    .where(eq(profiles.id, profileId))
+    .returning();
+  return row ?? null;
+}
+
+/** Bot-flag review list (§14.2): surfaced for review, never auto-actioned here. */
+export async function listBotFlaggedProfiles(db: Db, threshold: number): Promise<ProfileRow[]> {
+  return db
+    .select()
+    .from(profiles)
+    .where(gte(profiles.botScore, threshold))
+    .orderBy(desc(profiles.botScore));
+}
+
+/** Auto-pause review list (§14.3): "reviewed within 48h" — oldest-paused first. */
+export async function listAutoPausedProfiles(db: Db): Promise<ProfileRow[]> {
+  return db
+    .select()
+    .from(profiles)
+    .where(eq(profiles.status, 'paused_matchmaking'))
+    .orderBy(asc(profiles.updatedAt));
 }

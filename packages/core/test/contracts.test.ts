@@ -23,8 +23,8 @@ import { createPickBodySchema } from '../src/schemas/picks.js';
 import { normalizedMarketSchema } from '../src/types/market.js';
 
 describe('errors (Appendix C)', () => {
-  it('has all 21 codes with the spec HTTP statuses', () => {
-    expect(Object.keys(ERROR_CODES)).toHaveLength(21);
+  it('has all 22 codes with the spec HTTP statuses', () => {
+    expect(Object.keys(ERROR_CODES)).toHaveLength(22);
     expect(ERROR_CODES.VALIDATION_FAILED).toBe(400);
     expect(ERROR_CODES.REVEAL_NOT_READY).toBe(423);
     expect(ERROR_CODES.PRICE_UNAVAILABLE).toBe(503);
@@ -33,6 +33,9 @@ describe('errors (Appendix C)', () => {
     // WS10-T2 contract-change (§15.2): duplicate daily question is its own 409, not a
     // generic VALIDATION_FAILED — matches ALREADY_PICKED/CLAIM_CONFLICT's "already exists" shape.
     expect(ERROR_CODES.DUPLICATE_DAILY_QUESTION).toBe(409);
+    // WS10-T4 contract-change (§15.4): resolving an already-resolved report is its own 409
+    // rather than reusing CLAIM_CONFLICT, which is reserved for WS2's claim-flow race.
+    expect(ERROR_CODES.REPORT_ALREADY_RESOLVED).toBe(409);
   });
 
   it('ApiError carries code/status and produces a valid envelope', () => {
