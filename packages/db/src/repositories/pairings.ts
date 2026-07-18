@@ -10,10 +10,10 @@ import type { Db } from '../client.js';
 import { nemesisPairings, profiles } from '../schema/index.js';
 // `NemesisPairingRow` already lives in moderation.ts (WS11-T3) and is re-exported from
 // `index.ts` via that module — imported (not re-declared/re-exported) here to avoid an
-// ambiguous duplicate `export *` of the same name from two repository files.
+// ambiguous duplicate `export *` of the same name from two repository files. Same reasoning
+// now applies to `NewNemesisPairingRow`, which WS5-T1's nemesis.ts also declares.
 import type { NemesisPairingRow } from './moderation.js';
-
-export type NewNemesisPairingRow = typeof nemesisPairings.$inferInsert;
+import type { NewNemesisPairingRow } from './nemesis.js';
 
 export async function insertNemesisPairing(
   db: Db,

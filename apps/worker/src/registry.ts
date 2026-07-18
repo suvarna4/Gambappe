@@ -35,6 +35,7 @@ import { duoWindowRollHandler } from './jobs/duo-window-roll.js';
 import { fingerprintNightlyHandler } from './jobs/fingerprint-nightly.js';
 import { gradeFollowupHandler } from './jobs/grade-followup.js';
 import { maintenancePruneHandler } from './jobs/maintenance-prune.js';
+import { nemesisAssignHandler } from './jobs/nemesis-assign.js';
 import { nemesisLastdayHandler } from './jobs/nemesis-lastday.js';
 import { notifyDispatchHandler } from './jobs/notify-dispatch.js';
 import { preLockReminderHandler } from './jobs/pre-lock-reminder.js';
@@ -150,7 +151,7 @@ export const JOB_REGISTRY: readonly JobDefinition[] = [
     name: 'nemesis:assign',
     owner: 'WS5-T1',
     cron: '0 9 * * 1', // Mon 09:00 ET
-    handler: stubHandler('nemesis:assign', 'WS5-T1'),
+    handler: nemesisAssignHandler,
   },
   {
     name: 'wallet:ingest',

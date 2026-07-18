@@ -17,7 +17,12 @@ export interface DateWindow {
   end: Date;
 }
 
-function timeZoneOffsetMinutes(date: Date, timeZone: string): number {
+/**
+ * Offset (minutes, UTC − zoned; negative west of UTC, e.g. ET ≈ −300) of `timeZone` at the
+ * instant `date` represents. Exported (WS5-T1) for `nemesis:assign`'s TZ_BONUS computation
+ * (§8.4) — the same DST-correct double-conversion trick this file already used internally.
+ */
+export function timeZoneOffsetMinutes(date: Date, timeZone: string): number {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone,
     hourCycle: 'h23',
