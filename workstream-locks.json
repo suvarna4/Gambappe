@@ -1,0 +1,1245 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-07-18T09:20:05.333Z",
+  "tasks": {
+    "WS0-T1": {
+      "title": "Monorepo scaffold",
+      "phase": "P0",
+      "depends_on": [],
+      "mock_start_ok": false,
+      "note": "Completed before the workstream-lock system existed; recorded as done for dependency tracking, not claimed through this registry.",
+      "status": "done",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS0-T2": {
+      "title": "packages/core contracts",
+      "phase": "P0",
+      "depends_on": [
+        "WS0-T1"
+      ],
+      "mock_start_ok": false,
+      "note": "Completed before the workstream-lock system existed; recorded as done for dependency tracking, not claimed through this registry.",
+      "status": "done",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS0-T3": {
+      "title": "packages/db schema + migrations",
+      "phase": "P0",
+      "depends_on": [
+        "WS0-T2"
+      ],
+      "mock_start_ok": false,
+      "note": "Completed before the workstream-lock system existed; recorded as done for dependency tracking, not claimed through this registry.",
+      "status": "done",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS0-T4": {
+      "title": "App skeletons + maintenance",
+      "phase": "P0",
+      "depends_on": [
+        "WS0-T3"
+      ],
+      "mock_start_ok": false,
+      "note": "Completed before the workstream-lock system existed; recorded as done for dependency tracking, not claimed through this registry.",
+      "status": "done",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS0-T5": {
+      "title": "CI pipeline",
+      "phase": "P0",
+      "depends_on": [
+        "WS0-T4"
+      ],
+      "mock_start_ok": false,
+      "note": "Completed before the workstream-lock system existed; recorded as done for dependency tracking, not claimed through this registry.",
+      "status": "done",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS0-T6": {
+      "title": "Venue contract + fixtures & mock kit",
+      "phase": "P0",
+      "depends_on": [
+        "WS0-T2"
+      ],
+      "mock_start_ok": false,
+      "note": "Completed before the workstream-lock system existed; recorded as done for dependency tracking, not claimed through this registry.",
+      "status": "done",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS1-T1": {
+      "title": "Shared venue HTTP client",
+      "phase": "P0",
+      "depends_on": [
+        "WS0-T6"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS1-T2": {
+      "title": "Kalshi adapter",
+      "phase": "P0",
+      "depends_on": [
+        "WS1-T1"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS1-T3": {
+      "title": "Polymarket adapter",
+      "phase": "P1",
+      "depends_on": [
+        "WS1-T1"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS1-T4": {
+      "title": "Sync + price tick jobs",
+      "phase": "P0",
+      "depends_on": [
+        "WS1-T2",
+        "WS0-T4"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS1-T5": {
+      "title": "Settlement poller",
+      "phase": "P0",
+      "depends_on": [
+        "WS1-T4"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS1-T6": {
+      "title": "Kalshi WS ticker",
+      "phase": "P1.5",
+      "depends_on": [
+        "WS1-T4"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS1-T7": {
+      "title": "Divergence pairing",
+      "phase": "P1.5",
+      "depends_on": [
+        "WS1-T3"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS2-T1": {
+      "title": "Ghost mint + cookie + handles",
+      "phase": "P0",
+      "depends_on": [
+        "WS0"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS2-T2": {
+      "title": "Auth.js setup",
+      "phase": "P1",
+      "depends_on": [
+        "WS0"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS2-T3": {
+      "title": "Claim + merge",
+      "phase": "P1",
+      "depends_on": [
+        "WS2-T1",
+        "WS2-T2"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS2-T4": {
+      "title": "Settings + handle change",
+      "phase": "P1",
+      "depends_on": [
+        "WS2-T3"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS2-T5": {
+      "title": "Account deletion",
+      "phase": "P1",
+      "depends_on": [
+        "WS2-T3"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS3-T1": {
+      "title": "Question lifecycle + scheduler",
+      "phase": "P0",
+      "depends_on": [
+        "WS0",
+        "WS1-T4"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS3-T2": {
+      "title": "Pick API + undo",
+      "phase": "P0",
+      "depends_on": [
+        "WS3-T1",
+        "WS2-T1"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS3-T3": {
+      "title": "Grading, streaks, freezes",
+      "phase": "P0",
+      "depends_on": [
+        "WS3-T2",
+        "WS1-T5"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS3-T4": {
+      "title": "Reveal orchestration",
+      "phase": "P0",
+      "depends_on": [
+        "WS3-T3"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS3-T5": {
+      "title": "Percentiles",
+      "phase": "P1",
+      "depends_on": [
+        "WS3-T3"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS3-T6": {
+      "title": "Longshot badge",
+      "phase": "P1",
+      "depends_on": [
+        "WS3-T3"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS3-T7": {
+      "title": "Weekly leaderboards",
+      "phase": "P1",
+      "depends_on": [
+        "WS3-T3",
+        "WS11-T2"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS4-T1": {
+      "title": "Fingerprint metrics",
+      "phase": "P1",
+      "depends_on": [
+        "WS0-T2"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS4-T2": {
+      "title": "Glicko-2",
+      "phase": "P1",
+      "depends_on": [
+        "WS0-T2"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS4-T3": {
+      "title": "Style distance & complementarity",
+      "phase": "P1",
+      "depends_on": [
+        "WS4-T1"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS4-T4": {
+      "title": "Nemesis matcher",
+      "phase": "P1",
+      "depends_on": [
+        "WS4-T2",
+        "WS4-T3"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS4-T5": {
+      "title": "Duo matcher",
+      "phase": "P1.5",
+      "depends_on": [
+        "WS4-T3"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS4-T6": {
+      "title": "Scorers + narration",
+      "phase": "P1",
+      "depends_on": [
+        "WS4-T1"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS4-T7": {
+      "title": "Engine job wiring",
+      "phase": "P1",
+      "depends_on": [
+        "WS4-T1",
+        "WS4-T2",
+        "WS4-T3",
+        "WS4-T4",
+        "WS4-T5",
+        "WS4-T6",
+        "WS3-T3"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS4-T8": {
+      "title": "Placement flow (API + seed)",
+      "phase": "P1",
+      "depends_on": [
+        "WS4-T1",
+        "WS2-T1"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS5-T1": {
+      "title": "Assignment job + pairing lifecycle",
+      "phase": "P1",
+      "depends_on": [
+        "WS4-T4",
+        "WS3",
+        "WS2-T3"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS5-T2": {
+      "title": "Bonus question selection",
+      "phase": "P1",
+      "depends_on": [
+        "WS5-T1",
+        "WS10-T2"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS5-T3": {
+      "title": "Week scoring + verdicts",
+      "phase": "P1",
+      "depends_on": [
+        "WS5-T1",
+        "WS4-T6"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS5-T4": {
+      "title": "Matchup + history APIs",
+      "phase": "P1",
+      "depends_on": [
+        "WS5-T3"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS5-T5": {
+      "title": "Rematch + pause/block integration",
+      "phase": "P1",
+      "depends_on": [
+        "WS5-T4",
+        "WS11-T3"
+      ],
+      "mock_start_ok": true,
+      "note": "Mock-start OK vs WS11-T3 (§19.2).",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS6-T1": {
+      "title": "Queue API + matchmaker job",
+      "phase": "P1.5",
+      "depends_on": [
+        "WS4-T5",
+        "WS2-T3"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS6-T2": {
+      "title": "Match lifecycle + scoring + chemistry",
+      "phase": "P1.5",
+      "depends_on": [
+        "WS6-T1",
+        "WS4-T6"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS6-T3": {
+      "title": "Ladder + windows",
+      "phase": "P1.5",
+      "depends_on": [
+        "WS6-T2"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS6-T4": {
+      "title": "Duo public/self APIs",
+      "phase": "P1.5",
+      "depends_on": [
+        "WS6-T2"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS7-T1": {
+      "title": "Design system",
+      "phase": "P0",
+      "depends_on": [
+        "WS0"
+      ],
+      "mock_start_ok": false,
+      "note": "Completed before the workstream-lock system existed; recorded as done for dependency tracking, not claimed through this registry.",
+      "status": "done",
+      "owner": null,
+      "branch": "claude/receipts-design-parallelization-wc7zt8",
+      "pr": "https://github.com/suvarna4/Gambappe/pull/2",
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS7-T2": {
+      "title": "Home + question page",
+      "phase": "P0",
+      "depends_on": [
+        "WS7-T1",
+        "WS3-T2"
+      ],
+      "mock_start_ok": true,
+      "note": "Mock-start OK vs WS3-T2 (§19.2).",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS7-T3": {
+      "title": "Reveal experience",
+      "phase": "P1",
+      "depends_on": [
+        "WS7-T2",
+        "WS3-T4"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS7-T4": {
+      "title": "Profile page",
+      "phase": "P1",
+      "depends_on": [
+        "WS7-T1",
+        "WS2-T3"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS7-T5": {
+      "title": "Claim flow UI + prompt engine",
+      "phase": "P1",
+      "depends_on": [
+        "WS7-T2",
+        "WS2-T3"
+      ],
+      "mock_start_ok": true,
+      "note": "Mock-start OK vs WS7-T2 (§19.2).",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS7-T6": {
+      "title": "Nemesis UI",
+      "phase": "P1",
+      "depends_on": [
+        "WS7-T1",
+        "WS5-T4"
+      ],
+      "mock_start_ok": true,
+      "note": "Mock-start OK vs WS5-T4 (§19.2).",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS7-T7": {
+      "title": "Duo UI",
+      "phase": "P1.5",
+      "depends_on": [
+        "WS7-T1",
+        "WS6-T4"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS7-T8": {
+      "title": "Threads + reactions UI",
+      "phase": "P1",
+      "depends_on": [
+        "WS7-T2"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS7-T9": {
+      "title": "Settings UI",
+      "phase": "P1",
+      "depends_on": [
+        "WS7-T5"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS7-T10": {
+      "title": "Placement UI",
+      "phase": "P1",
+      "depends_on": [
+        "WS7-T1",
+        "WS4-T8"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS8-T1": {
+      "title": "OG image service",
+      "phase": "P0",
+      "depends_on": [
+        "WS7-T1",
+        "WS3-T1",
+        "WS3-T2",
+        "WS3-T3",
+        "WS3-T4"
+      ],
+      "mock_start_ok": true,
+      "note": "Mock-start OK vs WS3-T1..T4 (§19.2).",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS8-T2": {
+      "title": "Share cards + share sheet",
+      "phase": "P0",
+      "depends_on": [
+        "WS8-T1"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS8-T3": {
+      "title": "Spectator ISR + revalidation",
+      "phase": "P0",
+      "depends_on": [
+        "WS7-T2",
+        "WS3-T4"
+      ],
+      "mock_start_ok": true,
+      "note": "Mock-start OK vs WS3-T4 (§19.2).",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS8-T4": {
+      "title": "oEmbed + meta + sitemap",
+      "phase": "P1.5",
+      "depends_on": [
+        "WS8-T1"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS8-T5": {
+      "title": "SEO archive pass",
+      "phase": "P1.5",
+      "depends_on": [
+        "WS8-T4"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS9-T1": {
+      "title": "Outbox + email channel",
+      "phase": "P1",
+      "depends_on": [
+        "WS0",
+        "WS2-T2"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS9-T2": {
+      "title": "Web push",
+      "phase": "P1",
+      "depends_on": [
+        "WS9-T1"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS9-T3": {
+      "title": "Beat wiring",
+      "phase": "P1",
+      "depends_on": [
+        "WS9-T1",
+        "WS4-T6"
+      ],
+      "mock_start_ok": true,
+      "note": "Mock-start OK vs WS4-T6 (§19.2).",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS9-T4": {
+      "title": "Reveal + pre-lock reminders",
+      "phase": "P1",
+      "depends_on": [
+        "WS9-T3"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS10-T1": {
+      "title": "Admin shell + roles + audit",
+      "phase": "P0",
+      "depends_on": [],
+      "mock_start_ok": false,
+      "note": "P0 uses the ADMIN_STOPGAP_TOKEN stopgap and has no dependency; P1 additionally depends on WS2-T2 for Auth.js role auth (§19.5).",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS10-T2": {
+      "title": "Curation tooling",
+      "phase": "P0",
+      "depends_on": [
+        "WS10-T1",
+        "WS1-T4"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS10-T3": {
+      "title": "Settlement/void/regrade",
+      "phase": "P0",
+      "depends_on": [
+        "WS10-T2",
+        "WS3-T3"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS10-T4": {
+      "title": "Moderation queues",
+      "phase": "P1",
+      "depends_on": [
+        "WS10-T1",
+        "WS11-T3"
+      ],
+      "mock_start_ok": true,
+      "note": "Mock-start OK vs WS11-T3 (§19.2).",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS10-T5": {
+      "title": "Ops dashboard",
+      "phase": "P1",
+      "depends_on": [
+        "WS10-T1"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS11-T1": {
+      "title": "Rate limiter middleware",
+      "phase": "P0",
+      "depends_on": [
+        "WS0"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS11-T2": {
+      "title": "Bot scoring",
+      "phase": "P1",
+      "depends_on": [
+        "WS13-T1"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS11-T3": {
+      "title": "Reports/blocks + auto-pause",
+      "phase": "P1",
+      "depends_on": [
+        "WS2-T3"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS11-T4": {
+      "title": "Duplicate-account heuristics",
+      "phase": "P1.5",
+      "depends_on": [
+        "WS11-T2"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS12-T1": {
+      "title": "SIWE endpoints",
+      "phase": "P1",
+      "depends_on": [
+        "WS2-T3"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS12-T2": {
+      "title": "Ingestion + proxy + bucketing",
+      "phase": "P1",
+      "depends_on": [
+        "WS12-T1",
+        "WS4-T1"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS12-T3": {
+      "title": "Badge + settings + unlink",
+      "phase": "P1",
+      "depends_on": [
+        "WS12-T2",
+        "WS7-T4"
+      ],
+      "mock_start_ok": true,
+      "note": "Mock-start OK vs WS7-T4 (§19.2).",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS13-T1": {
+      "title": "Event capture",
+      "phase": "P0",
+      "depends_on": [
+        "WS0"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS13-T2": {
+      "title": "Rollups",
+      "phase": "P1",
+      "depends_on": [
+        "WS13-T1"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS13-T3": {
+      "title": "Metrics page",
+      "phase": "P1",
+      "depends_on": [
+        "WS13-T2",
+        "WS10-T1"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS14-T1": {
+      "title": "E2E golden-loop suite",
+      "phase": "P0",
+      "depends_on": [
+        "WS7-T2",
+        "WS8-T2"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS14-T2": {
+      "title": "Load tests",
+      "phase": "P0",
+      "depends_on": [
+        "WS8-T3"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS14-T3": {
+      "title": "Invariant & copy audit",
+      "phase": "P1",
+      "depends_on": [],
+      "mock_start_ok": false,
+      "note": "Design doc lists \"most\" as the dependency (§1.2/§10.6 audit) rather than a precise task list. Claim only once the bulk of WS1–WS13 has merged — see §19.5 phase gates. Do not treat depends_on: [] as \"ready at wave 1\".",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    },
+    "WS14-T4": {
+      "title": "Launch runbook + Question Zero drill",
+      "phase": "P0",
+      "depends_on": [
+        "WS10-T1",
+        "WS10-T2",
+        "WS10-T3",
+        "WS14-T2"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-18T09:35:00Z"
+    }
+  }
+}
