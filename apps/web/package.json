@@ -11,7 +11,11 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "load-test:seed": "tsx load-tests/seed.ts",
+    "load-test:spectator": "node load-tests/ensure-k6.mjs && k6 run load-tests/scenarios/spectator-burst.js",
+    "load-test:reveal": "node load-tests/ensure-k6.mjs && k6 run load-tests/scenarios/reveal-minute-spike.js",
+    "load-test": "pnpm run load-test:spectator && pnpm run load-test:reveal"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.2",
@@ -42,6 +46,7 @@
     "@types/react-dom": "^19.1.0",
     "drizzle-orm": "^0.44.7",
     "tailwindcss": "^4.3.3",
+    "tsx": "^4.20.0",
     "typescript": "^5.8.0",
     "vitest": "^3.2.0"
   }

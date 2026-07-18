@@ -12,6 +12,8 @@
     "test": "turbo run test",
     "test:integration": "turbo run test:integration --concurrency=1",
     "e2e": "pnpm --filter web e2e",
+    "load-test:seed": "pnpm --filter web run load-test:seed",
+    "load-test": "pnpm --filter web run load-test",
     "lint": "pnpm run denylist && eslint . --max-warnings 0",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
