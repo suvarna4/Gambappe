@@ -347,4 +347,33 @@ describe('streak:freeze-grant (§6.6 Monday 00:05 ET)', () => {
     const [after] = await db.select().from(profiles).where(eq(profiles.id, profile.id));
     expect(after!.freezeBank).toBe(1);
   });
+
+  it('is idempotent under redelivery: a second run for the SAME week never double-grants', async () => {
+    const profile = buildProfile({ freezeBank: 0 });
+    await db.insert(profiles).values(profile);
+
+    const dates = ['2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09', '2026-10-10', '2026-10-11'];
+    const answered = new Set(['2026-10-05', '2026-10-06', '2026-10-07', '2026-10-09', '2026-10-11']);
+    for (const date of dates) {
+      const market = buildMarket({ status: 'resolved', outcome: 'yes' });
+      await db.insert(markets).values(market);
+      const q = buildQuestion(market.id as string, { questionDate: date, status: 'open' });
+      await db.insert(questions).values(q);
+      if (answered.has(date)) {
+        await db.insert(picks).values(buildPick(q.id as string, profile.id as string, { result: 'pending' }));
+      }
+    }
+
+    const at = new Date('2026-10-12T04:05:00Z');
+    // Simulates a worker crash right after this profile's grant committed, then pg-boss
+    // redelivering the whole job — freeze_bank (1) is still below STREAK_FREEZE_CAP, so
+    // without the last_freeze_grant_week self-exclusion this profile would re-qualify.
+    const first = await runStreakFreezeGrant(db, pool, at);
+    expect(first.granted).toBe(1);
+    const second = await runStreakFreezeGrant(db, pool, at);
+    expect(second.granted).toBe(0);
+
+    const [after] = await db.select().from(profiles).where(eq(profiles.id, profile.id));
+    expect(after!.freezeBank).toBe(1); // not 2
+  });
 });

@@ -15,6 +15,13 @@
       "when": 1784366026005,
       "tag": "20260718091346_ws2_t4_handle_changed_at",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784402930190,
+      "tag": "20260718192850_add-last-freeze-grant-week",
+      "breakpoints": true
     }
   ]
 }

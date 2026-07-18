@@ -29,7 +29,13 @@ export async function runStreakFreezeGrant(db: Db, pool: pg.Pool, at: Date = now
   const windowStart = addDaysToDateString(windowEnd, -(FREEZE_EARN_WINDOW_DAYS - 1));
 
   const dailyIds = await listDailyQuestionIdsBetween(db, windowStart, windowEnd);
-  const candidateIds = await listFreezeGrantCandidates(db, dailyIds, FREEZE_EARN_MIN_DAYS, STREAK_FREEZE_CAP);
+  const candidateIds = await listFreezeGrantCandidates(
+    db,
+    dailyIds,
+    FREEZE_EARN_MIN_DAYS,
+    STREAK_FREEZE_CAP,
+    windowStart,
+  );
 
   let granted = 0;
   for (const profileId of candidateIds) {
@@ -37,7 +43,7 @@ export async function runStreakFreezeGrant(db: Db, pool: pg.Pool, at: Date = now
     try {
       await client.query('BEGIN');
       const tx: Db = createDb(client);
-      await grantFreezeTx(tx, profileId, STREAK_FREEZE_CAP, at);
+      await grantFreezeTx(tx, profileId, STREAK_FREEZE_CAP, windowStart, at);
       await client.query('COMMIT');
       granted += 1;
     } catch (err) {

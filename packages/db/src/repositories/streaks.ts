@@ -203,14 +203,21 @@ export async function listStreakSweepCandidates(
   return rows.rows.map((r) => ({ profileId: r['profile_id'] as string }));
 }
 
-/** Profiles earning a freeze this week (§6.6 `streak:freeze-grant`, Mondays 00:05 ET):
- * answered >= FREEZE_EARN_MIN_DAYS of the prior 7 dailies (`dailyQuestionIds`) and are below
- * STREAK_FREEZE_CAP. */
+/**
+ * Profiles earning a freeze this week (§6.6 `streak:freeze-grant`, Mondays 00:05 ET):
+ * answered >= FREEZE_EARN_MIN_DAYS of the prior 7 dailies (`dailyQuestionIds`), are below
+ * STREAK_FREEZE_CAP, and haven't already been granted for `windowStart` this run — the
+ * `last_freeze_grant_week` self-exclusion is what makes a crash-then-redelivery re-run a no-op
+ * for profiles the crashed run already granted (mirrors `streak:sweep`'s `last_counted_date`
+ * self-exclusion; without it, a still-below-cap profile would otherwise re-qualify and be
+ * granted twice for the same week, §19.4 rule 4).
+ */
 export async function listFreezeGrantCandidates(
   db: Db,
   dailyQuestionIds: string[],
   minDays: number,
   cap: number,
+  windowStart: string,
 ): Promise<string[]> {
   if (dailyQuestionIds.length === 0) return [];
   const idArray = `{${dailyQuestionIds.join(',')}}`;
@@ -219,6 +226,7 @@ export async function listFreezeGrantCandidates(
     FROM profiles p
     WHERE p.freeze_bank < ${cap}
       AND p.status != 'deleted'
+      AND (p.last_freeze_grant_week IS NULL OR p.last_freeze_grant_week != ${windowStart}::date)
       AND (
         SELECT count(DISTINCT pk.question_id)
         FROM picks pk
@@ -230,11 +238,21 @@ export async function listFreezeGrantCandidates(
   return rows.rows.map((r) => r['profile_id'] as string);
 }
 
-/** Grants one freeze (capped) to `profileId` — used by `streak:freeze-grant`. */
-export async function grantFreezeTx(tx: Db, profileId: string, cap: number, at: Date): Promise<void> {
+/** Grants one freeze (capped) to `profileId` and stamps `last_freeze_grant_week` — used by
+ * `streak:freeze-grant`. The stamp is what lets `listFreezeGrantCandidates` self-exclude
+ * already-granted profiles on a redelivered re-run of the same week. */
+export async function grantFreezeTx(
+  tx: Db,
+  profileId: string,
+  cap: number,
+  windowStart: string,
+  at: Date,
+): Promise<void> {
   await tx.execute(sql`
     UPDATE profiles
-    SET freeze_bank = LEAST(freeze_bank + 1, ${cap}), updated_at = ${at.toISOString()}::timestamptz
+    SET freeze_bank = LEAST(freeze_bank + 1, ${cap}),
+        last_freeze_grant_week = ${windowStart}::date,
+        updated_at = ${at.toISOString()}::timestamptz
     WHERE id = ${profileId}
   `);
 }
