@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T22:01:37.382Z",
+  "updated_at": "2026-07-18T22:01:38.747Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -850,13 +850,13 @@
         "WS3-T4"
       ],
       "mock_start_ok": true,
-      "note": "Same PR #29 as WS8-T1 — see that lock's note.",
-      "status": "in_review",
+      "note": "Merged to main via PR #29.",
+      "status": "done",
       "owner": "claude-code-web-session-9c961fec",
       "branch": "feat-ws8-t1-t3-og-isr",
       "pr": "https://github.com/suvarna4/Gambappe/pull/29",
       "claimed_at": "2026-07-18T10:55:12.717Z",
-      "updated_at": "2026-07-18T21:20:59.354Z"
+      "updated_at": "2026-07-18T22:01:38.747Z"
     },
     "WS8-T4": {
       "title": "oEmbed + meta + sitemap",
