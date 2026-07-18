@@ -65,17 +65,16 @@ function toPositionInput(p: PolymarketPosition): WalletPositionInput {
   };
 }
 
-/** Never throws: a failed query for one address contributes nothing rather than failing the job. */
-async function fetchPositionsResilient(
-  client: PolymarketDataApiClient,
-  address: string,
-): Promise<PolymarketPosition[]> {
-  try {
-    return await client.getPositions(address);
-  } catch (err) {
-    logger.warn({ err, address }, 'wallet:ingest getPositions failed for one address');
-    return [];
-  }
+/**
+ * A genuinely-empty wallet (never traded) already resolves to `[]` inside `getPositions`
+ * itself (404 -> `[]`, §7.4/data-api.ts). A real upstream failure (network, 5xx, malformed
+ * body) must propagate so the job fails and pg-boss retries (§2.4/§7.5) — swallowing it here
+ * would silently persist zeroed enrichment as if it were a real "no positions" result, and a
+ * later successful re-run would overwrite any previously-ingested real data with zeros in the
+ * interim. No try/catch: let the caller's Promise.all reject.
+ */
+function fetchPositions(client: PolymarketDataApiClient, address: string): Promise<PolymarketPosition[]> {
+  return client.getPositions(address);
 }
 
 function earliestActivityMonth(activity: readonly PolymarketActivity[]): string | null {
@@ -121,7 +120,7 @@ export async function runWalletIngest(
 
   const addresses = [link.address, ...(proxy.proxyAddress ? [proxy.proxyAddress] : [])];
 
-  const positionLists = await Promise.all(addresses.map((a) => fetchPositionsResilient(client, a)));
+  const positionLists = await Promise.all(addresses.map((a) => fetchPositions(client, a)));
   const positions = positionLists.flat();
 
   const activityLists = await Promise.all(
