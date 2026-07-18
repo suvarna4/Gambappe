@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-18T20:08:01.295Z",
+  "updated_at": "2026-07-18T20:08:02.724Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -327,13 +327,13 @@
         "WS3-T3"
       ],
       "mock_start_ok": false,
-      "note": "Draft PR #10, stacked on #4/#7/#8/#9 (#6 already merged) — diff shrinks as those merge. Validated against real Postgres+Redis during implementation. pnpm verify green.",
-      "status": "in_review",
+      "note": "Merged to main via PR #10.",
+      "status": "done",
       "owner": null,
       "branch": "claude/wave-2-ws-1-2-4-woo118",
       "pr": "https://github.com/suvarna4/Gambappe/pull/10",
       "claimed_at": null,
-      "updated_at": "2026-07-18T10:54:22.452Z"
+      "updated_at": "2026-07-18T20:08:02.724Z"
     },
     "WS3-T5": {
       "title": "Percentiles",
