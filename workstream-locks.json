@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T01:25:41.939Z",
+  "updated_at": "2026-07-19T02:03:25.856Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1188,12 +1188,12 @@
       ],
       "mock_start_ok": false,
       "note": "Claiming — WS7-T2 and WS8-T2 both done. Dispatching background implementer.",
-      "status": "claimed",
+      "status": "done",
       "owner": "claude-code-web-session-9c961fec",
       "branch": "feat-ws14-t1-e2e-golden-loop",
       "pr": null,
       "claimed_at": "2026-07-19T00:17:03.837Z",
-      "updated_at": "2026-07-19T00:17:03.837Z"
+      "updated_at": "2026-07-19T02:03:25.834Z"
     },
     "WS14-T2": {
       "title": "Load tests",
