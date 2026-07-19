@@ -250,7 +250,7 @@ describe('fetchReveal (§6.7, WS7-T3)', () => {
         result: 'win',
         edge: 0.37,
         percentile: 82,
-        streak: { current: 4, best: 4, delta: 1, freeze_used: false },
+        streak: { current: 4, best: 4, delta: 1, freeze_used: false, broken_run: null },
         badges: [],
       },
     };

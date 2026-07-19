@@ -27,12 +27,39 @@ export interface ReplayFreezeUse {
   coveredDate: string; // YYYY-MM-DD
 }
 
+/** One COMPLETED (broken) participation run (SW9-T1, obituary-handoff §3.1). */
+export interface CompletedStreakRun {
+  /** Counted days — always >= 1 (the §3.1 zero-guard forbids zero-length entries). */
+  length: number;
+  /** First answered date of the run (voided/freeze-covered days advance, never start). */
+  startedOn: string; // YYYY-MM-DD
+  /**
+   * Last COUNTED date of the run — can be a date the profile never picked (a contiguous voided
+   * day, or a freeze-covered missed day, both of which advance `lastCountedDate` onto
+   * themselves). NEVER the missed day that killed the run. Consumers wanting the run's "last
+   * pick" must resolve the latest ANSWERED date <= `endedOn` within the run, not `endedOn`.
+   */
+  endedOn: string; // YYYY-MM-DD
+}
+
 export interface StreakReplayResult {
   currentStreak: number;
   bestStreak: number;
   lastCountedDate: string | null;
   currentWinStreak: number;
   bestWinStreak: number;
+  /**
+   * Every completed (broken) run, in chronological order (SW9-T1, obituary-handoff §3.1 —
+   * additive; pre-SW9 callers ignore it). Recorded at both reset sites, but ONLY when the
+   * counter is actually positive at the moment of zeroing — see the guard comments inline.
+   */
+  runs: CompletedStreakRun[];
+  /**
+   * First counted (ANSWERED) date of the live run, or null when `currentStreak === 0`
+   * (obituary-handoff §3.1). `runs.length > 0 && currentRunStartedOn === <reveal's
+   * question_date>` is the §3.2 wake condition.
+   */
+  currentRunStartedOn: string | null;
 }
 
 function isImmediateNextDay(prev: string, next: string): boolean {
@@ -65,6 +92,26 @@ export function replayStreak(
   let lastCountedDate: string | null = null;
   let currentWinStreak = 0;
   let bestWinStreak = 0;
+  const runs: CompletedStreakRun[] = [];
+  let currentRunStartedOn: string | null = null;
+
+  /**
+   * Called at BOTH reset sites (obituary-handoff §3.1). The `currentStreak > 0` guard is
+   * load-bearing, not defensive: in a full-history replay every uncovered gap date gets its own
+   * non-participant iteration that zeroes the counter first (and each FURTHER missed day
+   * re-trips `broken` with the counter still 0, since `lastCountedDate` never advances on a
+   * break) — recording unconditionally would mint one zero-length garbage "run" per missed day
+   * and, because `runs.length > 0` is the §3.2 wake condition's first-ever-pick exclusion,
+   * break the trigger itself. N consecutive missed days must record exactly ONE run.
+   */
+  const recordBrokenRun = () => {
+    if (currentStreak > 0) {
+      // A positive counter implies both anchors exist: the run's first increment set
+      // `currentRunStartedOn`, and every increment/advance set `lastCountedDate`.
+      runs.push({ length: currentStreak, startedOn: currentRunStartedOn!, endedOn: lastCountedDate! });
+    }
+    currentRunStartedOn = null;
+  };
 
   /** Revealed (non-void) dates strictly between two bounds — the §6.6 "one gap rule" walk set. */
   const revealedBetween = (fromExclusive: string, toDate: string, inclusiveEnd: boolean) =>
@@ -88,8 +135,12 @@ export function replayStreak(
       if (lastCountedDate !== null) {
         const gap = revealedBetween(lastCountedDate, q.questionDate, false);
         const broken = gap.some((d) => !freezeCovered.has(d));
-        if (broken) currentStreak = 0;
+        if (broken) {
+          recordBrokenRun(); // §3.1 zero-guard inside — a full-history replay no-ops here
+          currentStreak = 0;
+        }
       }
+      if (currentStreak === 0) currentRunStartedOn = q.questionDate; // first ANSWERED date of the run
       currentStreak += 1;
       lastCountedDate = q.questionDate;
       bestStreak = Math.max(bestStreak, currentStreak);
@@ -101,13 +152,17 @@ export function replayStreak(
       // (freeze-covered) or breaks; never increments (no actual participation).
       const throughToday = revealedBetween(lastCountedDate, q.questionDate, true);
       const broken = throughToday.some((d) => !freezeCovered.has(d));
-      if (broken) currentStreak = 0;
-      else lastCountedDate = q.questionDate;
+      if (broken) {
+        recordBrokenRun(); // §3.1 zero-guard inside — later missed days of the same gap no-op
+        currentStreak = 0;
+      } else {
+        lastCountedDate = q.questionDate; // freeze-covered: the covered date JOINS the run (§3.1)
+      }
     }
     // lastCountedDate === null and no pick: profile never started a streak; nothing to do.
   }
 
-  return { currentStreak, bestStreak, lastCountedDate, currentWinStreak, bestWinStreak };
+  return { currentStreak, bestStreak, lastCountedDate, currentWinStreak, bestWinStreak, runs, currentRunStartedOn };
 }
 
 // --- Forward gap-rule decision (WS3-T3: reveal-time increment + streak:sweep) ------------------

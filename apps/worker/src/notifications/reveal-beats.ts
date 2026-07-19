@@ -11,6 +11,7 @@
  * `{beat}:{questionDate}:{profileId}`.
  */
 import { STREAK_MILESTONES } from '@receipts/core';
+import type { CompletedStreakRun } from '@receipts/db';
 import { narrate, type NarrationInput } from '@receipts/engine';
 
 /** The subset of `NarrationInput['beat']` this module can select (§13.3 reveal-triggered beats). */
@@ -22,10 +23,15 @@ export interface RevealBeatInput {
   handle: string;
   /** The daily's `question_date` (YYYY-MM-DD) that just revealed — the dedupe key's date component. */
   questionDate: string;
-  /** `profiles.current_streak` before this reveal's `applyStreakForParticipant` call. */
-  previousStreak: number;
-  /** `profiles.current_streak` after. */
+  /** `profiles.current_streak` after this reveal's `applyStreakForParticipant` call. */
   currentStreak: number;
+  /** Completed (broken) runs from the same call's replay (`StreakApplyResult.runs`) —
+   * SW9-T1 (obituary-handoff §3.3(4)): the `streak_busted` beat is keyed off this replay
+   * signal, never the live `profiles.current_streak` (which `streak:sweep` may have already
+   * zeroed the day before, making a live-field "reset from >= 3" check silently never fire). */
+  runs: CompletedStreakRun[];
+  /** First counted date of the live run from the same replay (`StreakApplyResult.currentRunStartedOn`). */
+  currentRunStartedOn: string | null;
   /** Whether a freeze was newly consumed to bridge this reveal's gap (`StreakApplyResult.freezeUsedForGap`). */
   freezeUsedForGap: boolean;
   /** `freeze_bank` after any consumption above (`StreakApplyResult.freezeBankAfter`). */
@@ -79,12 +85,20 @@ function toInstruction(
  * dropped/retried without affecting the others.
  *
  * - `streak_freeze_used`: `freezeUsedForGap` is true (§6.6 "freeze auto-consumed").
- * - `streak_busted`: reset from >= 3 (§13.3). `applyStreakForParticipant` always increments by
- *   exactly 1 for the reveal day itself, resetting to 0 first on an uncovered gap — so a bust is
- *   uniquely identifiable as `previousStreak >= 3 && currentStreak === 1` (a continuing streak of
- *   >= 3 would read `currentStreak === previousStreak + 1 >= 4`, never 1).
+ * - `streak_busted`: SW9-T1 re-key (obituary-handoff §3.3(4)): the old live-field key
+ *   ("reset from >= 3", `previousStreak >= 3 && currentStreak === 1`) only fired when the break
+ *   happened to be applied lazily at the reveal walk — in the normal flow `streak:sweep`
+ *   (03:30 ET) zeroed `profiles.current_streak` the day before, so `previousStreak` was already
+ *   0 and the beat silently never fired. Re-keyed onto the §3.2 replay-derived wake signal
+ *   (`runs.length > 0 && currentRunStartedOn === questionDate`) so the notification and the
+ *   payload's `broken_run` can never disagree about whether a funeral happened. §13.3's >= 3
+ *   threshold DOES apply here (it's `OBITUARY_MIN_STREAK`'s value — §3.2's "no threshold
+ *   server-side" is about the contract block, not this beat), against the DEAD RUN's length —
+ *   which is also the narration's `n`, so notification and obituary card agree on both whether
+ *   and what-sized a funeral happened.
  * - `streak_milestone`: `currentStreak` lands exactly on a `STREAK_MILESTONES` value. Mutually
- *   exclusive with `streak_busted` by construction (milestones start at 3; a bust always lands on 1).
+ *   exclusive with `streak_busted` by construction (milestones start at 3; at the wake the live
+ *   run started `questionDate` itself, so `currentStreak` is always 1).
  * - `called_it`: longshot win, already detected by the caller via `isCalledIt`.
  */
 export function deriveRevealBeats(input: RevealBeatInput): RevealBeatInstruction[] {
@@ -101,13 +115,17 @@ export function deriveRevealBeats(input: RevealBeatInput): RevealBeatInstruction
     );
   }
 
-  if (input.previousStreak >= 3 && input.currentStreak === 1) {
+  // §3.2 wake condition, verbatim — same values, same source (the after-replay) as the reveal
+  // payload's `broken_run` emission.
+  const wake = input.runs.length > 0 && input.currentRunStartedOn === input.questionDate;
+  const deadRun = wake ? input.runs.at(-1)! : null;
+  if (deadRun !== null && deadRun.length >= 3) {
     beats.push(
       toInstruction(
         input,
         'streak_busted',
-        { beat: 'streak_busted', data: { n: input.previousStreak } },
-        { n: input.previousStreak },
+        { beat: 'streak_busted', data: { n: deadRun.length } },
+        { n: deadRun.length },
       ),
     );
   } else if (MILESTONES.includes(input.currentStreak)) {
