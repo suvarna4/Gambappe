@@ -19,7 +19,7 @@ import { PRODUCT_NAME } from '@receipts/core';
 
 /** INV-6, pinned verbatim (§10.6): shown on the claim/signup screen. */
 export const CLAIM_PUBLICNESS_STATEMENT =
-  'Your picks, results, and rating are public — that\'s the point. You can stay pseudonymous forever.';
+  "Your picks, results, and rating are public — that's the point. You can stay pseudonymous forever.";
 
 /**
  * §11.3 claim-prompt triggers: streak reaching 3, 5th pick, viewing a nemesis/duo surface as a
@@ -52,8 +52,8 @@ export function ghostConfirmationCopy(handle: string, streak: number, gradedPick
   return `You're claiming ${handle} — ${streakPart}, ${picksPart}. That you?`;
 }
 
-export const CLAIM_CONFIRM_YES_LABEL = 'That\'s me — continue';
-export const CLAIM_CONFIRM_NOT_ME_LABEL = 'This isn\'t me';
+export const CLAIM_CONFIRM_YES_LABEL = "That's me — continue";
+export const CLAIM_CONFIRM_NOT_ME_LABEL = "This isn't me";
 
 export const CLAIM_SIGNIN_HEADING = 'Claim your account';
 export const CLAIM_SIGNIN_GOOGLE_LABEL = 'Continue with Google';
@@ -62,7 +62,7 @@ export const CLAIM_SIGNIN_EMAIL_LABEL = 'Continue with email';
 export const CLAIM_SIGNIN_EMAIL_PLACEHOLDER = 'you@example.com';
 export const CLAIM_SIGNIN_EMAIL_SUBMIT_LABEL = 'Send me a link';
 export const CLAIM_SIGNIN_EMAIL_SENT =
-  'Check your email for a sign-in link. You can close this and come back once you\'ve clicked it.';
+  "Check your email for a sign-in link. You can close this and come back once you've clicked it.";
 
 /** INV-9 (§6.2 step 0 wording: "an explicit 'I'm 18+' confirm"). */
 export const CLAIM_AGE_ATTEST_HEADING = 'One more thing';
@@ -75,8 +75,7 @@ export const CLAIM_SUCCESS_CASE_B_CTA = 'Answer a few quick questions to get pla
 export const CLAIM_ALREADY_CLAIMED = 'This account is already claimed. Nothing to do here.';
 export const CLAIM_GENERIC_ERROR = 'Something went wrong claiming your account. Try again.';
 
-export const EIGHTEEN_PLUS_FOOTER_NOTICE =
-  `18+ only. ${PRODUCT_NAME} never holds money — picks are for competition, not wagers.`;
+export const EIGHTEEN_PLUS_FOOTER_NOTICE = `18+ only. ${PRODUCT_NAME} never holds money — picks are for competition, not wagers.`;
 
 /** WS7-T2 (home + question page) section. */
 export const copy = {
@@ -127,8 +126,7 @@ export const copy = {
   },
   /** WS7-T10 (placement flow UI) section. */
   placement: {
-    intro:
-      "Five quick calls on real historical questions — see how you'd have done, tap by tap.",
+    intro: "Five quick calls on real historical questions — see how you'd have done, tap by tap.",
     progressLabel: (index: number, total: number) => `Item ${index} of ${total}`,
     loading: 'Loading your 5 items…',
     loadErrorTitle: "Couldn't load placement",
@@ -174,6 +172,28 @@ export const nemesisCopy = {
 } as const;
 
 /** WS8-T2 (share cards + share sheet, §10.5) section. */
+/**
+ * SW1-T2 · Swipe-ballot chrome (swipe-ux-plan §2.3, §2.12). Side names come from the question
+ * (`yes_label`/`no_label`); these are the fixed bits of furniture. No money words (INV-8).
+ */
+export const ballotCopy = {
+  /** Rail + hint arrows (side name is appended/prepended by the component). */
+  againstArrow: '←',
+  forArrow: '→',
+  /** Tap wells — the always-present accessible fallback (D-SW7). Glyphs pair with the label. */
+  wellForGlyph: '✓',
+  wellAgainstGlyph: '✕',
+  /** Card group aria-label; `{yes}`/`{no}` are the venue side words. Points AT users to the
+   * buttons below (the keyboard/AT path) rather than promising a custom key handler on the card. */
+  cardAriaLabel: (headline: string, forLabel: string, againstLabel: string) =>
+    `${headline}. Swipe the card, or use the ${againstLabel} and ${forLabel} buttons below to pick.`,
+  /** aria-live announcement when the receipt prints. */
+  receiptPrinted: (sideLabel: string, cents: number) =>
+    `Receipt printed — ${sideLabel} at ${cents} cents.`,
+  /** Idle-nudge sr hint (visually the card sways; SR users get the wells). */
+  swipeHint: 'Swipe the card, or use the buttons below.',
+} as const;
+
 export const shareCopy = {
   shareButtonLabel: 'Share your receipt',
   sheetHeading: 'Share this',
@@ -234,8 +254,7 @@ export const settingsCopy = {
   pushDuoLabel: 'Push for duo updates',
 
   deleteHeading: 'Delete account',
-  deleteWarning:
-    'This permanently deletes your account and pick history. This cannot be undone.',
+  deleteWarning: 'This permanently deletes your account and pick history. This cannot be undone.',
   deleteConfirmPrompt: (handle: string) => `Type "${handle}" to confirm`,
   deleteButton: 'Delete my account',
   deleteConfirmButton: 'Permanently delete',
@@ -265,7 +284,8 @@ export const duoCopy = {
   notEligible: (gradedPicks: number, required: number) =>
     `${gradedPicks}/${required} graded picks — you'll be able to queue for a duo once you reach ${required}.`,
 
-  notQueuedBody: "You're not in the duo queue right now. Partners are matched by rating — join and we'll pair you when a good match is waiting.",
+  notQueuedBody:
+    "You're not in the duo queue right now. Partners are matched by rating — join and we'll pair you when a good match is waiting.",
   joinQueueCta: 'Join duo queue',
   joiningQueue: 'Joining…',
   joinQueueError: 'Could not join the queue — try again.',
@@ -276,7 +296,8 @@ export const duoCopy = {
    * rejection treated as confirmation) rather than from page load. A page reload while still
    * waiting shows the "join queue" button again; clicking it just confirms you're already in
    * — see `DuoHubClient`'s header for the full explanation. */
-  queuedBody: "You're in the queue — you'll be paired once a good match is waiting. This can take a little while.",
+  queuedBody:
+    "You're in the queue — you'll be paired once a good match is waiting. This can take a little while.",
   leaveQueueCta: 'Leave queue',
   leavingQueue: 'Leaving…',
   leaveQueueError: 'Could not leave the queue — try again.',
@@ -290,8 +311,7 @@ export const duoCopy = {
   noActiveMatch: 'No active match this window.',
 
   disbandHeading: 'Disband this duo',
-  disbandWarning:
-    'This ends your duo immediately. Your partner is notified — there is no undo.',
+  disbandWarning: 'This ends your duo immediately. Your partner is notified — there is no undo.',
   disbandButton: 'Disband duo',
   disbandConfirmPrompt: 'Disband your duo with {partner}? This cannot be undone.',
   disbandConfirmButton: 'Yes, disband',

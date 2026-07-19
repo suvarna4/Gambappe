@@ -12,6 +12,7 @@ import {
 import ClaimPromptEngine from '@/components/claim/ClaimPromptEngine';
 import ClaimSheetGalleryDemo from './ClaimSheetGalleryDemo';
 import ShareSheetGalleryDemo from './ShareSheetGalleryDemo';
+import SwipeBallotGalleryDemo from './SwipeBallotGalleryDemo';
 
 /**
  * `/dev/ui` — the WS7-T1 design-system gallery (design doc §19.3 AC: "gallery renders all
@@ -64,6 +65,12 @@ export default function UiGalleryPage() {
             />
           </div>
         </div>
+      </section>
+
+      {/* SW1-T2: the interactive swipe ballot — drag the card, or use the wells/arrow keys. */}
+      <section data-testid="gallery-swipeballot" className="space-y-3">
+        <h2 className="text-muted text-sm font-semibold uppercase">SwipeBallot (interactive)</h2>
+        <SwipeBallotGalleryDemo />
       </section>
 
       <section data-testid="gallery-ticketcard" className="space-y-3">

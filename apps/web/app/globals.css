@@ -37,6 +37,26 @@
   }
 }
 
+/* SW1-T2 idle-nudge (D-SW7): a two-beat sway that teaches the swipe, then never repeats this
+   session. Rotation lives on this keyframe's `transform` (the card's persistent transform is set
+   inline only while dragging/flinging, never with a `rotate` utility) so there's no compose/snap
+   with a standalone `rotate` — same lesson as `stamp-slam` above. */
+@keyframes ballot-nudge {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  12% {
+    transform: translate(16px, -2px) rotate(2.4deg);
+  }
+  24% {
+    transform: translate(-12px, 0) rotate(-1.8deg);
+  }
+  36% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+}
+
 @keyframes crowd-fill {
   from {
     width: 0%;

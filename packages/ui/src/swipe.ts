@@ -51,3 +51,79 @@ export const LEARNED_PICKS = 5;
 /** A busted streak mints an obituary artifact (SW4-T1) only if the broken run was at least
  * this long — a one- or two-day run isn't a story worth a tombstone. */
 export const OBITUARY_MIN_STREAK = 3;
+
+// ---------------------------------------------------------------------------------------------
+// Pure gesture math (SW1-T2). Extracted so the interaction can be unit-tested with no DOM — the
+// repo's vitest runs in `node` (no jsdom), and pointer-drag behavior is covered end-to-end by
+// the SW1-T5 Playwright suite in a real browser. `SwipeBallot` wires these to Pointer Events.
+// ---------------------------------------------------------------------------------------------
+
+import type { MarketSide } from './format.js';
+
+/** Which side a horizontal drag points at: right (dx > 0) = YES/for, left = NO/against (D-SW9). */
+export function dragSide(dx: number): MarketSide {
+  return dx > 0 ? 'yes' : 'no';
+}
+
+/**
+ * Progress toward commit as a fraction of the threshold: `|dx| / (width × COMMIT_THRESHOLD_RATIO)`.
+ * `0` at rest, `1` exactly at the commit threshold, `>1` past it. Guards a zero/unknown width
+ * (returns 0) so an unmeasured card can't spuriously commit.
+ */
+export function dragProgress(dx: number, cardWidth: number): number {
+  if (!(cardWidth > 0)) return 0;
+  return Math.abs(dx) / (cardWidth * COMMIT_THRESHOLD_RATIO);
+}
+
+/** A release commits once progress reaches the threshold (progress ≥ 1). */
+export function isCommit(progress: number): boolean {
+  return progress >= 1;
+}
+
+/** Card rotation for a drag: `dx × TILT_DEG_PER_PX`, clamped to ±`MAX_TILT_DEG`. */
+export function tiltDeg(dx: number): number {
+  return Math.max(-MAX_TILT_DEG, Math.min(MAX_TILT_DEG, dx * TILT_DEG_PER_PX));
+}
+
+/** Stamp-preview scale: `STAMP_SCALE_FROM` at zero progress, easing to 1.0 at/after the threshold. */
+export function stampScale(progress: number): number {
+  return STAMP_SCALE_FROM - (STAMP_SCALE_FROM - 1) * Math.min(1, Math.max(0, progress));
+}
+
+/** World-tint / stamp-preview opacity: ramps 0 → 0.85 with progress, capped at the threshold. */
+export function tintOpacity(progress: number): number {
+  return 0.85 * Math.min(1, Math.max(0, progress));
+}
+
+// ---- Guardrail logic (D-SW7). Pure; the component owns the actual localStorage/sessionStorage.
+
+/** localStorage keys / sessionStorage key for the fade-with-experience guardrails (§2.8). */
+export const GUARDRAIL_KEYS = {
+  thrown: 'rcpt_thrown',
+  picks: 'rcpt_picks',
+  nudged: 'rcpt_nudged',
+} as const;
+
+/** After `LEARNED_PICKS` throws the rails dim (opacity 0.4) and the hint arrows unmount. */
+export function railsFaded(pickCount: number): boolean {
+  return pickCount >= LEARNED_PICKS;
+}
+export function hintsHidden(pickCount: number): boolean {
+  return pickCount >= LEARNED_PICKS;
+}
+export function railsOpacity(pickCount: number): number {
+  return railsFaded(pickCount) ? 0.4 : 1;
+}
+
+/**
+ * Whether the idle nudge should play: only on an open question the viewer can act on, only
+ * before their first-ever throw, and only once per session. Pure decision from the three
+ * stored flags so the timer effect stays trivial.
+ */
+export function shouldNudge(opts: {
+  isOpen: boolean;
+  hasThrownEver: boolean;
+  nudgedThisSession: boolean;
+}): boolean {
+  return opts.isOpen && !opts.hasThrownEver && !opts.nudgedThisSession;
+}
