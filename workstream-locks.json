@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T14:34:04.365Z",
+  "updated_at": "2026-07-19T14:34:06.200Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1317,13 +1317,13 @@
         "SW1-T2"
       ],
       "mock_start_ok": false,
-      "note": "receipt slip on integration branch; tests + typecheck + lint + build green",
-      "status": "in_review",
+      "note": "Merged to main via PR #73 (commit b486590)",
+      "status": "done",
       "owner": null,
       "branch": null,
-      "pr": null,
+      "pr": "https://github.com/suvarna4/Gambappe/pull/73",
       "claimed_at": null,
-      "updated_at": "2026-07-19T09:08:07.592Z"
+      "updated_at": "2026-07-19T14:34:06.200Z"
     },
     "SW1-T4": {
       "title": "ViewerStrip integration behind flag (INV-10 preserved)",
