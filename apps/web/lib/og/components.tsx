@@ -9,15 +9,16 @@
  * `barcodePattern`) so the two systems stay visually in sync without sharing JSX — see
  * `packages/ui/src/tokens.ts`'s own comment anticipating exactly this split.
  *
- * SPEC-GAP(WS8-T1): §10.4 pins numerals/prices to `IBM Plex Mono` and UI text to `Inter`.
- * Satori requires font data as an explicit buffer (no system-font access); `next/og` falls
- * back to a bundled Noto Sans when none is supplied. Embedding the brand fonts needs their
- * binary files vendored into the repo (or fetched at build time) — left as follow-up so this
- * task doesn't ship a network dependency on Google Fonts at render time. Tracked here rather
- * than silently shipping the wrong typeface.
+ * SW4-T2: these render the "Print Shop" share-card face (§2.1, D-SW1) — a light paper stock so
+ * cards read in daylight chats, distinct from the dark in-app world. Palette is `printShop`
+ * (`./print-shop.ts`); the brand faces (Barlow Condensed display, IBM Plex Mono numerals) are
+ * now embedded for satori via `loadDisplayFonts` (`./fonts.ts`), resolving the earlier WS8-T1
+ * SPEC-GAP where OG fell back to next/og's bundled Noto Sans. `fontFamily` here uses the bare
+ * satori family names (`CARD_DISPLAY_FONT`/`CARD_MONO_FONT`) that match those registrations.
  */
 import type { CSSProperties, ReactElement, ReactNode } from 'react';
-import { barcodePattern, colors, fonts } from '@receipts/ui';
+import { barcodePattern } from '@receipts/ui';
+import { CARD_DISPLAY_FONT, CARD_MONO_FONT, printShop } from './print-shop';
 
 export const OG_WIDTH = 1200;
 export const OG_HEIGHT = 630;
@@ -48,8 +49,8 @@ export function OgCanvas({
         ...flexCol,
         width,
         height,
-        backgroundColor: colors.bg,
-        color: colors.paper,
+        backgroundColor: printShop.ground,
+        color: printShop.ink,
         padding: 56,
         justifyContent: 'space-between',
         position: 'relative',
@@ -72,8 +73,8 @@ export function OgTicket({
     <div
       style={{
         ...flexCol,
-        backgroundColor: colors.paper,
-        color: colors.ink,
+        backgroundColor: printShop.paper,
+        color: printShop.ink,
         borderRadius: 12,
         padding: '28px 36px',
         ...style,
@@ -92,10 +93,10 @@ export function OgTicket({
 // keeps every template renderable offline with the bundled font, at the cost of the fancier
 // glyphs; swap back once real font embedding lands.
 const STAMP_CONFIG = {
-  win: { label: 'WIN', glyph: '+', color: colors.win },
-  loss: { label: 'LOSS', glyph: 'X', color: colors.loss },
-  void: { label: 'VOID', glyph: '-', color: colors.muted },
-  called_it: { label: 'CALLED IT', glyph: '*', color: colors.win },
+  win: { label: 'WIN', glyph: '+', color: printShop.win },
+  loss: { label: 'LOSS', glyph: 'X', color: printShop.loss },
+  void: { label: 'VOID', glyph: '-', color: printShop.muted },
+  called_it: { label: 'CALLED IT', glyph: '*', color: printShop.win },
 } as const;
 
 export type OgStampVariant = keyof typeof STAMP_CONFIG;
@@ -113,8 +114,8 @@ export function OgStamp({ variant }: { variant: OgStampVariant }): ReactElement 
         borderRadius: 8,
         color,
         padding: '10px 20px',
-        fontFamily: fonts.mono,
-        fontSize: 32,
+        fontFamily: CARD_DISPLAY_FONT,
+        fontSize: 34,
         fontWeight: 700,
         letterSpacing: 2,
         transform: 'rotate(-4deg)',
@@ -127,24 +128,18 @@ export function OgStamp({ variant }: { variant: OgStampVariant }): ReactElement 
 }
 
 /** §10.4 PriceTag — "YES @ 63¢", cents-of-probability, never money. */
-export function OgPriceTag({
-  side,
-  cents,
-}: {
-  side: 'yes' | 'no';
-  cents: number;
-}): ReactElement {
-  const bg = side === 'yes' ? colors.sideA : colors.sideB;
+export function OgPriceTag({ side, cents }: { side: 'yes' | 'no'; cents: number }): ReactElement {
+  const bg = side === 'yes' ? printShop.sideA : printShop.sideB;
   return (
     <div
       style={{
         ...flexRow,
         alignItems: 'center',
         backgroundColor: bg,
-        color: colors.bg,
+        color: printShop.paper,
         borderRadius: 6,
         padding: '8px 16px',
-        fontFamily: fonts.mono,
+        fontFamily: CARD_MONO_FONT,
         fontSize: 28,
         fontWeight: 700,
       }}
@@ -168,16 +163,18 @@ export function OgCrowdBar({ yesPct }: { yesPct: number }): ReactElement {
           overflow: 'hidden',
         }}
       >
-        <div style={{ width: `${pct}%`, backgroundColor: colors.sideA, display: 'flex' }} />
-        <div style={{ width: `${100 - pct}%`, backgroundColor: colors.sideB, display: 'flex' }} />
+        <div style={{ width: `${pct}%`, backgroundColor: printShop.sideA, display: 'flex' }} />
+        <div
+          style={{ width: `${100 - pct}%`, backgroundColor: printShop.sideB, display: 'flex' }}
+        />
       </div>
       <div
         style={{
           ...flexRow,
           justifyContent: 'space-between',
-          fontFamily: fonts.mono,
+          fontFamily: CARD_MONO_FONT,
           fontSize: 20,
-          color: colors.muted,
+          color: printShop.muted,
         }}
       >
         <span>YES {pct}%</span>
@@ -192,8 +189,10 @@ export function OgCrowdBar({ yesPct }: { yesPct: number }): ReactElement {
 export function OgStreakFlame({ count }: { count: number }): ReactElement {
   return (
     <div style={{ ...flexRow, alignItems: 'center', gap: 8 }}>
-      <span style={{ fontFamily: fonts.mono, fontSize: 20, color: colors.muted }}>STREAK</span>
-      <span style={{ fontFamily: fonts.mono, fontSize: 28, fontWeight: 700 }}>{count}</span>
+      <span style={{ fontFamily: CARD_MONO_FONT, fontSize: 20, color: printShop.muted }}>
+        STREAK
+      </span>
+      <span style={{ fontFamily: CARD_MONO_FONT, fontSize: 28, fontWeight: 700 }}>{count}</span>
     </div>
   );
 }
@@ -212,11 +211,13 @@ export function OgBarcodeFooter({ path }: { path: string }): ReactElement {
           // pattern recomputed fresh from `path` on every render, not a list of entities.
           <div
             key={i}
-            style={{ width: 3, height: h * 2, backgroundColor: colors.muted, display: 'flex' }}
+            style={{ width: 3, height: h * 2, backgroundColor: printShop.muted, display: 'flex' }}
           />
         ))}
       </div>
-      <span style={{ fontFamily: fonts.mono, fontSize: 16, color: colors.muted }}>{path}</span>
+      <span style={{ fontFamily: CARD_MONO_FONT, fontSize: 16, color: printShop.muted }}>
+        {path}
+      </span>
     </div>
   );
 }
@@ -234,7 +235,9 @@ export function OgQrFooter({ path, qrDataUri }: { path: string; qrDataUri: strin
   return (
     <div style={{ ...flexRow, alignItems: 'flex-end', gap: 16 }}>
       <img src={qrDataUri} width={110} height={110} alt="" style={{ borderRadius: 4 }} />
-      <span style={{ fontFamily: fonts.mono, fontSize: 16, color: colors.muted }}>{path}</span>
+      <span style={{ fontFamily: CARD_MONO_FONT, fontSize: 16, color: printShop.muted }}>
+        {path}
+      </span>
     </div>
   );
 }
@@ -246,11 +249,7 @@ export function OgRow({
   children: ReactNode;
   style?: CSSProperties;
 }): ReactElement {
-  return (
-    <div style={{ ...flexRow, ...style }}>
-      {children}
-    </div>
-  );
+  return <div style={{ ...flexRow, ...style }}>{children}</div>;
 }
 
 export function OgHeadline({ children }: { children: ReactNode }): ReactElement {
@@ -258,10 +257,12 @@ export function OgHeadline({ children }: { children: ReactNode }): ReactElement 
     <div
       style={{
         ...flexRow,
-        fontSize: 44,
+        fontFamily: CARD_DISPLAY_FONT,
+        fontSize: 60,
         fontWeight: 700,
-        lineHeight: 1.15,
-        color: colors.paper,
+        lineHeight: 1.02,
+        textTransform: 'uppercase',
+        color: printShop.ink,
       }}
     >
       {children}
@@ -271,7 +272,7 @@ export function OgHeadline({ children }: { children: ReactNode }): ReactElement 
 
 export function OgHandleRow({ handle }: { handle: string }): ReactElement {
   return (
-    <div style={{ ...flexRow, fontFamily: fonts.mono, fontSize: 24, color: colors.muted }}>
+    <div style={{ ...flexRow, fontFamily: CARD_MONO_FONT, fontSize: 24, color: printShop.muted }}>
       {handle}
     </div>
   );

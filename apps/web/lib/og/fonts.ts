@@ -32,9 +32,11 @@ function read(file: string): Buffer {
 let cache: SatoriFont[] | null = null;
 
 /**
- * The Barlow Condensed weights used by card templates (500 body-display, 700 headlines/stamps),
- * loaded once per server process. Both are registered under the single family name so satori
- * picks the weight from the element's `fontWeight`.
+ * The brand faces embedded for satori card templates (SW4-T2): Barlow Condensed (display —
+ * headlines/stamps) and IBM Plex Mono (the "printed" numerals/prices), loaded once per server
+ * process. Registering the real faces resolves the WS8-T1 SPEC-GAP where OG output fell back to
+ * next/og's bundled Noto Sans. Weights sit under one family name each so satori matches on the
+ * element's `fontWeight`; the family names match the `fontFamily` strings the templates set.
  */
 export function loadDisplayFonts(): SatoriFont[] {
   if (!cache) {
@@ -49,6 +51,18 @@ export function loadDisplayFonts(): SatoriFont[] {
         name: 'Barlow Condensed',
         data: read('BarlowCondensed-Bold.ttf'),
         weight: 700,
+        style: 'normal',
+      },
+      {
+        name: 'IBM Plex Mono',
+        data: read('IBMPlexMono-Regular.ttf'),
+        weight: 400,
+        style: 'normal',
+      },
+      {
+        name: 'IBM Plex Mono',
+        data: read('IBMPlexMono-SemiBold.ttf'),
+        weight: 600,
         style: 'normal',
       },
     ];
