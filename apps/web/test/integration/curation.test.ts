@@ -36,6 +36,11 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // The composer POST now starts pg-boss (lifecycle-job enqueue) — stop it like
+  // settlement-admin.test.ts does so teardown doesn't leave its pool/timers running.
+  const { getBoss } = await import('@/lib/stores');
+  const boss = await getBoss();
+  await boss.stop({ graceful: false });
   await pool.end();
 });
 

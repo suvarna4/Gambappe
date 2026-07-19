@@ -10,6 +10,7 @@ import { getDailyQuestion, getMarketById, insertQuestion } from '@receipts/db';
 import { getDb } from '@/lib/stores';
 import { withAdminAudit } from '@/lib/admin-audit';
 import { buildQuestionSlug, composerBodySchema, resolveComposerTimes, validateComposerInput } from '@/lib/curation';
+import { scheduleDailyQuestionLifecycle } from '@/lib/question-lifecycle-queue';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -78,6 +79,16 @@ async function postHandler(request: Request): Promise<NextResponse> {
       pairedMarketId: body.paired_market_id ?? null,
       createdByUserId: null, // P0 stopgap auth has no per-admin user identity (§19.5)
     });
+
+    // §5.3/§6.2: a `scheduled` question is inert until question:open/question:lock/reveal:fire
+    // are enqueued at its lifecycle times — without this, the row sits in `scheduled` forever
+    // (WS14-T4's Question Zero drill found exactly that: zero pgboss.job rows after curation).
+    // A failure here (pg-boss unreachable) propagates as a 500 on purpose: the question row
+    // already exists, but silently returning 201 would recreate the unscheduled-forever bug this
+    // call fixes. Recovery for that narrow window is the runbook's manual-schedule script
+    // (docs/runbooks/launch-drill.md §2); the jobs are idempotent so re-enqueueing is harmless.
+    await scheduleDailyQuestionLifecycle(question);
+
     return NextResponse.json(
       { data: question },
       { status: 201, headers: { 'x-server-time': String(nowMs()) } },
