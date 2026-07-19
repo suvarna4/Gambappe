@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T02:53:04.400Z",
+  "updated_at": "2026-07-19T03:00:58.609Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -880,13 +880,13 @@
         "WS8-T4"
       ],
       "mock_start_ok": false,
-      "note": "PR #67 open, pnpm verify green (unit + integration + e2e, 5 new e2e tests). /q archive (force-dynamic, same DATABASE_URL-at-build-time constraint as sitemap.ts), Article/ItemList JSON-LD, canonical tag added to /q/[slug], robots.txt. Awaiting CI + fable review.",
+      "note": "PR #67 open. Fable review found 3 issues: (1) pct_yes rounding mismatch - pre-existing in serialize-question.ts, out of scope, left as follow-up per reviewer's own recommendation; (2) robots.txt blocked /api/og + /api/oembed share surfaces - fixed with explicit Allow entries; (3) unused truncated field costing an extra COUNT query per request - removed. All fixed, pushed as f7dee11, pnpm verify + e2e green. Awaiting CI on latest commit.",
       "status": "in_review",
       "owner": "claude-code-web-session-35b05898",
       "branch": "feat/ws8-t5-seo-archive-pass",
       "pr": "https://github.com/suvarna4/Gambappe/pull/67",
       "claimed_at": "2026-07-19T00:17:31.843Z",
-      "updated_at": "2026-07-19T02:53:04.400Z"
+      "updated_at": "2026-07-19T03:00:58.609Z"
     },
     "WS9-T1": {
       "title": "Outbox + email channel",
