@@ -72,12 +72,27 @@ const SKIP_DIRS = new Set([
 ]);
 /** Only the Stamp component itself may bind an outcome to the foil ink — this is the file that
  * defines `called_it`'s default. Every other call site must reach foil (if at all) only through
- * that default, never by passing `ink="foil"` directly. */
+ * that default, never by passing `ink="foil"` directly. `tokens.ts`/`print-shop.ts` additionally
+ * exempt the gradient-hex scan below: they're the legitimate single-value origin of `colors.gold`
+ * / `printShop.gold` (and `tokens.ts`'s doc comment cross-references the other file's value), not
+ * a copy-pasted gradient. */
 const ALLOWED_FOIL_FILES = new Set(['packages/ui/src/components/Stamp.tsx']);
-/** An explicit `ink="foil"` (or `ink={'foil'}` / `ink={"foil"}`) prop assignment — not just the
- * word "foil" anywhere (docs/comments/headings are fine; an explicit prop grant is not) and not
- * `data-ink="foil"` (the rendered DOM attribute, matched with a negative lookbehind). */
-const INK_FOIL_PROP = /(?<!data-)\bink\s*=\s*(?:\{\s*)?["'`]foil["'`]/g;
+const ALLOWED_GOLD_HEX_FILES = new Set([
+  'packages/ui/src/components/Stamp.tsx',
+  'packages/ui/src/tokens.ts',
+  'apps/web/lib/og/print-shop.ts',
+]);
+/** An explicit `ink="foil"` (JSX prop, `ink={'foil'}`/`ink={"foil"}`) or `ink: 'foil'` (object/
+ * spread-props form, e.g. `{...{ ink: 'foil' }}` or `createElement(Stamp, { ink: 'foil' })`) —
+ * not just the word "foil" anywhere (docs/comments/headings are fine; an explicit grant is not)
+ * and not `data-ink="foil"` (the rendered DOM attribute, matched with a negative lookbehind). */
+const INK_FOIL_PROP = /(?<!data-)\bink\s*[:=]\s*(?:\{\s*)?["'`]foil["'`]/g;
+/** The gold-gradient hex trio `Stamp.tsx`'s `foil` ink is built from — catches the gradient
+ * being copy-pasted onto some other element (bypassing the `ink` prop, and this scan's own
+ * `INK_FOIL_PROP` check, entirely). Requires at least 2 of the 3 hexes in one file: a single
+ * hex alone is a legitimate lone gold-token definition (`tokens.ts`'s `colors.gold`,
+ * `print-shop.ts`'s `printShop.gold`) — the gradient is only actually reproduced by the pair. */
+const FOIL_GRADIENT_HEXES = [/#FFE9A8/i, /#FFC53D/i, /#B8860B/i];
 
 function findSourceFiles(dir: string, acc: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
@@ -91,7 +106,7 @@ function findSourceFiles(dir: string, acc: string[] = []): string[] {
 }
 
 describe('Stamp — foil is scarce (§2.7 AC: "foil used nowhere except called-it")', () => {
-  it('no source file outside Stamp.tsx sets ink="foil"', () => {
+  it('no source file outside Stamp.tsx sets ink="foil" (prop or object-property form)', () => {
     const violations: string[] = [];
     for (const dir of ['packages/ui/src', 'apps/web']) {
       for (const file of findSourceFiles(join(ROOT, dir))) {
@@ -100,6 +115,20 @@ describe('Stamp — foil is scarce (§2.7 AC: "foil used nowhere except called-i
         const src = readFileSync(file, 'utf8');
         INK_FOIL_PROP.lastIndex = 0;
         if (INK_FOIL_PROP.test(src)) violations.push(rel);
+      }
+    }
+    expect(violations).toEqual([]);
+  });
+
+  it('no source file outside Stamp.tsx reproduces the gold-foil gradient directly', () => {
+    const violations: string[] = [];
+    for (const dir of ['packages/ui/src', 'apps/web']) {
+      for (const file of findSourceFiles(join(ROOT, dir))) {
+        const rel = relative(ROOT, file).split('\\').join('/');
+        if (ALLOWED_GOLD_HEX_FILES.has(rel)) continue;
+        const src = readFileSync(file, 'utf8');
+        const hexHits = FOIL_GRADIENT_HEXES.filter((re) => re.test(src)).length;
+        if (hexHits >= 2) violations.push(rel);
       }
     }
     expect(violations).toEqual([]);

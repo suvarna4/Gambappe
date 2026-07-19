@@ -2,9 +2,7 @@ import { useEffect, useState } from 'react';
 import { topPercentDisplay, type QuestionPublic, type RevealPayload } from '@receipts/core';
 import { Stamp, StreakFlame, prefersReducedMotion } from '@receipts/ui';
 import { copy, shareCopy } from '@/lib/copy';
-import { buildObituaryHandoffProps, streakBrokeThisReveal } from '@/lib/obituary';
 import { ApiClientError, fetchReveal } from '@/lib/pick-client';
-import { ObituaryCard } from './ObituaryCard';
 import ShareSheet from './share/ShareSheet';
 
 export interface RevealSequenceProps {
@@ -75,10 +73,6 @@ export function RevealSequence({ question }: RevealSequenceProps) {
   // revealed question's share affordance can live now that `RevealSequence` (WS7-T3) owns
   // rendering the whole `revealed` state instead of `ViewerStrip`'s old generic pick view.
   const [shareOpen, setShareOpen] = useState(false);
-  // SW3-T2 (§2.6 "Obituary handoff"): once buried, the final beat falls back to the plain share
-  // button for the rest of this mount — "Bury it" has no backend yet (SPEC-GAP, see
-  // `lib/obituary.ts`'s header comment), so this is a client-only dismiss, not an archive.
-  const [buried, setBuried] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -179,30 +173,22 @@ export function RevealSequence({ question }: RevealSequenceProps) {
           <span className="text-muted text-xs">{copy.question.freezeUsedNote}</span>
         ) : null}
       </div>
-      {/* §2.6 "Obituary handoff": the final beat swaps the plain share button for SW4-T1's
-          `ObituaryCard` when this reveal is where a real streak just ended (see
-          `lib/obituary.ts` for exactly what that means and its documented SPEC-GAPs). Degrades
-          to the ordinary share button whenever it isn't eligible, `question_date` is missing
-          (non-daily kinds), or the viewer already dismissed it this mount. */}
-      {!buried && question.question_date && streakBrokeThisReveal(viewer) ? (
-        <ObituaryCard
-          {...buildObituaryHandoffProps(viewer, question.question_date, {
-            yes: question.yes_label,
-            no: question.no_label,
-          })}
-          onBury={() => setBuried(true)}
-          onShare={() => setShareOpen(true)}
-        />
-      ) : (
-        <button
-          type="button"
-          onClick={() => setShareOpen(true)}
-          data-testid="share-receipt-button"
-          className="bg-side-a min-h-11 rounded px-3 py-1.5 text-xs font-semibold text-white"
-        >
-          {shareCopy.shareButtonLabel}
-        </button>
-      )}
+      {/* SW3-T2 (§2.6 "Obituary handoff"): a streak-broke-at-this-reveal handoff to SW4-T1's
+          `ObituaryCard` was attempted here but reverted — see that commit's PR discussion.
+          `RevealPayload.viewer.streak` is a participation streak (§6.6): it increments on any
+          graded pick, including a loss, and only resets on a MISSED day, never at the reveal a
+          viewer just lost. So "the streak broke at this exact reveal" isn't a fact this payload
+          can express without a contract change (e.g. surfacing the win-streak block, or a
+          server-computed broken-run length) — re-attempt once that lands, keyed off the real
+          signal rather than a derived guess. */}
+      <button
+        type="button"
+        onClick={() => setShareOpen(true)}
+        data-testid="share-receipt-button"
+        className="bg-side-a min-h-11 rounded px-3 py-1.5 text-xs font-semibold text-white"
+      >
+        {shareCopy.shareButtonLabel}
+      </button>
       <ShareSheet
         kind="receipt"
         targetId={viewer.pick.id}
