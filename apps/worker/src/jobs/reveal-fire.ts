@@ -14,7 +14,9 @@
  * single transaction so a crash mid-run rolls back cleanly and a redelivery reprocesses from
  * scratch (never a partially-applied reveal). "Called it" badge (§6.7: win AND implied entry
  * probability ≤ `LONGSHOT_THRESHOLD`) is detected here and written to `analytics_events`
- * (WS3-T6). Revalidation is SPEC-GAP(WS3-T4): `/internal/revalidate` is WS8-T3 scope.
+ * (WS3-T6). After a real reveal commits, the web app's ISR pages are revalidated best-effort
+ * via `/internal/revalidate` (§6.7 "revalidate pages" — was SPEC-GAP(WS3-T4) until WS8-T3's
+ * endpoint merged), so the synchronized page flip doesn't lag the ISR timer.
  *
  * WS9-T3 (§13.3): per participating profile, `streak_milestone`/`streak_busted`/
  * `streak_freeze_used`/`called_it` beats are derived (`../notifications/reveal-beats.js`, pure)
@@ -74,6 +76,7 @@ import {
 import type { JobHandler } from '../heartbeat.js';
 import { logger } from '../logger.js';
 import { buildQuestionUrl } from '../lib/question-url.js';
+import { questionRevalidationPaths, requestRevalidation } from '../lib/revalidate.js';
 import { tryCompleteDuoMatch } from './duo-match-completion.js';
 import { deriveRevealBeats } from '../notifications/reveal-beats.js';
 import { writeBeatsToOutbox } from '../notifications/write-outbox.js';
@@ -202,8 +205,11 @@ export async function runRevealFire(
 
     await client.query('COMMIT');
 
-    // SPEC-GAP(WS3-T4): POST /internal/revalidate for the question/spectator pages is WS8-T3
-    // scope (the endpoint doesn't exist yet) — skip the HTTP call.
+    // Best-effort, post-commit only (never throws; ISR timer is the fallback). The reveal is
+    // the P8 appointment moment — this is what makes the public page flip NOW instead of up to
+    // ~ISR_REVALIDATE_QUESTION_S later.
+    await requestRevalidation(questionRevalidationPaths(question.slug));
+
     // SPEC-GAP(WS9-T3): notification DISPATCH (notify:dispatch, actually sending email/push) is
     // WS9-T1/T2 scope — beats above are written to the outbox only.
 

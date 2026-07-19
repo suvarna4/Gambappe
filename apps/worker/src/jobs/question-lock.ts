@@ -3,8 +3,9 @@
  * `crowd_yes_at_lock`/`crowd_no_at_lock` (bot-excluded) and `yes_price_at_lock`. Fired once per
  * question at `lock_at`. Price resolution reads cache/DB only — no live venue fetch (§6.2: the
  * lock job's price snapshot is "from cache/DB, same staleness rules"; the venue-fetch rung is
- * exclusive to the pick endpoint's narrow §2.2 exception). Revalidation is deferred —
- * SPEC-GAP(WS3-T1): the `/internal/revalidate` hook is WS8-T3 scope.
+ * exclusive to the pick endpoint's narrow §2.2 exception). After a real lock commits, the web
+ * app's ISR pages are revalidated best-effort via `/internal/revalidate` (§2.3 step 3 — was
+ * SPEC-GAP(WS3-T1) until WS8-T3's endpoint merged).
  */
 import type pg from 'pg';
 import type { Redis } from 'ioredis';
@@ -20,6 +21,7 @@ import {
 } from '@receipts/db';
 import type { JobHandler } from '../heartbeat.js';
 import { logger } from '../logger.js';
+import { questionRevalidationPaths, requestRevalidation } from '../lib/revalidate.js';
 
 export interface QuestionLockJobData {
   questionId: string;
@@ -100,8 +102,11 @@ export async function runQuestionLock(
     const tx: Db = createDb(client);
     const result = await lockQuestionTx(tx, questionId, at, price);
     await client.query('COMMIT');
-    // SPEC-GAP(WS3-T1): POST /internal/revalidate for the question/spectator pages is WS8-T3
-    // scope (the endpoint doesn't exist yet) — skip the HTTP call.
+    if (result.locked) {
+      // Best-effort, post-commit only (never throws; ISR timer is the fallback) — and only on a
+      // real open→locked transition, not a stale redelivery no-op.
+      await requestRevalidation(questionRevalidationPaths(question.slug));
+    }
     return result;
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
