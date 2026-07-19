@@ -8,6 +8,7 @@
 import type { Redis } from 'ioredis';
 import { computePercentiles } from '@receipts/core';
 import { getAllGradedPickScoresForQuestion, getGradedPickScoresForQuestion, type Db } from '@receipts/db';
+import { ensureRedisConnected } from './stores';
 
 const REVEAL_HASH_TTL_S = 7 * 24 * 3600;
 
@@ -21,6 +22,7 @@ export function revealHashKey(questionId: string): string {
  * cached percentile hash; this is the same recompute-and-repopulate `getViewerPercentile` uses
  * on a cache miss, just triggered explicitly instead of lazily. */
 export async function recomputeAndCache(db: Db, redis: Redis, questionId: string): Promise<Map<string, number>> {
+  await ensureRedisConnected(redis);
   const entries = await getGradedPickScoresForQuestion(db, questionId);
   const byProfile = new Map<string, number>();
   if (entries.length === 0) return byProfile;
@@ -47,6 +49,7 @@ export async function getViewerPercentile(
   questionId: string,
   profileId: string,
 ): Promise<number | null> {
+  await ensureRedisConnected(redis);
   const cached = await redis.hget(revealHashKey(questionId), profileId);
   if (cached !== null) return Number(cached);
 
