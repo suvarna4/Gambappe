@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { PRODUCT_NAME } from '@receipts/core';
+import { isFlagEnabled, PRODUCT_NAME } from '@receipts/core';
 import PlacementClient from './PlacementClient';
 
 /**
@@ -13,5 +13,6 @@ export const metadata: Metadata = {
 };
 
 export default function PlacementPage() {
-  return <PlacementClient />;
+  // SW6-T1: the swipe deck reuses the daily flag; off keeps today's tap-button placement.
+  return <PlacementClient swipeBallot={isFlagEnabled('swipe_ballot')} />;
 }

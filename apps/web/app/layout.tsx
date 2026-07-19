@@ -1,8 +1,30 @@
 import type { Metadata } from 'next';
+import { Barlow_Condensed, IBM_Plex_Mono, Inter } from 'next/font/google';
 import { PRODUCT_NAME } from '@receipts/core';
 
 import './globals.css';
 import { EIGHTEEN_PLUS_FOOTER_NOTICE } from '@/lib/copy';
+
+// SW0-T2 (D-SW2): the three product faces, self-hosted by next/font (no external CDN at
+// runtime — CSP-safe). Each exposes a `--font-*` CSS variable that the shared Tailwind theme
+// (`packages/ui/tailwind.config.ts`) puts at the head of its font stack. `display: 'swap'`
+// keeps text visible during load; the token stack is the fallback, so a slow font never
+// blanks the page (and the reserved layout slots mean no shift when it lands).
+const inter = Inter({ subsets: ['latin'], variable: '--font-ui', display: 'swap' });
+const plexMono = IBM_Plex_Mono({
+  subsets: ['latin'],
+  weight: ['400', '600'],
+  variable: '--font-mono',
+  display: 'swap',
+});
+const barlowCondensed = Barlow_Condensed({
+  subsets: ['latin'],
+  weight: ['500', '700'],
+  variable: '--font-display',
+  display: 'swap',
+});
+
+const fontVariables = `${inter.variable} ${plexMono.variable} ${barlowCondensed.variable}`;
 
 export const metadata: Metadata = {
   title: PRODUCT_NAME,
@@ -11,7 +33,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={fontVariables}>
       <body className="bg-bg text-paper font-ui min-h-screen">
         {children}
         {/* INV-9: every page footer carries an 18+ notice. */}

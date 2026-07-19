@@ -24,6 +24,13 @@ export interface CachedPick {
   side: 'yes' | 'no';
   pickedAtIso: string;
   undoUntilIso: string;
+  /**
+   * SW1-T3: the stamped live yes-price at entry (`pick.yes_price_at_entry`, §5.3) — the receipt
+   * prints the chosen side's cents from THIS, the receipts-over-claims atomic unit, not the
+   * drifting live price. Optional: the `ALREADY_PICKED` 409 recovery path and pre-SW1-T3 cache
+   * entries don't carry it, in which case the receipt falls back to the live price.
+   */
+  yesPriceAtEntry?: number;
 }
 
 function storageKey(questionId: string): string {
@@ -46,7 +53,8 @@ export function readCachedPick(storage: KeyValueStorage, questionId: string): Ca
       typeof parsed.pickId === 'string' &&
       (parsed.side === 'yes' || parsed.side === 'no') &&
       typeof parsed.pickedAtIso === 'string' &&
-      typeof parsed.undoUntilIso === 'string'
+      typeof parsed.undoUntilIso === 'string' &&
+      (parsed.yesPriceAtEntry === undefined || typeof parsed.yesPriceAtEntry === 'number')
     ) {
       return parsed as CachedPick;
     }

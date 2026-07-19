@@ -11,6 +11,8 @@ import {
 } from '@receipts/ui';
 import { copy, hushCopy } from '@/lib/copy';
 import { formatEtClock } from '@/lib/format-et';
+import { DeckStage } from './DeckStage';
+import { DeckStates } from './DeckStates';
 
 export interface QuestionStateViewProps {
   question: QuestionPublic;
@@ -19,6 +21,14 @@ export interface QuestionStateViewProps {
   serverOffsetMs: number;
   /** Reserved slot for the client-side viewer strip (§10.1: "no layout shift on hydration"). */
   viewerSlot?: React.ReactNode;
+  /**
+   * SW2-T1: `swipe_ballot` flag (read server-side, passed down). When on, the `open` state
+   * renders the full-screen deck (`DeckStage`) instead of the ticket + price-tag layout; every
+   * other state is unchanged for now (SW2-T2 converts them). Default `false` keeps the flag-off
+   * render byte-identical to today (INV-10) — this prop is not viewer data, so it never touches
+   * the INV-10 dual-render proof.
+   */
+  swipeBallot?: boolean;
 }
 
 /**
@@ -36,7 +46,28 @@ export function QuestionStateView({
   question,
   serverOffsetMs,
   viewerSlot,
+  swipeBallot = false,
 }: QuestionStateViewProps) {
+  // SW2-T1/SW2-T2: when the flag is on, the whole question page is the deck. The actionable
+  // `open` state is the interactive ballot (DeckStage); the other states render on the same dark
+  // stage (DeckStates). Both are viewer-free, so INV-10 holds; the flag-off path below is
+  // untouched and stays byte-identical.
+  if (swipeBallot) {
+    return (
+      <div data-testid={`question-state-${question.status}`}>
+        {question.status === 'open' ? (
+          <DeckStage
+            question={question}
+            viewerSlot={viewerSlot}
+            underLabel={copy.question.tomorrowTeaser}
+          />
+        ) : (
+          <DeckStates question={question} serverOffsetMs={serverOffsetMs} viewerSlot={viewerSlot} />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div data-testid={`question-state-${question.status}`}>
       <TicketCard>
@@ -109,6 +140,7 @@ export function QuestionStateView({
                     noCount={question.crowd.no}
                     yesLabel={question.yes_label}
                     noLabel={question.no_label}
+                    surface="paper"
                   />
                 ) : null}
                 <CountdownTicker
@@ -128,6 +160,7 @@ export function QuestionStateView({
                   noCount={question.crowd.no}
                   yesLabel={question.yes_label}
                   noLabel={question.no_label}
+                  surface="paper"
                   animated
                 />
               ) : null}

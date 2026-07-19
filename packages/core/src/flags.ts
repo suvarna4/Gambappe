@@ -23,6 +23,14 @@ export const FLAG_DEFAULTS = {
   houses: false,
   /** Passkey auth. */
   passkeys: false,
+  /**
+   * Swipe-ballot UX (swipe-ux-plan, SW workstreams). Off → today's tap-button question
+   * flow renders byte-identically (INV-10); on → the full-screen swipe deck. Server
+   * components read this and pass it to the client viewer strip as a prop, exactly like
+   * `duo_queue` gates its surfaces. Off in all envs until the SW DAG lands and the
+   * flag-off CI lane stays green.
+   */
+  swipe_ballot: false,
 } as const;
 
 export type FlagName = keyof typeof FLAG_DEFAULTS;

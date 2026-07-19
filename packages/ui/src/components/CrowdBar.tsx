@@ -16,6 +16,13 @@ export interface CrowdBarProps {
   /** WS7-T3 reveal-moment "crowd bar fill" (§10.3) — opt-in; see `Stamp`'s `animated` doc for
    * why this defaults to static and how reduced motion is honored. */
   animated?: boolean;
+  /** Unlike `PriceTag` (always on paper), CrowdBar renders on both the dark deck stage
+   * (`DeckStates`, `/dev/ui` gallery) and inside paper `TicketCard`s (`QuestionStateView`,
+   * `PlacementClient`) — the bright `text-side-a`/`text-side-b` label colors clear AA on the
+   * dark stage (~5.4:1 / ~7:1) but fail badly on paper (~3.3:1 / ~2.5:1, same class of bug
+   * SW8-T1 fixed everywhere else). Pass `surface="paper"` at paper call sites for the same
+   * darkened on-paper inks `PriceTag` uses; segment fills (not text) are unaffected either way. */
+  surface?: 'dark' | 'paper';
 }
 
 /**
@@ -36,6 +43,7 @@ export function CrowdBar({
   noLabel,
   className = '',
   animated = false,
+  surface = 'dark',
 }: CrowdBarProps) {
   const { yesPct, noPct } = crowdSplit(yesCount, noCount);
   const fillClass = animated
@@ -45,14 +53,16 @@ export function CrowdBar({
     (animated
       ? { width: `${pct}%`, '--crowd-fill-target': `${pct}%` }
       : { width: `${pct}%` }) as AnimatableStyle;
+  const noLabelClass = surface === 'paper' ? 'text-[#b34d0a]' : 'text-side-b';
+  const yesLabelClass = surface === 'paper' ? 'text-[#1d4fa8]' : 'text-side-a';
   return (
     <div className={className}>
       <div dir="ltr" className="text-muted mb-1 flex justify-between text-xs font-medium uppercase">
         {sideAxisPair(
-          <span key="no" data-side="no" className="text-side-b">
+          <span key="no" data-side="no" className={noLabelClass}>
             {noLabel} {noPct}%
           </span>,
-          <span key="yes" data-side="yes" className="text-side-a">
+          <span key="yes" data-side="yes" className={yesLabelClass}>
             {yesLabel} {yesPct}%
           </span>,
         )}

@@ -1,0 +1,32 @@
+{
+  "tasks": {
+    "SW0-T1": { "title": "Register SW tasks in the lock registry (add-tasks subcommand + seed)", "phase": "SP1", "depends_on": [] },
+    "SW0-T2": { "title": "Tokens, fonts, glow/motion scale, side-axis + swipe constants", "phase": "SP1", "depends_on": [] },
+    "SW0-T3": { "title": "swipe_ballot feature flag (contract-change)", "phase": "SP1", "depends_on": [] },
+    "SW1-T1": { "title": "BallotCard presentational component (+UnderCard)", "phase": "SP1", "depends_on": ["SW0-T2"] },
+    "SW1-T2": { "title": "SwipeBallot gesture engine (drag/arm/commit, age gate, haptics, guardrails)", "phase": "SP1", "depends_on": ["SW1-T1"], "mock_start_ok": true },
+    "SW1-T3": { "title": "ReceiptSlip print/retract + undo wiring", "phase": "SP1", "depends_on": ["SW1-T2"] },
+    "SW1-T4": { "title": "ViewerStrip integration behind flag (INV-10 preserved)", "phase": "SP1", "depends_on": ["SW1-T3", "SW0-T3"] },
+    "SW1-T5": { "title": "Ballot e2e suite (drag, keys, wells, age gate, undo, guardrails, reduced motion)", "phase": "SP1", "depends_on": ["SW1-T4"] },
+    "SW2-T1": { "title": "Full-screen deck shell (stage, rails, under-card, static card, overlay slot)", "phase": "SP1", "depends_on": ["SW1-T1", "SW0-T3"], "mock_start_ok": true },
+    "SW2-T2": { "title": "Deck states (scheduled/locked/revealed/voided in the stage)", "phase": "SP1", "depends_on": ["SW2-T1", "SW2-T3"] },
+    "SW2-T3": { "title": "Side-axis sweep: NO-left/YES-right across current UI + templates (flag-independent)", "phase": "SP1", "depends_on": [] },
+    "SW2-T4": { "title": "Desktop layout + keyboard layer + focus order", "phase": "SP1", "depends_on": ["SW2-T2", "SW1-T4"] },
+    "SW3-T1": { "title": "Reveal hush + room count (no new endpoints)", "phase": "SP1", "depends_on": ["SW0-T2"], "mock_start_ok": true },
+    "SW3-T2": { "title": "Choreography polish + foil/tape/punch stamp inks + obituary handoff", "phase": "SP1", "depends_on": ["SW3-T1", "SW2-T2", "SW1-T1"] },
+    "SW4-T1": { "title": "Obituary card + busted-streak template upgrade", "phase": "SP1", "depends_on": ["SW4-T2"] },
+    "SW4-T2": { "title": "Print-Shop restyle of all share/OG card templates", "phase": "SP1", "depends_on": ["SW0-T2"] },
+    "SW4-T3": { "title": "Graveyard shelf on the profile page", "phase": "SP2", "depends_on": ["SW4-T1"] },
+    "SW5-T1": { "title": "Nemesis daily flip on the receipt slip (sealed until viewer locks)", "phase": "SP2", "depends_on": ["SW1-T4"] },
+    "SW5-T2": { "title": "Verdict cards + rematch-by-swipe (verdict ballot variant)", "phase": "SP2", "depends_on": ["SW1-T4"] },
+    "SW5-T3": { "title": "Duo shared-deck states (sealed partner chip, MATCHED/SPLIT tandem line)", "phase": "SP2", "depends_on": ["SW1-T4"] },
+    "SW5-T4": { "title": "Preset stamp reactions on matchup pages", "phase": "SP2", "depends_on": ["SW5-T1"] },
+    "SW6-T1": { "title": "Placement as a swipe deck (5 archival cards, progress, teaser bars)", "phase": "SP2", "depends_on": ["SW1-T4"] },
+    "SW7-T1": { "title": "Web-push notification pick actions (axis-ordered, server-stamped)", "phase": "SP3", "depends_on": ["SW1-T4"] },
+    "SW7-T2": { "title": "Pre-armed deep links (?arm=1 guardrail override)", "phase": "SP3", "depends_on": ["SW2-T1"] },
+    "SW7-T3": { "title": "Native surfaces feasibility spike (doc only: widget, Live Activity, watch)", "phase": "SP3", "depends_on": [] },
+    "SW8-T1": { "title": "A11y audit: axe pass, keyboard matrix, contrast report", "phase": "SPQ", "depends_on": ["SW2-T4"] },
+    "SW8-T2": { "title": "Visual gallery tiles + screenshot snapshot gate", "phase": "SPQ", "depends_on": ["SW1-T5"] },
+    "SW8-T3": { "title": "Pick-source analytics property (swipe|well|key|push|widget)", "phase": "SPQ", "depends_on": ["SW1-T4"] }
+  }
+}

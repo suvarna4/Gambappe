@@ -28,7 +28,10 @@ describe('renderNotificationPush (§13.2)', () => {
   });
 
   it('an explicit payload.subject overrides the category-default title', () => {
-    const rendered = renderNotificationPush('streak_busted', { line: 'x', subject: 'Custom title' });
+    const rendered = renderNotificationPush('streak_busted', {
+      line: 'x',
+      subject: 'Custom title',
+    });
     expect(rendered.title).toBe('Custom title');
   });
 
@@ -38,5 +41,45 @@ describe('renderNotificationPush (§13.2)', () => {
 
     const withoutCta = renderNotificationPush('duo_formed', { line: 'x' });
     expect(withoutCta.url).toBe('/');
+  });
+
+  // SW7-T1: a daily-open push carries a `pick` descriptor → axis-ordered actions + SW `data`.
+  it('emits axis-ordered pick actions + data when payload.pick is present', () => {
+    const rendered = renderNotificationPush('daily_open', {
+      line: 'Fed day. Cuts or holds?',
+      ctaUrl: '/q/2026-07-19-fed',
+      pick: { questionId: 'q_1', yesLabel: 'CUTS', noLabel: 'HOLDS' },
+    });
+    expect(rendered.actions).toEqual([
+      { action: 'pick:no', title: '✕ HOLDS' },
+      { action: 'pick:yes', title: 'CUTS ✓' },
+    ]);
+    expect(rendered.data).toEqual({
+      url: '/q/2026-07-19-fed',
+      questionId: 'q_1',
+      yesLabel: 'CUTS',
+      noLabel: 'HOLDS',
+    });
+  });
+
+  it('a pick.url overrides ctaUrl for the SW deep-link data, without changing the tap url', () => {
+    const rendered = renderNotificationPush('daily_open', {
+      ctaUrl: '/',
+      pick: { questionId: 'q_1', yesLabel: 'A', noLabel: 'B', url: '/q/today' },
+    });
+    expect(rendered.url).toBe('/');
+    expect(rendered.data?.url).toBe('/q/today');
+  });
+
+  it('omits actions/data entirely for every non-pick beat (unchanged payload shape)', () => {
+    const rendered = renderNotificationPush('reveal', { line: 'x' });
+    expect(rendered.actions).toBeUndefined();
+    expect(rendered.data).toBeUndefined();
+  });
+
+  it('ignores a malformed pick descriptor rather than emitting half-built actions', () => {
+    const rendered = renderNotificationPush('daily_open', { line: 'x', pick: { yesLabel: 'A' } });
+    expect(rendered.actions).toBeUndefined();
+    expect(rendered.data).toBeUndefined();
   });
 });

@@ -14,12 +14,28 @@ import { ImageResponse } from 'next/og';
 import type { ReactElement } from 'react';
 import { OG_CACHE_S_MAXAGE_S } from '@receipts/core';
 import { OG_HEIGHT, OG_WIDTH } from './components';
+import { loadDisplayFonts, type SatoriFont } from './fonts';
+
+/**
+ * Per-render satori options. `fonts` defaults (SW4-T2) to the embedded brand faces
+ * (`loadDisplayFonts`: Barlow Condensed + IBM Plex Mono) so every card/OG render uses the
+ * Print-Shop typography instead of next/og's bundled Noto Sans; pass `fonts: []` to force the
+ * bare fallback.
+ */
+export interface RenderOptions {
+  fonts?: SatoriFont[];
+}
+
+function fontsFor(opts: RenderOptions): SatoriFont[] {
+  return opts.fonts ?? loadDisplayFonts();
+}
 
 /** `s-maxage=<OG_CACHE_S_MAXAGE_S>, immutable` (§10.5): content-addressed URLs never change. */
-export function renderOgImage(element: ReactElement): ImageResponse {
+export function renderOgImage(element: ReactElement, opts: RenderOptions = {}): ImageResponse {
   return new ImageResponse(element, {
     width: OG_WIDTH,
     height: OG_HEIGHT,
+    fonts: fontsFor(opts),
     headers: {
       'cache-control': `public, s-maxage=${OG_CACHE_S_MAXAGE_S}, immutable`,
     },
@@ -35,10 +51,12 @@ export function renderOgImage(element: ReactElement): ImageResponse {
 export function renderCardImage(
   element: ReactElement,
   dims: { width: number; height: number },
+  opts: RenderOptions = {},
 ): ImageResponse {
   return new ImageResponse(element, {
     width: dims.width,
     height: dims.height,
+    fonts: fontsFor(opts),
     headers: {
       'cache-control': `public, s-maxage=${OG_CACHE_S_MAXAGE_S}, immutable`,
     },

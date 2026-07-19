@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { MarketSide, QuestionPublic } from '@receipts/core';
 import { copy, shareCopy } from '@/lib/copy';
+import { postAnalyticsEvent } from '@/lib/analytics-client';
+import { DEFAULT_PICK_SOURCE, type PickInputSource } from '@/lib/pick-input-source';
 import { formatEtClock } from '@/lib/format-et';
 import { ApiClientError, fetchMe, placePick, undoPick } from '@/lib/pick-client';
 import { canPick, canUndo, needsAgeGate } from '@/lib/pick-eligibility';
@@ -16,9 +18,29 @@ import ShareSheet from './share/ShareSheet';
 import { PickButtons } from './PickButtons';
 import { QuestionThread } from './QuestionThread';
 import { RevealSequence } from './RevealSequence';
+import { SwipeBallot } from './SwipeBallot';
 
 export interface ViewerStripProps {
   question: QuestionPublic;
+  /**
+   * SW1-T4: `swipe_ballot` flag (server-read, passed in). When on, the `open` state hydrates the
+   * `SwipeBallot` gesture into this island instead of `PickButtons`. Its SSR output is viewer-free
+   * (card + wells from question props, `pick=null`, age-gate defaulting on) so INV-10 holds; the
+   * flag is not viewer data. Default `false` keeps the flag-off render byte-identical to today.
+   */
+  swipeBallot?: boolean;
+  /** SW2-T4: the page arrived via a pre-armed deep link (`?arm=1`) — forces the gesture nudge +
+   * hints for a first-time visitor. Forwarded to `SwipeBallot`; never auto-picks.
+   *
+   * Optional explicit override — `app/page.tsx` (already `force-dynamic`) still reads
+   * `searchParams` server-side and passes this directly. `/q/[slug]/page.tsx` (ISR'd,
+   * `revalidate = 30`) omits it: reading `searchParams` in a Server Component opts the whole
+   * route out of static/ISR rendering in Next 15 regardless of the actual query string, which
+   * would silently force every `/q/[slug]` request to hit the DB once `swipe_ballot` is on. When
+   * omitted, this component detects `?arm=1` from `window.location` itself, client-side only —
+   * SSR/hydration still render `arm=false` (byte-identical, same posture as `me`/`pick` above),
+   * and a post-mount effect flips it, matching how those two already resolve after paint. */
+  arm?: boolean;
 }
 
 type MeState =
@@ -37,13 +59,21 @@ type MeState =
  * from those calls (including plain network failures while unmerged) are caught and shown
  * inline; they never crash this component or the page around it.
  */
-export function ViewerStrip({ question }: ViewerStripProps) {
+export function ViewerStrip({ question, swipeBallot = false, arm: armProp }: ViewerStripProps) {
   const [me, setMe] = useState<MeState>({ status: 'loading' });
   const [pick, setPick] = useState<CachedPick | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [shareOpen, setShareOpen] = useState(false);
+  const [arm, setArm] = useState(armProp ?? false);
+
+  useEffect(() => {
+    // Only self-detect when the caller didn't already resolve `arm` server-side (see the prop's
+    // doc comment) — an explicit `armProp` always wins.
+    if (armProp !== undefined || typeof window === 'undefined') return;
+    if (new URLSearchParams(window.location.search).get('arm') === '1') setArm(true);
+  }, [armProp]);
 
   useEffect(() => {
     // `RevealSequence` (below) owns its own identity fetch (the reveal endpoint resolves the
@@ -77,7 +107,11 @@ export function ViewerStrip({ question }: ViewerStripProps) {
   }, [pick, question.status]);
 
   const handlePick = useCallback(
-    async (side: MarketSide, ageAttested: boolean) => {
+    async (
+      side: MarketSide,
+      ageAttested: boolean,
+      source: PickInputSource = DEFAULT_PICK_SOURCE,
+    ) => {
       setBusy(true);
       setError(null);
       try {
@@ -90,10 +124,16 @@ export function ViewerStrip({ question }: ViewerStripProps) {
           side: data.pick.side,
           pickedAtIso: data.pick.picked_at,
           undoUntilIso: data.undo_until,
+          // SW1-T3: keep the stamped entry price so the receipt prints the receipts-over-claims
+          // price, not the drifting live one (§2.4).
+          yesPriceAtEntry: data.pick.yes_price_at_entry,
         };
         if (typeof window !== 'undefined')
           writeCachedPick(window.localStorage, question.id, cached);
         setPick(cached);
+        // SW8-T3: fire-and-forget the input-method analytics (never awaited, never load-bearing).
+        // Powers the PRD §10 swipe-share-of-picks / >40%-one-throw readout.
+        postAnalyticsEvent('pick_created', { source });
         if (ageAttested) {
           setMe((prev) => (prev.status === 'ready' ? { ...prev, ageAttested: true } : prev));
         }
@@ -134,6 +174,34 @@ export function ViewerStrip({ question }: ViewerStripProps) {
         <RevealSequence question={question} />
         {/* WS7-T8 (§10.3 `revealed` state: "thread"): the post-reveal discussion + reactions. */}
         <QuestionThread questionId={question.id} questionSlug={question.slug} />
+      </div>
+    );
+  }
+
+  // SW1-T4: the swipe ballot owns the `open` state when the flag is on. It renders the card,
+  // wells, tint, stamp preview, age gate, and receipt itself — so it replaces the loading
+  // skeleton / PickButtons / pick-view branches below for this state. SSR output is viewer-free
+  // (pick loads from localStorage post-hydration; age-gate defaults on until `/me` resolves), so
+  // the byte-identical-HTML invariant (INV-10) is preserved. Reuses the same handlePick/handleUndo
+  // and error slot as the button flow.
+  if (swipeBallot && question.status === 'open') {
+    return (
+      <div className="space-y-2" data-testid="viewer-strip-swipe">
+        <SwipeBallot
+          question={question}
+          ageGateRequired={me.status === 'ready' ? needsAgeGate(me.ageAttested) : true}
+          disabled={busy}
+          pick={pick}
+          undoable={pick ? canUndo(pick, nowMs, question.lock_at) : false}
+          onPick={handlePick}
+          onUndo={handleUndo}
+          arm={arm}
+        />
+        {error ? (
+          <p className="text-loss text-xs" data-testid="viewer-strip-error">
+            {error}
+          </p>
+        ) : null}
       </div>
     );
   }

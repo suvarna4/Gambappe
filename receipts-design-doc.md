@@ -287,6 +287,7 @@ Simple server-side flags read from env (`FLAG_<NAME>=true`) with defaults in `co
 | `divergence_display` | off | Venue spread flavor (§7.7) |
 | `houses` | off (P2) | Everything Houses |
 | `passkeys` | off | Passkey auth |
+| `swipe_ballot` | off | Swipe-ballot UX — full-screen deck home, gesture pick, receipt slip (swipe-ux-plan). Off renders today's tap-button flow byte-identically (INV-10) |
 
 ---
 

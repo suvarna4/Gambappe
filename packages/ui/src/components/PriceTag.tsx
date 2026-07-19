@@ -16,7 +16,10 @@ export interface PriceTagProps {
  */
 export function PriceTag({ side, label, yesProbability, className = '' }: PriceTagProps) {
   const cents = impliedCents(side, yesProbability);
-  const accentClass = side === 'yes' ? 'text-side-a' : 'text-side-b';
+  // On-paper side ink (this motif is always on paper — note the `text-ink` label + a11y label):
+  // the bright side tokens fail AA as text on cream, so darken them (~6:1). Caught by SW8-T1's
+  // axe pass over the design-system gallery; the pre-existing bright values regressed AA on `/q`.
+  const accentClass = side === 'yes' ? 'text-[#1d4fa8]' : 'text-[#b34d0a]';
   return (
     <span
       data-side={side}
