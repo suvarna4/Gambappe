@@ -209,8 +209,11 @@ describe('fetchReveal (§6.7, WS7-T3)', () => {
     narrative_line: '60% called it. Yes it will.',
     share: {
       page_url: 'https://receipts.example/q/will-it-happen',
-      og_url: 'https://receipts.example/api/og/q/will-it-happen',
-      card_urls: [],
+      og_url: 'https://receipts.example/api/og/question/will-it-happen?v=fixture',
+      card_urls: [
+        'https://receipts.example/api/cards/question/will-it-happen?format=story&v=fixture',
+        'https://receipts.example/api/cards/question/will-it-happen?format=square&v=fixture',
+      ],
     },
   };
 

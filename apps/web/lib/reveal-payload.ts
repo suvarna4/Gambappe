@@ -20,6 +20,7 @@ import { addDaysToDateString, type RevealPayload, type RevealViewer } from '@rec
 import { serializeQuestionPublic } from './serialize-question';
 import { serializePick } from './serialize-pick';
 import { getViewerPercentile } from './percentile';
+import { questionOgHash } from './og/entities';
 
 /**
  * "Delta"/"freeze_used" aren't columns anywhere — `profiles` only holds LIVE current state,
@@ -131,6 +132,14 @@ export async function buildRevealPayload(args: BuildRevealPayloadArgs): Promise<
     }
   }
 
+  // Canonical content-addressed share URLs (§10.5): the real routes are /api/og/question and
+  // /api/cards/question (the drill found the old /api/og/q/ path 404s — WS14-T4 finding), and
+  // carrying the exact `?v=` state hash means consumers hit the CDN-cached render directly
+  // instead of bouncing through the guard's 302. Param order matches ogVersionGuard's canonical
+  // redirect target (`format` first, `v` appended) so these never redirect at all.
+  const ogHash = questionOgHash(question, market.yesPrice ?? null);
+  const cardBase = `${appUrl}/api/cards/question/${question.slug}`;
+
   return {
     question: questionPublic,
     outcome: question.outcome,
@@ -139,8 +148,8 @@ export async function buildRevealPayload(args: BuildRevealPayloadArgs): Promise<
     narrative_line: buildNarrativeLine(question, crowd.pct_yes),
     share: {
       page_url: `${appUrl}/q/${question.slug}`,
-      og_url: `${appUrl}/api/og/q/${question.slug}`,
-      card_urls: [],
+      og_url: `${appUrl}/api/og/question/${question.slug}?v=${ogHash}`,
+      card_urls: [`${cardBase}?format=story&v=${ogHash}`, `${cardBase}?format=square&v=${ogHash}`],
     },
   };
 }

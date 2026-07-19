@@ -322,8 +322,11 @@ test.describe('reveal sequence (§10.3, WS7-T3)', () => {
         narrative_line: '60% called it. Yes it will it is.',
         share: {
           page_url: `https://receipts.example/q/${question.slug}`,
-          og_url: `https://receipts.example/api/og/q/${question.slug}`,
-          card_urls: [],
+          og_url: `https://receipts.example/api/og/question/${question.slug}?v=fixture`,
+          card_urls: [
+            `https://receipts.example/api/cards/question/${question.slug}?format=story&v=fixture`,
+            `https://receipts.example/api/cards/question/${question.slug}?format=square&v=fixture`,
+          ],
         },
         ...(viewer ? { viewer } : {}),
       },

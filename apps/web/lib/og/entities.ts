@@ -37,6 +37,26 @@ export interface QuestionOgData {
   variant: 'question' | 'result' | 'voided';
 }
 
+/**
+ * The question OG/card `?v=` state hash, from already-loaded rows. Split out of `loadQuestionOg`
+ * so `reveal-payload.ts` (which has the question + market in hand on the hot reveal path) can
+ * mint canonical share URLs without a second question/market fetch — one field list, not two
+ * hash builders that could drift out of sync with the route's guard.
+ */
+export function questionOgHash(question: QuestionRow, yesPrice: number | null): string {
+  return ogStateHash([
+    question.id,
+    question.status,
+    question.headline,
+    yesPrice,
+    question.crowdYesAtLock,
+    question.crowdNoAtLock,
+    question.outcome,
+    question.revealedAt?.toISOString() ?? null,
+    question.voidReason,
+  ]);
+}
+
 export async function loadQuestionOg(
   db: Db,
   slug: string,
@@ -49,19 +69,7 @@ export async function loadQuestionOg(
   const variant: QuestionOgData['variant'] =
     question.status === 'revealed' ? 'result' : question.status === 'voided' ? 'voided' : 'question';
 
-  const hash = ogStateHash([
-    question.id,
-    question.status,
-    question.headline,
-    yesPrice,
-    question.crowdYesAtLock,
-    question.crowdNoAtLock,
-    question.outcome,
-    question.revealedAt?.toISOString() ?? null,
-    question.voidReason,
-  ]);
-
-  return { data: { question, yesPrice, variant }, hash };
+  return { data: { question, yesPrice, variant }, hash: questionOgHash(question, yesPrice) };
 }
 
 export interface ReceiptOgData {

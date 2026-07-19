@@ -133,6 +133,20 @@ describe('buildRevealPayload (§6.7)', () => {
     expect(payload.viewer?.badges).toEqual(['called_it']);
     expect(payload.viewer?.percentile).toBeCloseTo(100, 5); // sole winner among 2 graded picks
     expect(payload.share.page_url).toBe('https://receipts.example/q/2026-08-05-reveal-payload-test');
+    // §10.5 share URLs point at the REAL routes (/api/og/question, /api/cards/question — the
+    // WS14-T4 drill found the old /api/og/q/ path 404ing) and are content-addressed with the
+    // same `?v=` hash the route guard recomputes, so they render directly instead of 302ing.
+    expect(payload.share.og_url).toMatch(
+      /^https:\/\/receipts\.example\/api\/og\/question\/2026-08-05-reveal-payload-test\?v=[0-9a-f]+$/,
+    );
+    expect(payload.share.card_urls).toHaveLength(2);
+    for (const [i, format] of (['story', 'square'] as const).entries()) {
+      expect(payload.share.card_urls[i]).toMatch(
+        new RegExp(
+          `^https://receipts\\.example/api/cards/question/2026-08-05-reveal-payload-test\\?format=${format}&v=[0-9a-f]+$`,
+        ),
+      );
+    }
     expect(payload.question.slug).toBe('2026-08-05-reveal-payload-test');
   });
 
