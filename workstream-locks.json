@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T14:35:02.073Z",
+  "updated_at": "2026-07-19T14:35:04.020Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1577,12 +1577,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-session-35b05898-7175",
+      "branch": "claude/daily-question-swipe-ux-f0p4wq",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-19T08:18:25.516Z"
+      "claimed_at": "2026-07-19T14:35:04.020Z",
+      "updated_at": "2026-07-19T14:35:04.020Z"
     },
     "SW7-T2": {
       "title": "Pre-armed deep links (?arm=1 guardrail override)",
