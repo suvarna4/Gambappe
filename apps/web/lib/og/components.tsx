@@ -17,7 +17,7 @@
  * than silently shipping the wrong typeface.
  */
 import type { CSSProperties, ReactElement, ReactNode } from 'react';
-import { barcodePattern, colors, fonts } from '@receipts/ui';
+import { barcodePattern, colors, fonts, sideAxisPair } from '@receipts/ui';
 
 export const OG_WIDTH = 1200;
 export const OG_HEIGHT = 630;
@@ -127,13 +127,7 @@ export function OgStamp({ variant }: { variant: OgStampVariant }): ReactElement 
 }
 
 /** §10.4 PriceTag — "YES @ 63¢", cents-of-probability, never money. */
-export function OgPriceTag({
-  side,
-  cents,
-}: {
-  side: 'yes' | 'no';
-  cents: number;
-}): ReactElement {
+export function OgPriceTag({ side, cents }: { side: 'yes' | 'no'; cents: number }): ReactElement {
   const bg = side === 'yes' ? colors.sideA : colors.sideB;
   return (
     <div
@@ -154,9 +148,14 @@ export function OgPriceTag({
   );
 }
 
-/** §10.4 CrowdBar — side-A/side-B split, colorblind-safe pair, always paired with the %. */
+/** §10.4 CrowdBar — side-A/side-B split, colorblind-safe pair, always paired with the %.
+ * Axis order (D-SW9, swipe plan §2.2): NO fills from the left edge, YES from the right —
+ * both segments and labels — matching the in-DOM `CrowdBar`. The `data-side` attrs are for
+ * the axis-order unit tests (satori ignores unknown props); satori has no RTL layout, so no
+ * `dir` equivalent is needed here. */
 export function OgCrowdBar({ yesPct }: { yesPct: number }): ReactElement {
   const pct = Math.max(0, Math.min(100, Math.round(yesPct)));
+  const noPct = 100 - pct;
   return (
     <div style={{ ...flexCol, width: '100%', gap: 8 }}>
       <div
@@ -168,8 +167,18 @@ export function OgCrowdBar({ yesPct }: { yesPct: number }): ReactElement {
           overflow: 'hidden',
         }}
       >
-        <div style={{ width: `${pct}%`, backgroundColor: colors.sideA, display: 'flex' }} />
-        <div style={{ width: `${100 - pct}%`, backgroundColor: colors.sideB, display: 'flex' }} />
+        {sideAxisPair(
+          <div
+            key="no"
+            data-side="no"
+            style={{ width: `${noPct}%`, backgroundColor: colors.sideB, display: 'flex' }}
+          />,
+          <div
+            key="yes"
+            data-side="yes"
+            style={{ width: `${pct}%`, backgroundColor: colors.sideA, display: 'flex' }}
+          />,
+        )}
       </div>
       <div
         style={{
@@ -180,8 +189,14 @@ export function OgCrowdBar({ yesPct }: { yesPct: number }): ReactElement {
           color: colors.muted,
         }}
       >
-        <span>YES {pct}%</span>
-        <span>NO {100 - pct}%</span>
+        {sideAxisPair(
+          <span key="no" data-side="no">
+            NO {noPct}%
+          </span>,
+          <span key="yes" data-side="yes">
+            YES {pct}%
+          </span>,
+        )}
       </div>
     </div>
   );
@@ -246,11 +261,7 @@ export function OgRow({
   children: ReactNode;
   style?: CSSProperties;
 }): ReactElement {
-  return (
-    <div style={{ ...flexRow, ...style }}>
-      {children}
-    </div>
-  );
+  return <div style={{ ...flexRow, ...style }}>{children}</div>;
 }
 
 export function OgHeadline({ children }: { children: ReactNode }): ReactElement {

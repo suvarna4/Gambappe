@@ -18,9 +18,11 @@ test('WS7-T1 design system gallery renders every component state', async ({ page
   await expect(priceTags).toContainText('98¢');
 
   const crowdBars = page.getByTestId('gallery-crowdbar');
+  // D-SW9 (SW2-T3): CrowdBar is axis-ordered NO-left/YES-right; its aria-label reads in the
+  // same visual order.
   await expect(crowdBars.getByRole('img').first()).toHaveAttribute(
     'aria-label',
-    /Crowd split: France 70%, Brazil 30%/,
+    /Crowd split: Brazil 30%, France 70%/,
   );
 
   await expect(page.getByTestId('gallery-countdown')).toContainText('Locks in');

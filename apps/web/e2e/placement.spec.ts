@@ -160,7 +160,8 @@ test('WS7-T10 placement: 5-tap flow with per-item mini-reveals', async ({ page }
     // Crowd comparison + historical price are both part of the per-item mini-reveal (§8.7).
     await expect(reveal.getByRole('img')).toHaveAttribute(
       'aria-label',
-      new RegExp(`Crowd split: ${item.yes_label} \\d+%, ${item.no_label} \\d+%`),
+      // D-SW9 (SW2-T3): CrowdBar's aria-label reads in visual axis order — NO first.
+      new RegExp(`Crowd split: ${item.no_label} \\d+%, ${item.yes_label} \\d+%`),
     );
 
     // Still on the same item (advancing is a separate, deliberate tap).
@@ -172,10 +173,15 @@ test('WS7-T10 placement: 5-tap flow with per-item mini-reveals', async ({ page }
   expect(answeredItemIds).toEqual(ITEMS.map((i) => i.id));
 
   await expect(page.getByTestId('placement-complete')).toBeVisible();
-  await expect(page.getByTestId('placement-complete')).toContainText('Your starting profile is ready');
+  await expect(page.getByTestId('placement-complete')).toContainText(
+    'Your starting profile is ready',
+  );
   // The test always taps each item's yes_label; outcomes are yes, no, no, no, yes → 2/5 correct.
   await expect(page.getByTestId('placement-complete')).toContainText('You called 2 of 5 right');
-  await expect(page.getByRole('link', { name: "Go to today's question" })).toHaveAttribute('href', '/');
+  await expect(page.getByRole('link', { name: "Go to today's question" })).toHaveAttribute(
+    'href',
+    '/',
+  );
 });
 
 test('WS7-T10 placement: UNAUTHENTICATED GET falls back to a CTA instead of crashing', async ({
@@ -198,5 +204,8 @@ test('WS7-T10 placement: UNAUTHENTICATED GET falls back to a CTA instead of cras
   await page.goto('/placement');
 
   await expect(page.getByRole('heading', { name: 'Make a pick first' })).toBeVisible();
-  await expect(page.getByRole('link', { name: "Go to today's question" })).toHaveAttribute('href', '/');
+  await expect(page.getByRole('link', { name: "Go to today's question" })).toHaveAttribute(
+    'href',
+    '/',
+  );
 });

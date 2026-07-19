@@ -7,6 +7,7 @@
 export * from './tokens.js';
 export * from './format.js';
 export * from './reduced-motion.js';
+export * from './side-axis.js';
 export * from './components/TicketCard.js';
 export * from './components/Stamp.js';
 export * from './components/PriceTag.js';

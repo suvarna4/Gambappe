@@ -11,7 +11,7 @@
  * decorative barcode.
  */
 import type { ReactElement } from 'react';
-import { colors, impliedCents } from '@receipts/ui';
+import { colors, impliedCents, sideAxisPair } from '@receipts/ui';
 import type { DuoWithProfiles, PairingWithProfiles } from '@receipts/db';
 import {
   OgBarcodeFooter,
@@ -28,7 +28,13 @@ import {
   type OgStampVariant,
 } from './components';
 import type { ProfileOgData, QuestionOgData, ReceiptOgData } from './entities';
-import { absoluteUrl, duoPagePath, matchupPagePath, profilePagePath, questionPagePath } from './paths';
+import {
+  absoluteUrl,
+  duoPagePath,
+  matchupPagePath,
+  profilePagePath,
+  questionPagePath,
+} from './paths';
 
 /** WS8-T2: passed by `/api/cards/*` route handlers only — see this file's header comment. */
 export interface CardRenderOptions {
@@ -74,7 +80,8 @@ export function renderQuestionTemplate(
         <OgRow style={{ flexDirection: 'column', gap: 20 }}>
           {yesPrice != null && <OgPriceTag side="yes" cents={Math.round(yesPrice * 100)} />}
           <div style={{ display: 'flex', fontSize: 24, color: colors.muted }}>
-            Pick your side — {question.yesLabel} / {question.noLabel}
+            {/* D-SW9 (swipe plan §2.2): the side pair lists NO/against first (left). */}
+            Pick your side — {sideAxisPair(question.noLabel, question.yesLabel).join(' / ')}
           </div>
         </OgRow>
         {renderFooter(path, cardOptions)}
