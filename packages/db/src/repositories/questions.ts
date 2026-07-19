@@ -344,6 +344,56 @@ export async function countRevealedQuestionsForSitemap(db: Db): Promise<number> 
   return row?.count ?? 0;
 }
 
+// --- §19.3 WS8-T5 `/q` archive --------------------------------------------------------------
+
+export interface ArchiveQuestionRow {
+  slug: string;
+  headline: string;
+  yesLabel: string;
+  noLabel: string;
+  outcome: 'yes' | 'no' | null;
+  crowdYesAtLock: number | null;
+  crowdNoAtLock: number | null;
+  revealedAt: Date | null;
+}
+
+/** Revealed questions for the `/q` archive (§10.1: "ISR daily | past questions list | SEO
+ * surface"), newest-first (`revealed_at DESC`) — the reverse of the sitemap's slug-ordering,
+ * since a human archive browser wants recency, not a stable machine-crawl cursor. Same
+ * `voided`-exclusion rationale as `listRevealedQuestionsForSitemap`: a voided question has no
+ * "the crowd said X%" outcome worth surfacing as archive content. */
+export async function listRevealedQuestionsForArchive(
+  db: Db,
+  limit: number,
+  offset: number,
+): Promise<ArchiveQuestionRow[]> {
+  const rows = await db
+    .select({
+      slug: questions.slug,
+      headline: questions.headline,
+      yesLabel: questions.yesLabel,
+      noLabel: questions.noLabel,
+      outcome: questions.outcome,
+      crowdYesAtLock: questions.crowdYesAtLock,
+      crowdNoAtLock: questions.crowdNoAtLock,
+      revealedAt: questions.revealedAt,
+    })
+    .from(questions)
+    .where(and(eq(questions.status, 'revealed'), sql`${questions.slug} IS NOT NULL`))
+    .orderBy(sql`${questions.revealedAt} DESC NULLS LAST`, asc(questions.slug))
+    .limit(limit)
+    .offset(offset);
+  return rows.map((r) => ({ ...r, slug: r.slug as string }));
+}
+
+export async function countRevealedQuestionsForArchive(db: Db): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(questions)
+    .where(and(eq(questions.status, 'revealed'), sql`${questions.slug} IS NOT NULL`));
+  return row?.count ?? 0;
+}
+
 /**
  * `question:open` questions whose `lock_at` is still ahead of `at` but within `leadMinutes` —
  * the `notify:pre-lock-reminder` (WS9-T4, §13.2) eligibility window. Effective-state rule
