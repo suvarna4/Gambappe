@@ -65,8 +65,15 @@ import { logger } from '../logger.js';
 import { defaultEmailTransport, type EmailTransport } from '../lib/email-transport.js';
 import { defaultPushTransport, type PushTransport } from '../lib/push-transport.js';
 import { zonedDateString, zonedLocalTimeToUtc } from '../lib/day-window.js';
-import { renderNotificationEmail, type NotificationEmailPayload } from '../lib/notification-email-template.js';
+import {
+  renderNotificationEmail,
+  type NotificationEmailPayload,
+} from '../lib/notification-email-template.js';
 import { renderNotificationPush } from '../lib/notification-push-template.js';
+import {
+  PICK_TAP_FALLBACK_SUFFIX,
+  supportsNotificationActions,
+} from '../lib/notification-push-actions.js';
 import { resolveQuietHoursDeferral } from '../lib/quiet-hours.js';
 
 /** Bounds one dispatch pass — an ops safety valve, not a product constant (§0.1 rule 4 is about
@@ -92,7 +99,11 @@ function readUnsubscribeLinkConfig(): UnsubscribeLinkConfig {
   return { secret, appUrl };
 }
 
-function buildUnsubscribeUrl(config: UnsubscribeLinkConfig, profileId: string, kind: string): string {
+function buildUnsubscribeUrl(
+  config: UnsubscribeLinkConfig,
+  profileId: string,
+  kind: string,
+): string {
   const category = notificationCategoryForKind(kind);
   const token = signUnsubscribeToken({ profileId, category }, config.secret);
   return `${config.appUrl}/api/v1/notifications/unsubscribe?token=${encodeURIComponent(token)}`;
@@ -161,7 +172,11 @@ async function dispatchOne(
       // preserves the beat instead of silently losing it — reasonable for a receipts/narration
       // product where a day-old streak/called-it line is still meaningful. Revisit if product
       // wants a hard drop instead.
-      await rescheduleNotification(db, row.id, new Date(row.scheduledAt.getTime() + 24 * 3_600_000));
+      await rescheduleNotification(
+        db,
+        row.id,
+        new Date(row.scheduledAt.getTime() + 24 * 3_600_000),
+      );
       report.deferredMarketingCap++;
       return;
     }
@@ -264,15 +279,33 @@ async function dispatchOnePush(
     return;
   }
 
-  const rendered = renderNotificationPush(row.kind, (row.payload ?? {}) as NotificationEmailPayload);
+  const rendered = renderNotificationPush(
+    row.kind,
+    (row.payload ?? {}) as NotificationEmailPayload,
+  );
+  const hasPickActions = (rendered.actions?.length ?? 0) > 0;
   let anySent = false;
   for (const subscription of subscriptions) {
     try {
+      // SW7-T1: pick actions render on Android/desktop Chromium + Firefox; iOS Safari (Apple push
+      // endpoints) shows none, so for those we drop the buttons and end the body with "tap to
+      // pick" — the SW's body-tap deep-links into the armed deck instead. `data` still rides along
+      // on every platform so that deep link knows where to go.
+      const renderActionsHere =
+        hasPickActions && supportsNotificationActions(subscription.endpoint);
       const result = await transport.send({
-        subscription: { endpoint: subscription.endpoint, keys: subscription.keys as { p256dh: string; auth: string } },
+        subscription: {
+          endpoint: subscription.endpoint,
+          keys: subscription.keys as { p256dh: string; auth: string },
+        },
         title: rendered.title,
-        body: rendered.body,
+        body:
+          hasPickActions && !renderActionsHere
+            ? rendered.body + PICK_TAP_FALLBACK_SUFFIX
+            : rendered.body,
         url: rendered.url,
+        ...(renderActionsHere ? { actions: rendered.actions } : {}),
+        ...(rendered.data ? { data: rendered.data } : {}),
       });
       if (result.revoked) {
         await revokePushSubscriptionByEndpoint(db, subscription.endpoint, at);
@@ -335,14 +368,10 @@ export const notifyDispatchHandler: JobHandler = async (ctx, data) => {
 
   const jobData = (data ?? {}) as NotifyDispatchJobData;
   if (!jobData.selfRequeue) {
-    await ctx.boss.send(
-      'notify:dispatch',
-      { selfRequeue: true } satisfies NotifyDispatchJobData,
-      {
-        startAfter: SELF_REQUEUE_SECONDS,
-        singletonSeconds: SELF_REQUEUE_SECONDS,
-        singletonKey: SELF_REQUEUE_SINGLETON_KEY,
-      },
-    );
+    await ctx.boss.send('notify:dispatch', { selfRequeue: true } satisfies NotifyDispatchJobData, {
+      startAfter: SELF_REQUEUE_SECONDS,
+      singletonSeconds: SELF_REQUEUE_SECONDS,
+      singletonKey: SELF_REQUEUE_SINGLETON_KEY,
+    });
   }
 };

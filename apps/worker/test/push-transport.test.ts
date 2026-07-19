@@ -36,25 +36,69 @@ describe('WebPushTransport', () => {
   });
 
   it('calls web-push sendNotification with the JSON payload + vapidDetails', async () => {
-    vi.mocked(webpush.sendNotification).mockResolvedValue({ statusCode: 201, body: '', headers: {} });
+    vi.mocked(webpush.sendNotification).mockResolvedValue({
+      statusCode: 201,
+      body: '',
+      headers: {},
+    });
 
     const transport = new WebPushTransport({
       subject: 'https://receipts.example',
       publicKey: 'pub',
       privateKey: 'priv',
     });
-    const result = await transport.send({ subscription, title: 'Reveal is in', body: 'Come see', url: '/q/today' });
+    const result = await transport.send({
+      subscription,
+      title: 'Reveal is in',
+      body: 'Come see',
+      url: '/q/today',
+    });
 
     expect(result.revoked).toBe(false);
     expect(webpush.sendNotification).toHaveBeenCalledTimes(1);
     const [sentSubscription, payload, options] = vi.mocked(webpush.sendNotification).mock.calls[0]!;
     expect(sentSubscription).toEqual(subscription);
-    expect(JSON.parse(payload as string)).toEqual({ title: 'Reveal is in', body: 'Come see', url: '/q/today' });
-    expect(options?.vapidDetails).toEqual({ subject: 'https://receipts.example', publicKey: 'pub', privateKey: 'priv' });
+    expect(JSON.parse(payload as string)).toEqual({
+      title: 'Reveal is in',
+      body: 'Come see',
+      url: '/q/today',
+    });
+    expect(options?.vapidDetails).toEqual({
+      subject: 'https://receipts.example',
+      publicKey: 'pub',
+      privateKey: 'priv',
+    });
+  });
+
+  it('serializes SW7-T1 actions + data only when present (existing beats stay {title, body, url})', async () => {
+    vi.mocked(webpush.sendNotification).mockResolvedValue({
+      statusCode: 201,
+      body: '',
+      headers: {},
+    });
+    const transport = new WebPushTransport({ subject: 's', publicKey: 'pub', privateKey: 'priv' });
+
+    const actions = [
+      { action: 'pick:no', title: '✕ HOLDS' },
+      { action: 'pick:yes', title: 'CUTS ✓' },
+    ];
+    const data = { url: '/q/today', questionId: 'q_1', yesLabel: 'CUTS', noLabel: 'HOLDS' };
+    await transport.send({ subscription, title: 't', body: 'b', url: '/q/today', actions, data });
+
+    const [, payload] = vi.mocked(webpush.sendNotification).mock.calls[0]!;
+    expect(JSON.parse(payload as string)).toEqual({
+      title: 't',
+      body: 'b',
+      url: '/q/today',
+      actions,
+      data,
+    });
   });
 
   it('translates a 404 WebPushError into revoked: true rather than throwing', async () => {
-    vi.mocked(webpush.sendNotification).mockRejectedValue(new WebPushError('gone', 404, {}, '', subscription.endpoint));
+    vi.mocked(webpush.sendNotification).mockRejectedValue(
+      new WebPushError('gone', 404, {}, '', subscription.endpoint),
+    );
 
     const transport = new WebPushTransport({ subject: 's', publicKey: 'pub', privateKey: 'priv' });
     const result = await transport.send({ subscription, title: 't', body: 'b' });
@@ -62,7 +106,9 @@ describe('WebPushTransport', () => {
   });
 
   it('translates a 410 WebPushError into revoked: true rather than throwing', async () => {
-    vi.mocked(webpush.sendNotification).mockRejectedValue(new WebPushError('gone', 410, {}, '', subscription.endpoint));
+    vi.mocked(webpush.sendNotification).mockRejectedValue(
+      new WebPushError('gone', 410, {}, '', subscription.endpoint),
+    );
 
     const transport = new WebPushTransport({ subject: 's', publicKey: 'pub', privateKey: 'priv' });
     const result = await transport.send({ subscription, title: 't', body: 'b' });
@@ -70,10 +116,14 @@ describe('WebPushTransport', () => {
   });
 
   it('rethrows a non-404/410 WebPushError (transient failure, not a dead endpoint)', async () => {
-    vi.mocked(webpush.sendNotification).mockRejectedValue(new WebPushError('rate limited', 429, {}, '', subscription.endpoint));
+    vi.mocked(webpush.sendNotification).mockRejectedValue(
+      new WebPushError('rate limited', 429, {}, '', subscription.endpoint),
+    );
 
     const transport = new WebPushTransport({ subject: 's', publicKey: 'pub', privateKey: 'priv' });
-    await expect(transport.send({ subscription, title: 't', body: 'b' })).rejects.toThrow('rate limited');
+    await expect(transport.send({ subscription, title: 't', body: 'b' })).rejects.toThrow(
+      'rate limited',
+    );
   });
 });
 
@@ -81,7 +131,11 @@ describe('LoggingPushTransport (non-production stub)', () => {
   it('records the last push per endpoint for read-back', async () => {
     const transport = new LoggingPushTransport();
     await transport.send({ subscription, title: 'first', body: 'b' });
-    await transport.send({ subscription: { ...subscription, endpoint: 'https://push.example/ep2' }, title: 'second', body: 'b' });
+    await transport.send({
+      subscription: { ...subscription, endpoint: 'https://push.example/ep2' },
+      title: 'second',
+      body: 'b',
+    });
 
     expect(transport.getLastPush(subscription.endpoint)?.title).toBe('first');
     expect(transport.getLastPush('https://push.example/ep2')?.title).toBe('second');

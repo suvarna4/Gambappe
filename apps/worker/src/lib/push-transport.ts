@@ -16,6 +16,11 @@ export interface OutboundPush {
   title: string;
   body: string;
   url?: string;
+  /** SW7-T1: axis-ordered pick action buttons ([✕ {no}] [{yes} ✓]); omitted for every existing
+   * beat and for iOS-Safari targets, so their serialized payload is unchanged. */
+  actions?: Array<{ action: string; title: string }>;
+  /** SW7-T1: extra `notification.data` (question id + labels) the SW needs to POST a pick. */
+  data?: Record<string, unknown>;
 }
 
 export interface PushSendResult {
@@ -40,9 +45,19 @@ export class WebPushTransport implements PushTransport {
   constructor(private readonly vapidDetails: VapidDetails) {}
 
   async send(push: OutboundPush): Promise<PushSendResult> {
-    const payload = JSON.stringify({ title: push.title, body: push.body, url: push.url ?? '/' });
+    // `actions`/`data` are spread in only when present so every existing beat serializes to the
+    // exact same `{title, body, url}` it did before SW7-T1 (the SW reads them when they exist).
+    const payload = JSON.stringify({
+      title: push.title,
+      body: push.body,
+      url: push.url ?? '/',
+      ...(push.actions ? { actions: push.actions } : {}),
+      ...(push.data ? { data: push.data } : {}),
+    });
     try {
-      await webpush.sendNotification(push.subscription, payload, { vapidDetails: this.vapidDetails });
+      await webpush.sendNotification(push.subscription, payload, {
+        vapidDetails: this.vapidDetails,
+      });
       return { revoked: false };
     } catch (err) {
       if (err instanceof WebPushError && (err.statusCode === 404 || err.statusCode === 410)) {
@@ -63,7 +78,10 @@ export class LoggingPushTransport implements PushTransport {
 
   async send(push: OutboundPush): Promise<PushSendResult> {
     this.mailbox.set(push.subscription.endpoint, push);
-    logger.info({ title: push.title }, 'notify:dispatch push (stub transport — VAPID keys not set)');
+    logger.info(
+      { title: push.title },
+      'notify:dispatch push (stub transport — VAPID keys not set)',
+    );
     await Promise.resolve();
     return { revoked: false };
   }
@@ -87,7 +105,8 @@ export function defaultPushTransport(): PushTransport {
   if (!publicKey || !privateKey) return new LoggingPushTransport();
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-  if (!appUrl) throw new Error('NEXT_PUBLIC_APP_URL is not set (see .env.example) but VAPID keys are');
+  if (!appUrl)
+    throw new Error('NEXT_PUBLIC_APP_URL is not set (see .env.example) but VAPID keys are');
 
   return new WebPushTransport({ subject: appUrl, publicKey, privateKey });
 }
