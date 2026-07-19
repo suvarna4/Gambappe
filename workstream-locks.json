@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T00:14:32.797Z",
+  "updated_at": "2026-07-19T00:16:39.669Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -551,12 +551,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "claimed",
+      "status": "done",
       "owner": "claude-code-web-session-9c961fec",
       "branch": "feat-ws5-t3-week-scoring",
       "pr": null,
       "claimed_at": "2026-07-18T22:40:37.086Z",
-      "updated_at": "2026-07-18T22:40:37.086Z"
+      "updated_at": "2026-07-19T00:16:39.669Z"
     },
     "WS5-T4": {
       "title": "Matchup + history APIs",
