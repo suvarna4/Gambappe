@@ -173,6 +173,14 @@ export function RevealSequence({ question }: RevealSequenceProps) {
           <span className="text-muted text-xs">{copy.question.freezeUsedNote}</span>
         ) : null}
       </div>
+      {/* SW3-T2 (§2.6 "Obituary handoff"): a streak-broke-at-this-reveal handoff to SW4-T1's
+          `ObituaryCard` was attempted here but reverted — see that commit's PR discussion.
+          `RevealPayload.viewer.streak` is a participation streak (§6.6): it increments on any
+          graded pick, including a loss, and only resets on a MISSED day, never at the reveal a
+          viewer just lost. So "the streak broke at this exact reveal" isn't a fact this payload
+          can express without a contract change (e.g. surfacing the win-streak block, or a
+          server-computed broken-run length) — re-attempt once that lands, keyed off the real
+          signal rather than a derived guess. */}
       <button
         type="button"
         onClick={() => setShareOpen(true)}
