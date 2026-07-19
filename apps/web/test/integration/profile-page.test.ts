@@ -182,6 +182,48 @@ describe('getProfilePublicView (§9.2 GET /profiles/:slug)', () => {
     const shownAddress = await getProfilePublicView(db, profile.slug);
     expect(shownAddress!.wallet?.address).toBe('0xabc123');
   });
+
+  it('graveyard is null for a profile with no completed runs and no called-it wins', async () => {
+    const profile = await insertProfile(db, buildProfile());
+    const view = await getProfilePublicView(db, profile.slug);
+    expect(view!.graveyard).toBeNull();
+  });
+
+  it('graveyard.rip carries the real replay-derived dead-run length end to end (SW9-T3 wiring)', async () => {
+    const profile = await insertProfile(db, buildProfile());
+    // A real 3-day run (2026-05-01..03) killed by an uncovered miss on 05-04 — the same shape
+    // `busted-streak-binding.test.ts` uses for `loadReceiptOg`. This proves `loadRipLengths`
+    // (apps/web/lib/profile-page.ts) is actually wired to `getProfilePublicView`, not just unit
+    // -tested in isolation via `graveyardRipLengths`.
+    for (const [i, date] of ['2026-05-01', '2026-05-02', '2026-05-03', '2026-05-04'].entries()) {
+      const market = await insertMarket(db, buildMarket({ status: 'resolved', outcome: 'yes' }));
+      const question = await insertQuestion(
+        db,
+        buildQuestion(market.id, {
+          questionDate: date,
+          slug: `${date}-graveyard-wiring-day`,
+          status: 'revealed',
+          outcome: 'yes',
+          revealedAt: new Date(`${date}T20:00:00Z`),
+        }),
+      );
+      if (i < 3) {
+        await insertPick(
+          db,
+          buildPick(question.id, profile.id, {
+            side: 'yes',
+            yesPriceAtEntry: 0.5,
+            result: 'win',
+            edge: 0.4,
+          }),
+        );
+      }
+      // i === 3: an uncovered miss — no pick — the day that kills the run.
+    }
+
+    const view = await getProfilePublicView(db, profile.slug);
+    expect(view!.graveyard).toEqual({ rip: [3], called_it_count: 0 });
+  });
 });
 
 describe('getProfilePicksResponse (§9.2 GET /profiles/:slug/picks, cursor pagination §9.1)', () => {

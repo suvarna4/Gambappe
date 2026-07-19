@@ -1634,7 +1634,7 @@ The P0 (48-hour) cut is the subset tagged P0 below, in the same wave order — s
 | `ISR_REVALIDATE_PROFILE_S` | 60 | §10.1 (`/p/[handle]`) |
 | `ISR_REVALIDATE_PAIRING_S` | 30 | §10.1 (`/vs/[pairingId]`) |
 | `ISR_REVALIDATE_DUO_S` | 60 | §10.1 (`/duos/[id]`, `/ladder`) |
-| `GRAVEYARD_RIP_CAP` | 12 — added SW9-T3, not in the original table | §9.2 (`ProfilePublic.graveyard`, lengths-only privacy pin) |
+| `GRAVEYARD_RIP_CAP` | 12 | §9.2 (`ProfilePublic.graveyard`, lengths-only privacy pin — added SW9-T3, not in the original table) |
 
 ## Appendix E — Red-team resolution log
 
