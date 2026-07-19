@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import { crowdSplit } from '../format.js';
+import { sideAxisPair } from '../side-axis.js';
 
 /** Widens `style`'s type to accept the `--crowd-fill-target` custom property the animation
  * keyframe (`apps/web/app/globals.css`) reads from — React's `CSSProperties` has no index
@@ -17,7 +18,17 @@ export interface CrowdBarProps {
   animated?: boolean;
 }
 
-/** §10.3/§10.4 CrowdBar: the crowd split, revealed at lock. Labels always ship with the color. */
+/**
+ * §10.3/§10.4 CrowdBar: the crowd split, revealed at lock. Labels always ship with the color.
+ *
+ * Axis order (D-SW9, swipe plan §2.2): NO on the left, YES on the right — both the label row
+ * and the bar segments — with `dir="ltr"` so RTL locales don't mirror gesture space. The bar's
+ * `justify-between` is what makes the animated YES fill RIGHT-anchored: the NO segment is
+ * flush left and grows rightward from the left edge, while the YES segment stays pinned to the
+ * container's right edge and grows leftward as the shared `crowd-fill` keyframe animates its
+ * width — no second keyframe needed. At rest the two widths always sum to 100% (`crowdSplit`),
+ * so the static layout is identical with or without the animation.
+ */
 export function CrowdBar({
   yesCount,
   noCount,
@@ -27,38 +38,45 @@ export function CrowdBar({
   animated = false,
 }: CrowdBarProps) {
   const { yesPct, noPct } = crowdSplit(yesCount, noCount);
-  const fillClass = animated ? 'motion-safe:[animation:crowd-fill_500ms_ease-out_200ms_1_both]' : '';
+  const fillClass = animated
+    ? 'motion-safe:[animation:crowd-fill_500ms_ease-out_200ms_1_both]'
+    : '';
+  const segmentStyle = (pct: number): AnimatableStyle =>
+    (animated
+      ? { width: `${pct}%`, '--crowd-fill-target': `${pct}%` }
+      : { width: `${pct}%` }) as AnimatableStyle;
   return (
     <div className={className}>
-      <div className="text-muted mb-1 flex justify-between text-xs font-medium uppercase">
-        <span className="text-side-a">
-          {yesLabel} {yesPct}%
-        </span>
-        <span className="text-side-b">
-          {noLabel} {noPct}%
-        </span>
+      <div dir="ltr" className="text-muted mb-1 flex justify-between text-xs font-medium uppercase">
+        {sideAxisPair(
+          <span key="no" data-side="no" className="text-side-b">
+            {noLabel} {noPct}%
+          </span>,
+          <span key="yes" data-side="yes" className="text-side-a">
+            {yesLabel} {yesPct}%
+          </span>,
+        )}
       </div>
       <div
+        dir="ltr"
         role="img"
-        aria-label={`Crowd split: ${yesLabel} ${yesPct}%, ${noLabel} ${noPct}%`}
-        className="flex h-3 w-full overflow-hidden rounded-full"
+        aria-label={`Crowd split: ${noLabel} ${noPct}%, ${yesLabel} ${yesPct}%`}
+        className="flex h-3 w-full justify-between overflow-hidden rounded-full"
       >
-        <div
-          className={`bg-side-a h-full ${fillClass}`}
-          style={
-            (animated
-              ? { width: `${yesPct}%`, '--crowd-fill-target': `${yesPct}%` }
-              : { width: `${yesPct}%` }) as AnimatableStyle
-          }
-        />
-        <div
-          className={`bg-side-b h-full ${fillClass}`}
-          style={
-            (animated
-              ? { width: `${noPct}%`, '--crowd-fill-target': `${noPct}%` }
-              : { width: `${noPct}%` }) as AnimatableStyle
-          }
-        />
+        {sideAxisPair(
+          <div
+            key="no"
+            data-side="no"
+            className={`bg-side-b h-full ${fillClass}`}
+            style={segmentStyle(noPct)}
+          />,
+          <div
+            key="yes"
+            data-side="yes"
+            className={`bg-side-a h-full ${fillClass}`}
+            style={segmentStyle(yesPct)}
+          />,
+        )}
       </div>
     </div>
   );

@@ -12,7 +12,7 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Barcode, CrowdBar, PriceTag, Stamp, TicketCard } from '@receipts/ui';
+import { Barcode, CrowdBar, PriceTag, SIDE_ORDER, Stamp, TicketCard } from '@receipts/ui';
 import type { MarketSide } from '@receipts/core';
 import { copy } from '@/lib/copy';
 import {
@@ -31,6 +31,42 @@ import {
 const PLACEMENT_PATH = '/placement';
 
 type Phase = 'loading' | 'unauthenticated' | 'error' | 'active' | 'complete';
+
+/**
+ * The placement item's yes/no tap pair, axis-ordered per D-SW9 (swipe plan §2.2): NO/against
+ * visually LEFT, YES/for visually RIGHT, `dir="ltr"` so RTL locales don't mirror gesture
+ * space. Exported (pure, props-in/DOM-out) so the axis-order unit test can assert DOM order
+ * without driving this page's fetch-loaded phases.
+ */
+export function PlacementPickRow({
+  yesLabel,
+  noLabel,
+  disabled,
+  onAnswer,
+}: {
+  yesLabel: string;
+  noLabel: string;
+  disabled: boolean;
+  onAnswer: (side: MarketSide) => void;
+}) {
+  const labels: Record<MarketSide, string> = { yes: yesLabel, no: noLabel };
+  return (
+    <div dir="ltr" className="mt-4 flex gap-3">
+      {SIDE_ORDER.map((side) => (
+        <button
+          key={side}
+          type="button"
+          data-side={side}
+          onClick={() => onAnswer(side)}
+          disabled={disabled}
+          className={`${side === 'yes' ? 'bg-side-a' : 'bg-side-b'} min-h-11 flex-1 rounded px-4 py-2 text-sm font-semibold text-white disabled:opacity-40`}
+        >
+          {labels[side]}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function ButtonLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
@@ -200,24 +236,12 @@ export default function PlacementClient() {
         <p className="mt-1 font-mono text-base">{currentItem.title}</p>
 
         {!reveal ? (
-          <div className="mt-4 flex gap-3">
-            <button
-              type="button"
-              onClick={() => handleAnswer('yes')}
-              disabled={submitting}
-              className="bg-side-a min-h-11 flex-1 rounded px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
-            >
-              {currentItem.yes_label}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleAnswer('no')}
-              disabled={submitting}
-              className="bg-side-b min-h-11 flex-1 rounded px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
-            >
-              {currentItem.no_label}
-            </button>
-          </div>
+          <PlacementPickRow
+            yesLabel={currentItem.yes_label}
+            noLabel={currentItem.no_label}
+            disabled={submitting}
+            onAnswer={handleAnswer}
+          />
         ) : (
           <div className="mt-4 space-y-3" data-testid="placement-mini-reveal">
             <Stamp variant={reveal.correct ? 'win' : 'loss'} />

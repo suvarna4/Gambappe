@@ -1,5 +1,13 @@
 import type { QuestionPublic } from '@receipts/core';
-import { Barcode, CountdownTicker, CrowdBar, PriceTag, Stamp, TicketCard } from '@receipts/ui';
+import {
+  Barcode,
+  CountdownTicker,
+  CrowdBar,
+  PriceTag,
+  Stamp,
+  TicketCard,
+  sideAxisPair,
+} from '@receipts/ui';
 import { copy } from '@/lib/copy';
 import { formatEtClock } from '@/lib/format-et';
 
@@ -50,17 +58,23 @@ export function QuestionStateView({
 
           {question.status === 'open' && (
             <div className="space-y-3" data-testid="question-open">
-              <div className="flex flex-wrap gap-6">
-                <PriceTag
-                  side="yes"
-                  label={question.yes_label}
-                  yesProbability={question.yes_price ?? 0.5}
-                />
-                <PriceTag
-                  side="no"
-                  label={question.no_label}
-                  yesProbability={question.yes_price ?? 0.5}
-                />
+              {/* D-SW9 (swipe plan §2.2): NO left, YES right; `dir="ltr"` because the axis is
+                  visual gesture space — RTL locales must not mirror it. */}
+              <div dir="ltr" className="flex flex-wrap gap-6">
+                {sideAxisPair(
+                  <PriceTag
+                    key="no"
+                    side="no"
+                    label={question.no_label}
+                    yesProbability={question.yes_price ?? 0.5}
+                  />,
+                  <PriceTag
+                    key="yes"
+                    side="yes"
+                    label={question.yes_label}
+                    yesProbability={question.yes_price ?? 0.5}
+                  />,
+                )}
               </div>
               <CountdownTicker
                 targetIso={question.lock_at}
