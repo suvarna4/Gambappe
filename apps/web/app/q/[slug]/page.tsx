@@ -28,6 +28,7 @@ export const revalidate = 30; // ISR_REVALIDATE_QUESTION_S (design doc §10.1 ro
 
 interface QuestionPageProps {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ arm?: string }>;
 }
 
 export async function generateMetadata({ params }: QuestionPageProps): Promise<Metadata> {
@@ -64,7 +65,7 @@ export async function generateMetadata({ params }: QuestionPageProps): Promise<M
   };
 }
 
-export default async function QuestionPage({ params }: QuestionPageProps) {
+export default async function QuestionPage({ params, searchParams }: QuestionPageProps) {
   const { slug } = await params;
   const nowMsValue = nowMs();
   const question = await getQuestionPublicBySlug(getDb(), slug, { nowMsValue });
@@ -85,6 +86,7 @@ export default async function QuestionPage({ params }: QuestionPageProps) {
   });
 
   const swipeBallot = isFlagEnabled('swipe_ballot');
+  const arm = swipeBallot && (await searchParams).arm === '1';
 
   return (
     <main className="mx-auto max-w-xl space-y-6 px-6 py-10">
@@ -92,7 +94,7 @@ export default async function QuestionPage({ params }: QuestionPageProps) {
         question={question}
         serverOffsetMs={serverOffsetMs}
         swipeBallot={swipeBallot}
-        viewerSlot={<ViewerStrip question={question} swipeBallot={swipeBallot} />}
+        viewerSlot={<ViewerStrip question={question} swipeBallot={swipeBallot} arm={arm} />}
       />
       <script
         type="application/ld+json"

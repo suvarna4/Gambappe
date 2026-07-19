@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { PointerEvent as ReactPointerEvent } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
 import type { MarketSide, QuestionPublic } from '@receipts/core';
 import {
   BallotCard,
@@ -39,6 +39,13 @@ export interface SwipeBallotProps {
   undoable: boolean;
   onPick: (side: MarketSide, ageAttested: boolean) => void;
   onUndo: () => void;
+  /**
+   * SW2-T4: the ballot arrived "pre-armed" from a notification/unfurl deep link (`?arm=1`).
+   * Forces one idle nudge on mount and keeps the hint arrows visible regardless of the
+   * learned-hand guardrail — a first-time visitor tapping a share card should always see the
+   * gesture affordance. Never auto-picks anything (SW7-T2 owns the URL plumbing).
+   */
+  arm?: boolean;
 }
 
 /** Vibrate if the API exists; a no-op everywhere else (never gate behavior on it). */
@@ -73,6 +80,7 @@ export function SwipeBallot({
   undoable,
   onPick,
   onUndo,
+  arm = false,
 }: SwipeBallotProps) {
   const [reducedMotion] = useState(() => prefersReducedMotion());
   const [dx, setDx] = useState(0);
@@ -107,19 +115,25 @@ export function SwipeBallot({
   }, [pick, undoable]);
 
   // Idle nudge: once per session, before the first-ever throw, on an actionable open question.
+  // A pre-armed deep link (SW2-T4) forces the nudge on arrival and bypasses the once-per-session
+  // and first-throw guards — the whole point is to teach the gesture to someone who just tapped
+  // a share card, even if they've picked here before.
   useEffect(() => {
     if (reducedMotion || !isOpen || pick || pendingAge) return;
     if (typeof window === 'undefined') return;
-    if (window.localStorage.getItem(GUARDRAIL_KEYS.thrown)) return;
-    if (window.sessionStorage.getItem(GUARDRAIL_KEYS.nudged)) return;
-    const id = window.setTimeout(() => {
+    if (!arm) {
+      if (window.localStorage.getItem(GUARDRAIL_KEYS.thrown)) return;
       if (window.sessionStorage.getItem(GUARDRAIL_KEYS.nudged)) return;
+    }
+    const delay = arm ? 350 : NUDGE_IDLE_MS;
+    const id = window.setTimeout(() => {
+      if (!arm && window.sessionStorage.getItem(GUARDRAIL_KEYS.nudged)) return;
       window.sessionStorage.setItem(GUARDRAIL_KEYS.nudged, '1');
       setNudge(true);
       window.setTimeout(() => setNudge(false), 5300);
-    }, NUDGE_IDLE_MS);
+    }, delay);
     return () => window.clearTimeout(id);
-  }, [reducedMotion, isOpen, pick, pendingAge]);
+  }, [reducedMotion, isOpen, pick, pendingAge, arm]);
 
   const width = () => cardRef.current?.offsetWidth ?? 0;
   const progress = dragProgress(dx, width());
@@ -249,6 +263,19 @@ export function SwipeBallot({
   const previewCents = impliedCents(previewSide, yesProbability);
   const previewLabel = previewSide === 'yes' ? yesLabel : noLabel;
 
+  // SW2-T4: left/right arrows pick, matching the desktop hint — handled on the wells (interactive
+  // elements, so jsx-a11y-clean) rather than the non-interactive card. Same meaning whichever
+  // well has focus (D-SW9 axis: ← against, → for).
+  const onWellKey = (e: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      submit('yes');
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      submit('no');
+    }
+  };
+
   const wells = sideAxisPair(
     <button
       key="no"
@@ -256,6 +283,7 @@ export function SwipeBallot({
       data-testid="pick-no"
       disabled={disabled}
       onClick={() => submit('no')}
+      onKeyDown={onWellKey}
       className="border-side-b text-side-b min-h-12 flex-1 rounded-lg border-2 font-display text-sm font-bold tracking-wide uppercase disabled:opacity-50"
     >
       {ballotCopy.wellAgainstGlyph} {noLabel}
@@ -266,6 +294,7 @@ export function SwipeBallot({
       data-testid="pick-yes"
       disabled={disabled}
       onClick={() => submit('yes')}
+      onKeyDown={onWellKey}
       className="border-side-a text-side-a min-h-12 flex-1 rounded-lg border-2 font-display text-sm font-bold tracking-wide uppercase disabled:opacity-50"
     >
       {yesLabel} {ballotCopy.wellForGlyph}
@@ -375,13 +404,14 @@ export function SwipeBallot({
           />
         </div>
 
-        {/* Hint arrows inside the stage bottom — fade out once the hand has learned (D-SW7). */}
-        {!hintsHidden(pickCount) ? (
+        {/* Hint arrows inside the stage bottom — fade out once the hand has learned (D-SW7); a
+            pre-armed deep link (SW2-T4) keeps them for the first-time visitor. */}
+        {arm || !hintsHidden(pickCount) ? (
           <div
             aria-hidden="true"
             data-testid="ballot-hints"
             className="text-muted mt-2 flex justify-between font-mono text-[11px] tracking-widest"
-            style={{ opacity: railsOpacity(pickCount) }}
+            style={{ opacity: arm ? 1 : railsOpacity(pickCount) }}
           >
             <span className="text-side-b">
               {ballotCopy.againstArrow} {noLabel}
@@ -398,6 +428,17 @@ export function SwipeBallot({
         {wells[0]}
         {wells[1]}
       </div>
+
+      {/* SW2-T4: desktop keyboard affordance — the arrow keys pick from the wells. Shown only on
+          fine-pointer (mouse/keyboard) devices; on touch it's noise. Decorative (the wells are
+          the real controls), so aria-hidden. */}
+      <p
+        aria-hidden="true"
+        data-testid="ballot-key-hint"
+        className="text-muted mt-1 hidden text-center font-mono text-[10px] tracking-wide [@media(pointer:fine)]:block"
+      >
+        {ballotCopy.againstArrow} {noLabel} · {yesLabel} {ballotCopy.forArrow}
+      </p>
     </div>
   );
 }

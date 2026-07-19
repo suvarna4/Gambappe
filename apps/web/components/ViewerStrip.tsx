@@ -27,6 +27,9 @@ export interface ViewerStripProps {
    * flag is not viewer data. Default `false` keeps the flag-off render byte-identical to today.
    */
   swipeBallot?: boolean;
+  /** SW2-T4: the page arrived via a pre-armed deep link (`?arm=1`) — forces the gesture nudge +
+   * hints for a first-time visitor. Forwarded to `SwipeBallot`; never auto-picks. */
+  arm?: boolean;
 }
 
 type MeState =
@@ -45,7 +48,7 @@ type MeState =
  * from those calls (including plain network failures while unmerged) are caught and shown
  * inline; they never crash this component or the page around it.
  */
-export function ViewerStrip({ question, swipeBallot = false }: ViewerStripProps) {
+export function ViewerStrip({ question, swipeBallot = false, arm = false }: ViewerStripProps) {
   const [me, setMe] = useState<MeState>({ status: 'loading' });
   const [pick, setPick] = useState<CachedPick | null>(null);
   const [busy, setBusy] = useState(false);
@@ -166,6 +169,7 @@ export function ViewerStrip({ question, swipeBallot = false }: ViewerStripProps)
           undoable={pick ? canUndo(pick, nowMs, question.lock_at) : false}
           onPick={handlePick}
           onUndo={handleUndo}
+          arm={arm}
         />
         {error ? (
           <p className="text-loss text-xs" data-testid="viewer-strip-error">
