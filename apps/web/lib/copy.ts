@@ -243,6 +243,12 @@ export const obituaryCopy = {
   share: 'Share the obituary',
   /** The comeback framing shown beside the tombstone — tomorrow is nine hours away. */
   consolation: "Streak 0. Everyone's is, eventually.",
+  /** SW4-T3 · The profile graveyard shelf (§2.7): broken streaks as headstones beside the
+   * trophies (P3). Empty state is affectionate, not sad. */
+  graveyardHeading: 'The graveyard',
+  graveyardEmpty: 'No funerals yet.',
+  graveyardRip: (days: number) => `RIP ${days}`,
+  graveyardCalledIt: (count: number) => `Called it ×${count}`,
 } as const;
 
 export const shareCopy = {

@@ -10,6 +10,7 @@ import {
   UnderCard,
 } from '@receipts/ui';
 import { ObituaryCard } from '@/components/ObituaryCard';
+import { GraveyardShelf } from '@/components/GraveyardShelf';
 import { NemesisFlip } from '@/components/nemesis/NemesisFlip';
 import { ReactionStamps } from '@/components/nemesis/ReactionStamps';
 import { VerdictCard } from '@/components/nemesis/VerdictCard';
@@ -143,6 +144,12 @@ export default function UiGalleryPage() {
             <ReactionStamps selected="Called it" />
           </div>
         </div>
+      </section>
+
+      {/* SW4-T3: the profile graveyard — broken streaks beside the trophies (P3). */}
+      <section data-testid="gallery-graveyard" className="space-y-3">
+        <h2 className="text-muted text-sm font-semibold uppercase">GraveyardShelf (P3)</h2>
+        <GraveyardShelf ripDays={[11, 6, 3]} calledItCount={3} />
       </section>
 
       <section data-testid="gallery-ticketcard" className="space-y-3">

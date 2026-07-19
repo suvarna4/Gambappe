@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { MarketSide, QuestionPublic } from '@receipts/core';
 import { copy, shareCopy } from '@/lib/copy';
+import { postAnalyticsEvent } from '@/lib/analytics-client';
+import { DEFAULT_PICK_SOURCE, type PickInputSource } from '@/lib/pick-input-source';
 import { formatEtClock } from '@/lib/format-et';
 import { ApiClientError, fetchMe, placePick, undoPick } from '@/lib/pick-client';
 import { canPick, canUndo, needsAgeGate } from '@/lib/pick-eligibility';
@@ -88,7 +90,11 @@ export function ViewerStrip({ question, swipeBallot = false, arm = false }: View
   }, [pick, question.status]);
 
   const handlePick = useCallback(
-    async (side: MarketSide, ageAttested: boolean) => {
+    async (
+      side: MarketSide,
+      ageAttested: boolean,
+      source: PickInputSource = DEFAULT_PICK_SOURCE,
+    ) => {
       setBusy(true);
       setError(null);
       try {
@@ -108,6 +114,9 @@ export function ViewerStrip({ question, swipeBallot = false, arm = false }: View
         if (typeof window !== 'undefined')
           writeCachedPick(window.localStorage, question.id, cached);
         setPick(cached);
+        // SW8-T3: fire-and-forget the input-method analytics (never awaited, never load-bearing).
+        // Powers the PRD §10 swipe-share-of-picks / >40%-one-throw readout.
+        postAnalyticsEvent('pick_created', { source });
         if (ageAttested) {
           setMe((prev) => (prev.status === 'ready' ? { ...prev, ageAttested: true } : prev));
         }

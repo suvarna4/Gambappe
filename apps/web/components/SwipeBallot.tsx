@@ -24,6 +24,7 @@ import {
 } from '@receipts/ui';
 import { ballotCopy, copy } from '@/lib/copy';
 import { formatEtClock } from '@/lib/format-et';
+import type { PickInputSource } from '@/lib/pick-input-source';
 import type { CachedPick } from '@/lib/pick-storage';
 import { ReceiptSlip } from './ReceiptSlip';
 
@@ -37,7 +38,9 @@ export interface SwipeBallotProps {
   /** Non-null → the receipt state (SW1-T3 enriches the slip). */
   pick: CachedPick | null;
   undoable: boolean;
-  onPick: (side: MarketSide, ageAttested: boolean) => void;
+  /** SW8-T3: `source` reports the input method (swipe / well / key) for analytics. Optional so
+   * the tap-button flow (which omits it) stays compatible; the caller defaults it to 'well'. */
+  onPick: (side: MarketSide, ageAttested: boolean, source?: PickInputSource) => void;
   onUndo: () => void;
   /**
    * SW2-T4: the ballot arrived "pre-armed" from a notification/unfurl deep link (`?arm=1`).
@@ -87,6 +90,8 @@ export function SwipeBallot({
   const [dragging, setDragging] = useState(false);
   const [armed, setArmed] = useState(false);
   const [pendingAge, setPendingAge] = useState<MarketSide | null>(null);
+  // Input method that triggered a pending age-gate, so the eventual confirm reports it (SW8-T3).
+  const pendingSource = useRef<PickInputSource>('swipe');
   const [flingSide, setFlingSide] = useState<MarketSide | null>(null);
   const [nudge, setNudge] = useState(false);
   const [pickCount, setPickCount] = useState(0);
@@ -157,11 +162,13 @@ export function SwipeBallot({
     setPickCount(next);
   }, []);
 
-  /** Fire the pick (or, on the first pick, pause for the age gate). Shared by swipe + wells + keys. */
+  /** Fire the pick (or, on the first pick, pause for the age gate). Shared by swipe + wells + keys;
+   * `source` (SW8-T3) records which of those entered it. */
   const submit = useCallback(
-    (side: MarketSide) => {
+    (side: MarketSide, source: PickInputSource) => {
       if (disabled) return;
       if (ageGateRequired) {
+        pendingSource.current = source;
         setPendingAge(side);
         setDx(0);
         setArmed(false);
@@ -177,7 +184,7 @@ export function SwipeBallot({
       setDx(0);
       setArmed(false);
       armedRef.current = false;
-      onPick(side, false);
+      onPick(side, false, source);
     },
     [ageGateRequired, disabled, onPick, recordThrow, reducedMotion],
   );
@@ -210,7 +217,7 @@ export function SwipeBallot({
     if (!dragging) return;
     setDragging(false);
     if (isCommit(dragProgress(dx, width()))) {
-      submit(dragSide(dx));
+      submit(dragSide(dx), 'swipe');
     } else {
       setDx(0);
       setArmed(false);
@@ -229,7 +236,7 @@ export function SwipeBallot({
     setPendingAge(null);
     haptic(HAPTIC_COMMIT);
     recordThrow();
-    onPick(side, true);
+    onPick(side, true, pendingSource.current);
   }
 
   // ---- Receipt state (SW1-T3). ----
@@ -279,10 +286,10 @@ export function SwipeBallot({
   const onWellKey = (e: ReactKeyboardEvent<HTMLButtonElement>) => {
     if (e.key === 'ArrowRight') {
       e.preventDefault();
-      submit('yes');
+      submit('yes', 'key');
     } else if (e.key === 'ArrowLeft') {
       e.preventDefault();
-      submit('no');
+      submit('no', 'key');
     }
   };
 
@@ -292,7 +299,7 @@ export function SwipeBallot({
       type="button"
       data-testid="pick-no"
       disabled={disabled}
-      onClick={() => submit('no')}
+      onClick={() => submit('no', 'well')}
       onKeyDown={onWellKey}
       className="border-side-b text-side-b min-h-12 flex-1 rounded-lg border-2 font-display text-sm font-bold tracking-wide uppercase disabled:opacity-50"
     >
@@ -303,7 +310,7 @@ export function SwipeBallot({
       type="button"
       data-testid="pick-yes"
       disabled={disabled}
-      onClick={() => submit('yes')}
+      onClick={() => submit('yes', 'well')}
       onKeyDown={onWellKey}
       className="border-side-a text-side-a min-h-12 flex-1 rounded-lg border-2 font-display text-sm font-bold tracking-wide uppercase disabled:opacity-50"
     >
