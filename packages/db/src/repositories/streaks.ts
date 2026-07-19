@@ -88,10 +88,46 @@ export interface StreakApplyResult extends StreakReplayResult {
 }
 
 /**
+ * Monotonic replay-input guard (audit finding 9.1): callers hand `applyStreakForParticipant`/
+ * `applyStreakForNonParticipant` a `dailyHistory` bounded to the day being processed
+ * (`throughDate`). When a daily reveals OUT OF ORDER — e.g. D−2's market lags, D−1 voids
+ * (`voidQuestionTx` has no prior-day gate, so it breaks the induction `reveal:fire`'s D−1-only
+ * ordering assertion relies on), D reveals and advances the profile to `last_counted_date = D`,
+ * then D−2 finally reveals late — that bounded history is TRUNCATED relative to what the
+ * profile has already been counted through, and replaying it would move `last_counted_date`
+ * (and every derived streak field) BACKWARDS.
+ *
+ * Per §6.6's replay procedure ("rebuild from scratch by replaying all revealed non-void dailies
+ * in date order"), the principled input is the complete settled history through the LATEST date
+ * this profile has already been counted to: the late-revealed day (now flipped inside this same
+ * tx, so it's visible to the re-fetch) is INCORPORATED — a participant's newly-graded old day
+ * legitimately joins the chain — while the watermark never regresses.
+ *
+ * Why `max(throughDate, last_counted_date)` and not "through the latest settled daily
+ * globally": `replayStreak` honors only RECORDED freeze uses, and freeze consumption for a day
+ * is decided exactly when a forward path walks it (here, bounded at `throughDate`; beyond the
+ * watermark, by `streak:sweep`). Every day <= the watermark already has its freeze decision
+ * recorded (it was walked when the watermark advanced past it), so replaying through the
+ * watermark is safe and canonical — but replaying days BEYOND it would treat their still-
+ * undecided misses as uncovered and wrongly break a streak the sweep would have freeze-bridged.
+ */
+async function replayInputHistory(
+  tx: Db,
+  dailyHistory: ReplayDailyQuestion[],
+  throughDate: string,
+  lastCountedDate: string | null,
+): Promise<ReplayDailyQuestion[]> {
+  if (lastCountedDate === null || lastCountedDate <= throughDate) return dailyHistory;
+  return listRevealedOrVoidedDailyThrough(tx, lastCountedDate);
+}
+
+/**
  * §6.6 "Reveal of day D (participants)": profile has a graded pick on daily `D`. Applies the
  * gap rule up to (not including) `D`, persists any new freeze use, then always increments for
  * `D` itself (win streak too — win increments, loss resets) via a full replay. `dailyHistory`
- * must include `D` and everything before it (revealed/voided).
+ * must include `D` and everything before it (revealed/voided); when the profile has already
+ * been counted past `D` (out-of-order late reveal), the replay input is re-fetched through the
+ * profile's own watermark instead — see `replayInputHistory` above.
  */
 export async function applyStreakForParticipant(
   tx: Db,
@@ -104,9 +140,10 @@ export async function applyStreakForParticipant(
   if (!before) throw new Error(`applyStreakForParticipant: no profile ${profileId}`);
   const existingFreezeUses = await getFreezeUses(tx, profileId);
   const picks: ReplayPick[] = await getPicksForProfile(tx, profileId);
+  const history = await replayInputHistory(tx, dailyHistory, throughDate, before.lastCountedDate);
 
   const decision = decideGapFreezeConsumption({
-    dailyQuestions: dailyHistory,
+    dailyQuestions: history,
     picks,
     existingFreezeUses,
     lastCountedDate: before.lastCountedDate,
@@ -118,7 +155,7 @@ export async function applyStreakForParticipant(
   await persistNewFreezeUses(tx, profileId, decision.newFreezeUses, decision.freezeBankAfter, at);
 
   const allFreezeUses = [...existingFreezeUses, ...decision.newFreezeUses.map((coveredDate) => ({ coveredDate }))];
-  const result = replayStreak(dailyHistory, picks, allFreezeUses);
+  const result = replayStreak(history, picks, allFreezeUses);
 
   await tx
     .update(profiles)
@@ -143,7 +180,10 @@ export async function applyStreakForParticipant(
 /**
  * §6.6 "streak:sweep — non-participants": profile missed daily `D` (already revealed/voided,
  * no pick). Applies the gap rule THROUGH (inclusive) `D` — non-participants never increment,
- * only advance (freeze-covered) or break.
+ * only advance (freeze-covered) or break. The `replayInputHistory` watermark guard is applied
+ * here too, though it is structurally unreachable via `streak:sweep` today
+ * (`listStreakSweepCandidates` filters to `last_counted_date < throughDate`) — it protects any
+ * future caller the same way.
  */
 export async function applyStreakForNonParticipant(
   tx: Db,
@@ -156,9 +196,10 @@ export async function applyStreakForNonParticipant(
   if (!before) throw new Error(`applyStreakForNonParticipant: no profile ${profileId}`);
   const existingFreezeUses = await getFreezeUses(tx, profileId);
   const picks: ReplayPick[] = await getPicksForProfile(tx, profileId);
+  const history = await replayInputHistory(tx, dailyHistory, throughDate, before.lastCountedDate);
 
   const decision = decideGapFreezeConsumption({
-    dailyQuestions: dailyHistory,
+    dailyQuestions: history,
     picks,
     existingFreezeUses,
     lastCountedDate: before.lastCountedDate,
@@ -170,7 +211,7 @@ export async function applyStreakForNonParticipant(
   await persistNewFreezeUses(tx, profileId, decision.newFreezeUses, decision.freezeBankAfter, at);
 
   const allFreezeUses = [...existingFreezeUses, ...decision.newFreezeUses.map((coveredDate) => ({ coveredDate }))];
-  const result = replayStreak(dailyHistory, picks, allFreezeUses);
+  const result = replayStreak(history, picks, allFreezeUses);
 
   await tx
     .update(profiles)

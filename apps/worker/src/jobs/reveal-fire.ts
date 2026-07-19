@@ -46,6 +46,12 @@
  * revealed or voided"): if the prior calendar day's daily exists and hasn't settled into
  * revealed/voided yet, this run re-arms instead of proceeding — defensive; the structural
  * guarantee (REVEAL_MAX_DELAY_H + admin escalation) should make this unreachable in practice.
+ * Note (audit 9.1) the assert only checks D−1, and `voidQuestionTx` has no prior-day gate at
+ * all — so a void can break the induction (D−2 lagging, D−1 voided, D's check passes) and a
+ * daily CAN reveal late, after newer days. The streak write survives that ordering anomaly
+ * because `applyStreakForParticipant` (`@receipts/db` streaks repo) replays through
+ * `max(questionDate, profile.last_counted_date)` — a late reveal is incorporated into the
+ * chain, never regressing the watermark. See `reveal-out-of-order-streaks.test.ts`.
  *
  * Duo match completion hook (WS6-T2, §8.5/§8.9): a duo window's dailies are derived by date,
  * never stored in `duo_match_questions` (§5.5) — so the "a daily's result stays hidden until
