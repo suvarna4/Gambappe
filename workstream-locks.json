@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T02:28:17.707Z",
+  "updated_at": "2026-07-19T02:45:47.762Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -582,12 +582,12 @@
       ],
       "mock_start_ok": true,
       "note": "Claiming — WS5-T4 genuinely merged now (#57). Dispatching background implementer.",
-      "status": "claimed",
+      "status": "done",
       "owner": "claude-code-web-session-9c961fec",
       "branch": "feat-ws5-t5-rematch-pause-block",
       "pr": null,
       "claimed_at": "2026-07-19T01:25:41.939Z",
-      "updated_at": "2026-07-19T01:25:41.939Z"
+      "updated_at": "2026-07-19T02:45:47.762Z"
     },
     "WS6-T1": {
       "title": "Queue API + matchmaker job",
