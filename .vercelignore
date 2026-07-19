@@ -1,0 +1,6 @@
+docs
+*.md
+apps/worker
+apps/web/load-tests
+apps/web/e2e
+.claude
