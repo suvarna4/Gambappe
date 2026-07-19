@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T14:34:00.670Z",
+  "updated_at": "2026-07-19T14:34:02.353Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1287,13 +1287,13 @@
         "SW0-T2"
       ],
       "mock_start_ok": false,
-      "note": "reassigned to claude-session-35b05898-7175 to take over/finish",
-      "status": "claimed",
+      "note": "Merged to main via PR #73 (commit b486590)",
+      "status": "done",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/daily-question-swipe-ux-f0p4wq",
-      "pr": null,
+      "pr": "https://github.com/suvarna4/Gambappe/pull/73",
       "claimed_at": "2026-07-19T14:34:00.670Z",
-      "updated_at": "2026-07-19T14:34:00.670Z"
+      "updated_at": "2026-07-19T14:34:02.353Z"
     },
     "SW1-T2": {
       "title": "SwipeBallot gesture engine (drag/arm/commit, age gate, haptics, guardrails)",
