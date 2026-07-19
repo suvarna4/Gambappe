@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T02:03:25.856Z",
+  "updated_at": "2026-07-19T02:28:17.707Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -738,13 +738,13 @@
         "WS5-T4"
       ],
       "mock_start_ok": true,
-      "note": "Merged to main via PR #31. Left in_review, not done — blocked on WS5-T4 (matchup+history APIs, still unclaimed) per §19.2's mock-start rule, same as WS12-T3 earlier.",
-      "status": "in_review",
+      "note": "WS5-T4 confirmed done/merged; mock-start block cleared. PR #31 confirmed merged to main.",
+      "status": "done",
       "owner": "claude-code-web-session-9c961fec",
       "branch": "feat-ws7-t6-nemesis-ui",
       "pr": "https://github.com/suvarna4/Gambappe/pull/31",
       "claimed_at": "2026-07-18T19:48:09.000Z",
-      "updated_at": "2026-07-18T22:09:55.168Z"
+      "updated_at": "2026-07-19T02:28:17.691Z"
     },
     "WS7-T7": {
       "title": "Duo UI",
