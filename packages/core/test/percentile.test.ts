@@ -45,6 +45,44 @@ describe('computePercentiles (§8.6)', () => {
     expect(a[0]).toBeCloseTo(b[2]!, 5);
     expect(a[2]).toBeCloseTo(b[3]!, 5);
   });
+
+  it('matches the pairwise §8.6 definition on tie-heavy pseudo-random inputs (differential)', () => {
+    // Reference: the definition verbatim (the pre-optimization O(n²) implementation).
+    function pairwiseReference(scores: readonly number[]): number[] {
+      const n = scores.length;
+      if (n === 0) return [];
+      if (n === 1) return [100];
+      return scores.map((sx, i) => {
+        let lower = 0;
+        let tiedOthers = 0;
+        for (let j = 0; j < n; j++) {
+          if (j === i) continue;
+          const sy = scores[j]!;
+          if (sy < sx) lower++;
+          else if (sy === sx) tiedOthers++;
+        }
+        return ((lower + 0.5 * tiedOthers) / (n - 1)) * 100;
+      });
+    }
+
+    // Deterministic LCG so failures are reproducible; values drawn from a SMALL bucket set to
+    // force heavy tie groups (the case the tie-group math must get exactly right).
+    let seed = 42;
+    const rand = () => {
+      seed = (seed * 1103515245 + 12345) % 2 ** 31;
+      return seed / 2 ** 31;
+    };
+    for (let trial = 0; trial < 25; trial++) {
+      const n = 2 + Math.floor(rand() * 60);
+      const scores = Array.from({ length: n }, () => Math.floor(rand() * 5) / 4 - 0.5);
+      const expected = pairwiseReference(scores);
+      const actual = computePercentiles(scores);
+      expect(actual).toHaveLength(expected.length);
+      for (let i = 0; i < n; i++) {
+        expect(actual[i]).toBeCloseTo(expected[i]!, 10);
+      }
+    }
+  });
 });
 
 describe('topPercentDisplay (§8.6 "Top X%")', () => {

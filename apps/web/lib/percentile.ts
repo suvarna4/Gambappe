@@ -33,9 +33,21 @@ export async function recomputeAndCache(db: Db, redis: Redis, questionId: string
     fields[e.profileId] = String(percentiles[i]);
     byProfile.set(e.profileId, percentiles[i]!);
   });
-  await redis.hset(revealHashKey(questionId), fields);
-  await redis.expire(revealHashKey(questionId), REVEAL_HASH_TTL_S);
+  // MULTI so the hash can never be committed without its TTL (a crash between a separate
+  // hset and expire would otherwise leave an immortal hash).
+  await redis.multi().hset(revealHashKey(questionId), fields).expire(revealHashKey(questionId), REVEAL_HASH_TTL_S).exec();
   return byProfile;
+}
+
+/** Stampede guard for the cache-miss path below: only one concurrent request per question runs
+ * the recompute-and-populate; the rest briefly poll the cache and then, as a bounded fallback,
+ * compute for themselves WITHOUT writing (correct answer, no write storm). */
+const RECOMPUTE_LOCK_TTL_S = 10;
+const RECOMPUTE_POLL_ATTEMPTS = 5;
+const RECOMPUTE_POLL_INTERVAL_MS = 100;
+
+function recomputeLockKey(questionId: string): string {
+  return `reveal:${questionId}:recompute-lock`;
 }
 
 /** `null` only when the profile truly has no graded pick on this question (callers only call
@@ -53,10 +65,45 @@ export async function getViewerPercentile(
   const cached = await redis.hget(revealHashKey(questionId), profileId);
   if (cached !== null) return Number(cached);
 
-  const recomputed = await recomputeAndCache(db, redis, questionId);
-  const percentile = recomputed.get(profileId);
-  if (percentile !== undefined) return percentile;
+  // Cache miss (worker lag at reveal minute — the reveal-spike worst case). Single-flight the
+  // shared recompute: the SET NX winner populates the cache for everyone; losers poll it
+  // briefly, then fall back to a private no-write compute rather than piling N identical
+  // recompute+hset storms onto the pool.
+  let recomputed: Map<string, number> | null = null;
+  const lockKey = recomputeLockKey(questionId);
+  const lockAcquired = (await redis.set(lockKey, '1', 'EX', RECOMPUTE_LOCK_TTL_S, 'NX')) === 'OK';
+  if (lockAcquired) {
+    try {
+      recomputed = await recomputeAndCache(db, redis, questionId);
+    } finally {
+      await redis.del(lockKey).catch(() => {});
+    }
+  } else {
+    for (let attempt = 0; attempt < RECOMPUTE_POLL_ATTEMPTS; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, RECOMPUTE_POLL_INTERVAL_MS));
+      const polled = await redis.hget(revealHashKey(questionId), profileId);
+      if (polled !== null) return Number(polled);
+    }
+  }
 
+  if (recomputed) {
+    const percentile = recomputed.get(profileId);
+    if (percentile !== undefined) return percentile;
+  } else {
+    // Poll budget exhausted without the lock holder finishing. Compute privately (no cache
+    // write) against the same excluded-set denominator the cache would have held (§8.6) —
+    // a non-excluded viewer must never be ranked against the full set just because they
+    // arrived during someone else's recompute.
+    const entries = await getGradedPickScoresForQuestion(db, questionId);
+    const idxExcludedSet = entries.findIndex((e) => e.profileId === profileId);
+    if (idxExcludedSet !== -1) {
+      const percentiles = computePercentiles(entries.map((e) => e.edge));
+      return percentiles[idxExcludedSet] ?? null;
+    }
+  }
+
+  // Viewer absent from the excluded set → they're bot-excluded (§8.6: "excluded profiles get
+  // their own percentile against the full set") — computed on demand, never cached.
   const allEntries = await getAllGradedPickScoresForQuestion(db, questionId);
   const idx = allEntries.findIndex((e) => e.profileId === profileId);
   if (idx === -1) return null; // genuinely no graded pick at all
