@@ -13,7 +13,16 @@ import type pg from 'pg';
 import { connect, type Db } from '../../src/client.js';
 import { deleteAccount } from '../../src/repositories/account-deletion.js';
 import { getProfileBySlug } from '../../src/repositories/profiles.js';
-import { markets, picks, posts, profiles, questions, users, verificationTokens } from '../../src/schema/index.js';
+import {
+  analyticsEvents,
+  markets,
+  picks,
+  posts,
+  profiles,
+  questions,
+  users,
+  verificationTokens,
+} from '../../src/schema/index.js';
 import { buildMarket, buildPick, buildProfile, buildQuestion } from '../../src/testing/index.js';
 
 const url =
@@ -106,5 +115,67 @@ describe('deleteAccount (§11.4)', () => {
       .from(verificationTokens)
       .where(eq(verificationTokens.identifier, 'delete-me@example.com'));
     expect(tokenRows).toHaveLength(0);
+  });
+
+  it('scrubs analytics_events (profile_id/ip_hash/ua_hash nulled, rows retained) — §11.4, audit 3.2', async () => {
+    const userId = uuidv7();
+    await db.insert(users).values({ id: userId, email: `scrub-${userId}@example.com` });
+    const profile = buildProfile({ kind: 'claimed', userId, ghostSecretHash: null });
+    await db.insert(profiles).values(profile);
+    const bystander = buildProfile({ kind: 'ghost' });
+    await db.insert(profiles).values(bystander);
+
+    // `ts` must be "now": 0001_init only creates the current + next month's partitions of the
+    // RANGE-partitioned table, so a fixed historical date would fail routing.
+    const ts = new Date();
+    await db.insert(analyticsEvents).values([
+      {
+        ts,
+        event: 'pick_created',
+        profileId: profile.id as string,
+        isGhost: false,
+        props: { marker: 'deleted-1' },
+        ipHash: 'ip-hash-deleted',
+        uaHash: 'ua-hash-deleted',
+      },
+      // Second row with hashes already aged out (§5.6's 7-day null) — profile_id must still go.
+      { ts, event: 'reveal_attended', profileId: profile.id as string, isGhost: false, props: { marker: 'deleted-2' } },
+      {
+        ts,
+        event: 'pick_created',
+        profileId: bystander.id as string,
+        isGhost: true,
+        props: { marker: 'bystander' },
+        ipHash: 'ip-hash-bystander',
+        uaHash: 'ua-hash-bystander',
+      },
+    ]);
+
+    await deleteAccount(db, profile.id as string, userId, new Date('2026-07-19T00:00:00Z'));
+
+    // No behavioral trail survives erasure: nothing references the deleted profile id anymore…
+    const stillLinked = await db
+      .select()
+      .from(analyticsEvents)
+      .where(eq(analyticsEvents.profileId, profile.id as string));
+    expect(stillLinked).toHaveLength(0);
+
+    // …but the rows themselves are retained (aggregate metrics stay truthful), fully de-identified.
+    const all = await db.select().from(analyticsEvents);
+    expect(all).toHaveLength(3);
+    const byMarker = new Map(all.map((row) => [(row.props as { marker: string }).marker, row]));
+    for (const marker of ['deleted-1', 'deleted-2'] as const) {
+      const row = byMarker.get(marker)!;
+      expect(row.profileId).toBeNull();
+      expect(row.ipHash).toBeNull();
+      expect(row.uaHash).toBeNull();
+    }
+    expect(byMarker.get('deleted-1')!.event).toBe('pick_created'); // event name survives for aggregates
+
+    // The bystander's row is untouched — the scrub is scoped to the deleted profile only.
+    const bystanderRow = byMarker.get('bystander')!;
+    expect(bystanderRow.profileId).toBe(bystander.id as string);
+    expect(bystanderRow.ipHash).toBe('ip-hash-bystander');
+    expect(bystanderRow.uaHash).toBe('ua-hash-bystander');
   });
 });
