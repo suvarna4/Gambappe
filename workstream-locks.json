@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T09:08:07.593Z",
+  "updated_at": "2026-07-19T09:09:27.984Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1393,13 +1393,13 @@
       "phase": "SP1",
       "depends_on": [],
       "mock_start_ok": false,
-      "note": "PR pushed: feat/sw2-t3-side-axis-sweep @ https://github.com/suvarna4/Gambappe/pull/72",
-      "status": "in_review",
+      "note": "Merged to main as PR #72 (squash 137c233)",
+      "status": "done",
       "owner": "claude-sonnet5-vf9acd-orchestrator",
       "branch": null,
       "pr": null,
       "claimed_at": "2026-07-19T08:41:27.854Z",
-      "updated_at": "2026-07-19T09:03:42.700Z"
+      "updated_at": "2026-07-19T09:09:27.982Z"
     },
     "SW2-T4": {
       "title": "Desktop layout + keyboard layer + focus order",
