@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T14:35:07.075Z",
+  "updated_at": "2026-07-19T14:35:08.460Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1591,13 +1591,13 @@
         "SW2-T1"
       ],
       "mock_start_ok": false,
-      "note": null,
-      "status": "claimed",
+      "note": "Merged to main via PR #73 (commit b486590)",
+      "status": "done",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/daily-question-swipe-ux-f0p4wq",
-      "pr": null,
+      "pr": "https://github.com/suvarna4/Gambappe/pull/73",
       "claimed_at": "2026-07-19T14:35:07.074Z",
-      "updated_at": "2026-07-19T14:35:07.074Z"
+      "updated_at": "2026-07-19T14:35:08.460Z"
     },
     "SW7-T3": {
       "title": "Native surfaces feasibility spike (doc only: widget, Live Activity, watch)",
