@@ -6,8 +6,9 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { ApiError, GHOST_MINT_PER_IP_PER_DAY } from '@receipts/core';
 import type { ProfileRow } from '@receipts/db';
-import { mintGhost, type MintGhostDeps } from '@/lib/ghost-mint';
+import { ghostMintRetryAfterSeconds, mintGhost, type MintGhostDeps } from '@/lib/ghost-mint';
 import { InMemoryGhostMintLimiter } from '@/lib/ghost-mint-limiter';
+import { jsonError } from '@/lib/api-response';
 
 beforeAll(() => {
   process.env.GHOST_COOKIE_SECRET = 'unit-test-ghost-cookie-secret';
@@ -76,5 +77,32 @@ describe('mintGhost (§6.1.1)', () => {
       expect(ApiError.is(e)).toBe(true);
       expect((e as ApiError).status).toBe(429);
     }
+  });
+
+  it('the 429 carries Retry-After = seconds to the next UTC midnight (§14.1, audit 2.5)', async () => {
+    const limiter = new InMemoryGhostMintLimiter();
+    const at = new Date('2026-07-19T09:00:00Z'); // 15h before the UTC day rollover
+    for (let i = 0; i < GHOST_MINT_PER_IP_PER_DAY; i++) {
+      await mintGhost(fakeDeps(), '5.5.5.5', limiter, at);
+    }
+    try {
+      await mintGhost(fakeDeps(), '5.5.5.5', limiter, at);
+      expect.unreachable();
+    } catch (e) {
+      // The error itself carries the seconds…
+      expect((e as ApiError).details).toEqual({ retry_after_seconds: 15 * 3600 });
+      // …and the route-layer error mapper turns them into the actual header.
+      const response = jsonError(e);
+      expect(response.status).toBe(429);
+      expect(response.headers.get('retry-after')).toBe(String(15 * 3600));
+    }
+  });
+});
+
+describe('ghostMintRetryAfterSeconds', () => {
+  it('is the distance to the next UTC midnight, never below 1', () => {
+    expect(ghostMintRetryAfterSeconds(new Date('2026-07-19T00:00:00Z'))).toBe(86_400);
+    expect(ghostMintRetryAfterSeconds(new Date('2026-07-19T23:59:59Z'))).toBe(1);
+    expect(ghostMintRetryAfterSeconds(new Date('2026-07-19T23:59:59.500Z'))).toBe(1);
   });
 });

@@ -8,6 +8,7 @@
 import type { NextResponse } from 'next/server';
 import { ApiError, getDuoRequestSchema, isFlagEnabled } from '@receipts/core';
 import { jsonSuccess, runRoute } from '@/lib/api-response';
+import { enforceGetBackstop } from '@/lib/rate-limit';
 import { getDb } from '@/lib/stores';
 import { DUO_MATCH_HISTORY_LIMIT, getDuoPublicPage } from '@/lib/serialize-duo';
 
@@ -18,6 +19,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   return runRoute(async () => {
+    const limited = await enforceGetBackstop(request);
+    if (limited) return limited;
+
     if (!isFlagEnabled('duo_queue')) {
       throw new ApiError('NOT_FOUND', 'duo pages are not available');
     }

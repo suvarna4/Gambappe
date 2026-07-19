@@ -10,12 +10,11 @@
  * well-formed slug gets — there is no distinguishable error signal an attacker could use to
  * probe the parser, and no code path here ever performs network I/O against `url`'s value.
  */
-import { extractClientIp } from '@/lib/analytics';
 import { appUrl } from '@/lib/app-url';
 import { ApiError, errorEnvelope, nowMs } from '@receipts/core';
 import { buildOembedResponse } from '@/lib/oembed/response';
 import { matchOembedUrl } from '@/lib/oembed/route-matcher';
-import { enforceRateLimit } from '@/lib/rate-limit';
+import { clientIpKey, enforceRateLimit } from '@/lib/rate-limit';
 import { getDb } from '@/lib/stores';
 
 export const runtime = 'nodejs';
@@ -32,7 +31,7 @@ function notFound(): Response {
 export async function GET(request: Request): Promise<Response> {
   // Same posture as `/api/og/*` (`lib/og/route-handler.ts`): the limiter runs before any DB
   // work so a flood of garbage `url=` values never reaches the database.
-  const rateLimited = await enforceRateLimit('images', extractClientIp(request.headers) ?? 'unknown');
+  const rateLimited = await enforceRateLimit('images', clientIpKey(request.headers));
   if (rateLimited) return rateLimited;
 
   const url = new URL(request.url);

@@ -11,9 +11,24 @@
 import { NextResponse } from 'next/server';
 import type { ClientContext, Redis } from 'ioredis';
 import { nowMs, RL_FAIL_CLOSED_FRACTION } from '@receipts/core';
+import { extractClientIp } from './http';
 import { logger } from './logger';
 import { RATE_LIMIT_RULES, type RateLimitAction } from './rate-limit-rules';
 import { ensureRedisConnected, getRedis } from './stores';
+
+/**
+ * IP-keyed limiter identifier for a request. Missing-IP policy (deliberate, audit 2.6):
+ * requests with no resolvable client IP all share ONE `'unknown'` bucket per action —
+ * fail-closed, never per-request/unlimited. In production the Vercel edge always sets
+ * `x-forwarded-for` (see `extractClientIp`'s trust-boundary note), so this bucket only
+ * receives traffic when that assumption breaks (misconfigured proxy, bare `next start`) —
+ * in which case unattributable traffic collectively gets a single IP's quota rather than
+ * a bypass. Rejecting outright was considered and ruled out: it would hard-fail every
+ * self-hosted/local deployment with no edge proxy in front.
+ */
+export function clientIpKey(headers: Headers): string {
+  return extractClientIp(headers) ?? 'unknown';
+}
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -162,6 +177,21 @@ export async function checkRateLimit(
 }
 
 /**
+ * Looks up `action`'s §14.1 rule and consumes one token from `identifier`'s bucket, returning
+ * the raw result. Use this where a ready-made 429 `NextResponse` can't be returned (e.g. the
+ * Auth.js `sendVerificationRequest` hook, which can only throw); route handlers should prefer
+ * `enforceRateLimit` below.
+ */
+export async function consumeRateLimit(
+  action: RateLimitAction,
+  identifier: string,
+): Promise<RateLimitResult> {
+  const rule = RATE_LIMIT_RULES[action];
+  const bucketKey = `ratelimit:${action}:${identifier}`;
+  return checkRateLimit(getRedis(), bucketKey, rule.limit, rule.windowSeconds, nowMs());
+}
+
+/**
  * The "one shared middleware" route handlers call directly (§14.1) — looks up `action`'s
  * rule, checks the bucket for `identifier` (an IP, profile id, "email:ip" pair, or a fixed
  * string for `global` actions), and returns a ready-to-return 429 response, or null to
@@ -172,9 +202,7 @@ export async function enforceRateLimit(
   action: RateLimitAction,
   identifier: string,
 ): Promise<NextResponse | null> {
-  const rule = RATE_LIMIT_RULES[action];
-  const bucketKey = `ratelimit:${action}:${identifier}`;
-  const result = await checkRateLimit(getRedis(), bucketKey, rule.limit, rule.windowSeconds, nowMs());
+  const result = await consumeRateLimit(action, identifier);
   if (result.allowed) return null;
 
   return NextResponse.json(
@@ -187,4 +215,14 @@ export async function enforceRateLimit(
       },
     },
   );
+}
+
+/**
+ * §14.1 backstop: "Any `/api/v1` GET | IP | 600/min" (`api_v1_get_backstop`, audit 2.3).
+ * Called at the top of every `/api/v1` GET route handler — and ONLY those: ISR pages are
+ * deliberately outside this limiter (WS11-T1 AC "backstop GET limit doesn't hit ISR pages"),
+ * and og/cards/admin routes carry their own limits. Returns the ready-to-return 429, or null.
+ */
+export async function enforceGetBackstop(request: Request): Promise<NextResponse | null> {
+  return enforceRateLimit('api_v1_get_backstop', clientIpKey(request.headers));
 }

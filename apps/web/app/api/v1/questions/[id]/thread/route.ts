@@ -11,6 +11,7 @@
 import type { NextResponse } from 'next/server';
 import { ApiError, paginationQuerySchema } from '@receipts/core';
 import { jsonSuccess, runRoute } from '@/lib/api-response';
+import { enforceGetBackstop } from '@/lib/rate-limit';
 import { getQuestionThreadPage, THREAD_DEFAULT_LIMIT } from '@/lib/threads';
 import { getDb } from '@/lib/stores';
 
@@ -21,6 +22,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   return runRoute(async () => {
+    const limited = await enforceGetBackstop(request);
+    if (limited) return limited;
+
     const { id: slug } = await params;
 
     const url = new URL(request.url);

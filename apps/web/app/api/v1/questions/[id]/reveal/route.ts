@@ -14,6 +14,7 @@ import { ApiError, now } from '@receipts/core';
 import { getMarketById, getQuestionBySlug } from '@receipts/db';
 import { jsonSuccess, runRoute } from '@/lib/api-response';
 import { resolveIdentityFromRequest } from '@/lib/identity-request';
+import { enforceGetBackstop } from '@/lib/rate-limit';
 import { buildRevealPayload } from '@/lib/reveal-payload';
 import { getDb, getRedis } from '@/lib/stores';
 
@@ -24,6 +25,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   return runRoute(async () => {
+    const limited = await enforceGetBackstop(request);
+    if (limited) return limited;
+
     const { identity } = await resolveIdentityFromRequest(request);
     if (identity.kind === 'anonymous') {
       throw new ApiError('UNAUTHENTICATED', 'a ghost or claimed profile is required');

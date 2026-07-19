@@ -6,13 +6,17 @@ import type { NextResponse } from 'next/server';
 import { ApiError, etDateString, now } from '@receipts/core';
 import { getDailyQuestion, getMarketById } from '@receipts/db';
 import { jsonSuccess, runRoute } from '@/lib/api-response';
+import { enforceGetBackstop } from '@/lib/rate-limit';
 import { assertQuestionPubliclyVisible, serializeQuestionPublic } from '@/lib/serialize-question';
 import { getDb } from '@/lib/stores';
 
 export const runtime = 'nodejs';
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(request: Request): Promise<NextResponse> {
   return runRoute(async () => {
+    const limited = await enforceGetBackstop(request);
+    if (limited) return limited;
+
     const db = getDb();
     const at = now();
     const question = await getDailyQuestion(db, etDateString(at));

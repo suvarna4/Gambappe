@@ -33,6 +33,9 @@ beforeAll(async () => {
 
   process.env.DATABASE_URL = dbUrl;
   process.env.UNSUB_TOKEN_SECRET = SECRET;
+  // The unsubscribe GET now consumes the §14.1 GET backstop (audit 2.3), whose limiter reads
+  // `getRedis()` — REDIS_URL must resolve (CI sets it; default matches events.test.ts).
+  process.env.REDIS_URL ??= 'redis://localhost:6379';
 });
 
 afterAll(async () => {

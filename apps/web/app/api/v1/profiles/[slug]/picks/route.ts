@@ -8,6 +8,7 @@ import { ApiError, getProfilePicksRequestSchema } from '@receipts/core';
 import { getDb } from '@/lib/stores';
 import { getProfilePicksResponse, PROFILE_PICKS_DEFAULT_LIMIT } from '@/lib/profile-page';
 import { jsonSuccess, runRoute } from '@/lib/api-response';
+import { enforceGetBackstop } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -16,6 +17,9 @@ export async function GET(
   { params }: { params: Promise<{ slug: string }> },
 ): Promise<NextResponse> {
   return runRoute(async () => {
+    const limited = await enforceGetBackstop(request);
+    if (limited) return limited;
+
     const { slug } = getProfilePicksRequestSchema.shape.params.parse(await params);
 
     const url = new URL(request.url);

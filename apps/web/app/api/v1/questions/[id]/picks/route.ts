@@ -34,8 +34,7 @@ import { derivePickSource } from '@/lib/pick-source';
 import { resolvePickPriceStamp } from '@/lib/price-stamp';
 import { serializePick } from '@/lib/serialize-pick';
 import { defaultVenueAdapters } from '@/lib/venues';
-import { extractClientIp } from '@/lib/http';
-import { enforceRateLimit } from '@/lib/rate-limit';
+import { clientIpKey, enforceRateLimit } from '@/lib/rate-limit';
 import { getDb, getRedis } from '@/lib/stores';
 
 export const runtime = 'nodejs';
@@ -54,7 +53,7 @@ export async function POST(
 
     // §14.1: pick 30/h/profile, 120/h/IP. IP check first — cheapest, needs no identity
     // resolution — same posture as POST /events (protect against a flood before doing work).
-    const ipLimited = await enforceRateLimit('pick_create_ip', extractClientIp(request.headers) ?? 'unknown');
+    const ipLimited = await enforceRateLimit('pick_create_ip', clientIpKey(request.headers));
     if (ipLimited) return ipLimited;
 
     const { id: rawId } = await params;

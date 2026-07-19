@@ -13,16 +13,20 @@ import type { NextResponse } from 'next/server';
 import { ApiError, now } from '@receipts/core';
 import { getMarketById, getQuestionBySlug } from '@receipts/db';
 import { jsonSuccess, runRoute } from '@/lib/api-response';
+import { enforceGetBackstop } from '@/lib/rate-limit';
 import { assertQuestionPubliclyVisible, serializeQuestionPublic } from '@/lib/serialize-question';
 import { getDb } from '@/lib/stores';
 
 export const runtime = 'nodejs';
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   return runRoute(async () => {
+    const limited = await enforceGetBackstop(request);
+    if (limited) return limited;
+
     const { id: slug } = await params;
     const db = getDb();
     const question = await getQuestionBySlug(db, slug);

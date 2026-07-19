@@ -17,9 +17,9 @@ import {
   nowMs,
 } from '@receipts/core';
 import { getDb, getRedis } from '@/lib/stores';
-import { extractClientIp, hashRequestMeta } from '@/lib/analytics';
+import { hashRequestMeta } from '@/lib/analytics';
 import { emitEvent } from '@/lib/emit-event';
-import { enforceRateLimit } from '@/lib/rate-limit';
+import { clientIpKey, enforceRateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -43,7 +43,7 @@ function rejected(err: ApiError): NextResponse {
 export async function POST(request: Request): Promise<NextResponse> {
   // §14.1: POST /events, 120/hour per IP. Checked first — before parsing the body — since
   // the whole point is protecting against a flood of requests, not just malformed ones.
-  const rateLimited = await enforceRateLimit('events', extractClientIp(request.headers) ?? 'unknown');
+  const rateLimited = await enforceRateLimit('events', clientIpKey(request.headers));
   if (rateLimited) return rateLimited;
 
   let json: unknown;

@@ -7,6 +7,7 @@
 import type { NextResponse } from 'next/server';
 import { ApiError, getLadderRequestSchema, isFlagEnabled, now } from '@receipts/core';
 import { jsonSuccess, runRoute } from '@/lib/api-response';
+import { enforceGetBackstop } from '@/lib/rate-limit';
 import { getDb } from '@/lib/stores';
 import { getDuoLadderPage } from '@/lib/duo-ladder';
 
@@ -14,6 +15,9 @@ export const runtime = 'nodejs';
 
 export async function GET(request: Request): Promise<NextResponse> {
   return runRoute(async () => {
+    const limited = await enforceGetBackstop(request);
+    if (limited) return limited;
+
     if (!isFlagEnabled('duo_queue')) {
       throw new ApiError('NOT_FOUND', 'the duo ladder is not available');
     }
