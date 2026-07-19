@@ -50,6 +50,19 @@ export function crowdSplit(yesCount: number, noCount: number): CrowdSplit {
   return { yesPct, noPct: 100 - yesPct };
 }
 
+/** §2.6 F1 hush: how long before `reveal_at` the pre-reveal hush (frozen chip, stage dim, room
+ * count) activates. */
+export const HUSH_WINDOW_MS = 10_000;
+
+/** True from `HUSH_WINDOW_MS` before `targetMs` up to (not including) `targetMs` itself. This is
+ * the trigger window, not the display window: a caller that latches "hushed" on the first true
+ * result (to avoid flapping) may keep showing it briefly past `targetMs` too, until it stops
+ * polling for the state that supersedes it. */
+export function isHushWindow(targetMs: number, nowMs: number, windowMs = HUSH_WINDOW_MS): boolean {
+  const remaining = targetMs - nowMs;
+  return remaining > 0 && remaining <= windowMs;
+}
+
 const BAR_HEIGHTS = [3, 5, 7, 9] as const;
 
 /** Deterministic decorative bar widths for the §10.4 Barcode motif — not a scannable code. */

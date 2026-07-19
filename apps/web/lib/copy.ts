@@ -187,6 +187,13 @@ export const shareCopy = {
   genericError: 'Something went wrong preparing your share card. Try again.',
 } as const;
 
+/** SW3-T1 (docs/swipe-ux-plan.md §2.6): the pre-reveal hush, T-10s before a locked question's
+ * `reveal_at`. `roomCount` is approximate by design — "drama, not accounting." */
+export const hushCopy = {
+  frozenChip: 'FROZEN',
+  roomCount: (n: number) => `${n} in the room`,
+} as const;
+
 /** WS7-T8 (threads + reactions UI) section. */
 export const threadCopy = {
   heading: 'Thread',

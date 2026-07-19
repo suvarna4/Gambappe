@@ -5,7 +5,9 @@ import {
   countdownParts,
   crowdSplit,
   formatCountdown,
+  HUSH_WINDOW_MS,
   impliedCents,
+  isHushWindow,
 } from '../src/format.js';
 
 describe('impliedCents', () => {
@@ -67,6 +69,34 @@ describe('countdownParts + formatCountdown', () => {
   it('formats Xd XXh at a day or beyond', () => {
     const parts = countdownParts(2 * 86_400_000 + 3 * 3600_000, 0); // 2d03h
     expect(formatCountdown(parts)).toBe('2d 03h');
+  });
+});
+
+describe('isHushWindow (§2.6 F1 hush trigger math)', () => {
+  it('is false well before the window', () => {
+    expect(isHushWindow(100_000, 0)).toBe(false);
+  });
+
+  it('is true exactly at the window boundary (T-10s)', () => {
+    expect(isHushWindow(HUSH_WINDOW_MS, 0)).toBe(true);
+  });
+
+  it('is true just inside the window', () => {
+    expect(isHushWindow(HUSH_WINDOW_MS, 1)).toBe(true);
+  });
+
+  it('is false just outside the window', () => {
+    expect(isHushWindow(HUSH_WINDOW_MS + 1, 0)).toBe(false);
+  });
+
+  it('is false at and after the target — hush is pre-reveal only', () => {
+    expect(isHushWindow(1_000, 1_000)).toBe(false);
+    expect(isHushWindow(1_000, 2_000)).toBe(false);
+  });
+
+  it('respects a custom window', () => {
+    expect(isHushWindow(5_000, 0, 5_000)).toBe(true);
+    expect(isHushWindow(5_001, 0, 5_000)).toBe(false);
   });
 });
 

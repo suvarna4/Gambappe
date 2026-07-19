@@ -15,3 +15,4 @@ export * from './components/CrowdBar.js';
 export * from './components/CountdownTicker.js';
 export * from './components/StreakFlame.js';
 export * from './components/Barcode.js';
+export * from './components/RevealHush.js';
