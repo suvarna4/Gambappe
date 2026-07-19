@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T09:03:42.701Z",
+  "updated_at": "2026-07-19T09:08:07.593Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1317,13 +1317,13 @@
         "SW1-T2"
       ],
       "mock_start_ok": false,
-      "note": null,
-      "status": "available",
+      "note": "receipt slip on integration branch; tests + typecheck + lint + build green",
+      "status": "in_review",
       "owner": null,
       "branch": null,
       "pr": null,
       "claimed_at": null,
-      "updated_at": "2026-07-19T08:18:25.516Z"
+      "updated_at": "2026-07-19T09:08:07.592Z"
     },
     "SW1-T4": {
       "title": "ViewerStrip integration behind flag (INV-10 preserved)",
