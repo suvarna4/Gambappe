@@ -14,9 +14,11 @@ export interface ObituaryCardProps {
   endLabel: string;
   /** 2–3 data-derived "survived" facts (the caller builds these from the pick log). */
   facts: ObituaryFact[];
-  /** The losing pick that ended it. */
-  sideLabel: string;
-  entryCents: number;
+  /** The pick that ended it — "Died holding …". Omitted (both fields) when unresolvable
+   * (contract's `last_pick: null`, SW9-T1 §3.2) — the cause-of-death line is skipped entirely
+   * rather than rendered with placeholder data (SW4-T1's degrade rule). */
+  sideLabel?: string;
+  entryCents?: number;
   /** Interactive actions (in-app). Omit for the static share/OG artifact (SW4-T2). */
   onBury?: () => void;
   onShare?: () => void;
@@ -105,12 +107,16 @@ export function ObituaryCard({
           </div>
         ) : null}
 
-        <p className="text-ink/70 mt-2 font-mono text-[11px]">
-          {obituaryCopy.causeOfDeath(sideLabel, entryCents)}
-        </p>
+        {sideLabel !== undefined && entryCents !== undefined ? (
+          <p className="text-ink/70 mt-2 font-mono text-[11px]">
+            {obituaryCopy.causeOfDeath(sideLabel, entryCents)}
+          </p>
+        ) : null}
 
         <div className="mt-3 flex items-end justify-between">
-          <span className="border-loss inline-block -rotate-6 rounded border-2 px-2.5 py-0.5 font-display text-base font-bold text-[#a11731] uppercase">
+          {/* §2.7 card/tone rule: the BUSTED stamp sits at a −7° rotation; Tailwind has no
+              `rotate-7` utility, so this uses the arbitrary-value syntax. */}
+          <span className="border-loss inline-block -rotate-[7deg] rounded border-2 px-2.5 py-0.5 font-display text-base font-bold text-[#a11731] uppercase">
             {obituaryCopy.stamp}
           </span>
           <span className="text-ink/70 font-mono text-[11px]">🕯 {obituaryCopy.rip(days)}</span>

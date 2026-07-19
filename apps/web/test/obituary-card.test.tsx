@@ -59,4 +59,22 @@ describe('ObituaryCard', () => {
     expect(html).not.toMatch(/\$/);
     expect(html.toLowerCase()).not.toMatch(/\b(death|died of|funeral|grave)\b/);
   });
+
+  it('renders the BUSTED stamp at the §2.7 −7° rotation', () => {
+    const html = renderToStaticMarkup(<ObituaryCard {...base} />);
+    expect(html).toContain('-rotate-[7deg]');
+    expect(html).not.toContain('-rotate-6');
+  });
+
+  /** SW9-T2 (obituary-handoff §3.2/§4): `sideLabel`/`entryCents` are optional — the contract's
+   * `last_pick: null` (unresolvable) case degrades by omitting the "Died holding …" line
+   * entirely, per SW4-T1's existing degrade rule, rather than rendering placeholder data. */
+  it('omits the "Died holding …" line when sideLabel/entryCents are absent', () => {
+    const { sideLabel: _sideLabel, entryCents: _entryCents, ...withoutCauseOfDeath } = base;
+    const html = renderToStaticMarkup(<ObituaryCard {...withoutCauseOfDeath} />);
+    expect(html).not.toContain('Died holding');
+    // Everything else still renders — the degrade is scoped to just that one line.
+    expect(html).toContain('Here lies a 11-day streak.');
+    expect(html).toContain('RIP 11');
+  });
 });

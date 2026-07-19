@@ -500,6 +500,350 @@ test.describe('reveal sequence (§10.3, WS7-T3)', () => {
     await expect(page.getByTestId('reveal-sequence-result')).toBeVisible();
     await expect(page.getByTestId('reveal-sequence-result')).toContainText('LOSS');
   });
+
+  /**
+   * SW9-T2 (obituary-handoff §2, §3.3(1)): the wake, driven off mocked `broken_run` payload
+   * shapes — the AC for the TRIGGER itself (the server actually emitting `broken_run` off real
+   * seeded history) is `apps/web/e2e/obituary-wake.spec.ts`'s real-HTTP test, per §1's "no
+   * `page.route` mocks for trigger semantics" rule; these mocks only exercise the UI's OWN
+   * branching once it already has a `broken_run` block in hand, exactly like every other state
+   * in this describe block.
+   */
+  test('the wake: broken_run >= OBITUARY_MIN_STREAK swaps the share button for the obituary card, whose share button targets the death pick', async ({
+    page,
+  }) => {
+    const { question } = await seedQuestion(
+      {},
+      {
+        status: 'revealed',
+        outcome: 'yes',
+        crowdYesAtLock: 6,
+        crowdNoAtLock: 4,
+        revealedAt: new Date(),
+      },
+    );
+
+    await page.route(`**/api/v1/questions/${question.slug}/reveal`, (route) =>
+      route.fulfill({
+        status: 200,
+        json: revealMockBody(question, {
+          pick: {
+            id: '018f1e2b-0000-7000-8000-0000000000fb',
+            question_id: question.id,
+            profile_id: '018f1e2b-0000-7000-8000-0000000000e3',
+            side: 'yes',
+            yes_price_at_entry: 0.63,
+            price_stamped_at: '2026-07-19T13:00:00Z',
+            picked_at: '2026-07-19T13:00:00Z',
+            source: 'spectator_page',
+            confidence: null,
+            result: 'win',
+            edge: 0.37,
+          },
+          result: 'win',
+          edge: 0.37,
+          percentile: null,
+          streak: {
+            current: 1,
+            best: 11,
+            delta: 1,
+            freeze_used: false,
+            broken_run: {
+              length: 11,
+              started_on: '2026-07-08',
+              ended_on: '2026-07-19',
+              last_pick: {
+                pick_id: '018f1e2b-0000-7000-8000-0000000000dd',
+                side_label: 'HOLDS',
+                entry_cents: 29,
+                question_slug: 'the-death-question',
+              },
+              freezes_survived: 1,
+              longest_odds_cents: 29,
+            },
+          },
+          badges: [],
+        }),
+      }),
+    );
+
+    await page.goto(`/q/${question.slug}`);
+    await expect(page.getByTestId('obituary-card')).toBeVisible();
+    await expect(page.getByTestId('share-receipt-button')).not.toBeVisible();
+    await expect(page.getByTestId('obituary-card')).toContainText('Here lies a 11-day streak.');
+    await expect(page.getByTestId('obituary-card')).toContainText('Died holding HOLDS @ 29¢.');
+
+    await page.getByTestId('obituary-share').click();
+    const sheet = page.getByTestId('share-sheet');
+    await expect(sheet).toBeVisible();
+    // Targets the DEATH pick (from `last_pick`), not this reveal's own pick — SW9-T3 made that
+    // pick's canonical receipt card the tombstone.
+    await expect(sheet.getByTestId('share-preview-image')).toHaveAttribute(
+      'src',
+      /\/api\/cards\/receipt\/018f1e2b-0000-7000-8000-0000000000dd\?format=square/,
+    );
+  });
+
+  test('"Bury it" dismisses the obituary for the rest of the mount — falls back to the plain share button targeting THIS pick', async ({
+    page,
+  }) => {
+    const { question } = await seedQuestion(
+      {},
+      {
+        status: 'revealed',
+        outcome: 'yes',
+        crowdYesAtLock: 6,
+        crowdNoAtLock: 4,
+        revealedAt: new Date(),
+      },
+    );
+
+    await page.route(`**/api/v1/questions/${question.slug}/reveal`, (route) =>
+      route.fulfill({
+        status: 200,
+        json: revealMockBody(question, {
+          pick: {
+            id: '018f1e2b-0000-7000-8000-0000000000fc',
+            question_id: question.id,
+            profile_id: '018f1e2b-0000-7000-8000-0000000000e4',
+            side: 'yes',
+            yes_price_at_entry: 0.63,
+            price_stamped_at: '2026-07-19T13:00:00Z',
+            picked_at: '2026-07-19T13:00:00Z',
+            source: 'spectator_page',
+            confidence: null,
+            result: 'win',
+            edge: 0.37,
+          },
+          result: 'win',
+          edge: 0.37,
+          percentile: null,
+          streak: {
+            current: 1,
+            best: 4,
+            delta: 1,
+            freeze_used: false,
+            broken_run: {
+              length: 4,
+              started_on: '2026-07-14',
+              ended_on: '2026-07-18',
+              last_pick: {
+                pick_id: '018f1e2b-0000-7000-8000-0000000000de',
+                side_label: 'HOLDS',
+                entry_cents: 40,
+                question_slug: 'another-death-question',
+              },
+              freezes_survived: 0,
+              longest_odds_cents: 40,
+            },
+          },
+          badges: [],
+        }),
+      }),
+    );
+
+    await page.goto(`/q/${question.slug}`);
+    await expect(page.getByTestId('obituary-card')).toBeVisible();
+
+    await page.getByTestId('obituary-bury').click();
+    await expect(page.getByTestId('obituary-card')).not.toBeVisible();
+    await expect(page.getByTestId('share-receipt-button')).toBeVisible();
+
+    await page.getByTestId('share-receipt-button').click();
+    await expect(page.getByTestId('share-sheet').getByTestId('share-preview-image')).toHaveAttribute(
+      'src',
+      /\/api\/cards\/receipt\/018f1e2b-0000-7000-8000-0000000000fc\?format=square/,
+    );
+  });
+
+  test('a short (<OBITUARY_MIN_STREAK) broken_run leaves the share button unchanged (AC: no regression)', async ({
+    page,
+  }) => {
+    const { question } = await seedQuestion(
+      {},
+      {
+        status: 'revealed',
+        outcome: 'yes',
+        crowdYesAtLock: 6,
+        crowdNoAtLock: 4,
+        revealedAt: new Date(),
+      },
+    );
+
+    await page.route(`**/api/v1/questions/${question.slug}/reveal`, (route) =>
+      route.fulfill({
+        status: 200,
+        json: revealMockBody(question, {
+          pick: {
+            id: '018f1e2b-0000-7000-8000-0000000000fd',
+            question_id: question.id,
+            profile_id: '018f1e2b-0000-7000-8000-0000000000e5',
+            side: 'yes',
+            yes_price_at_entry: 0.63,
+            price_stamped_at: '2026-07-19T13:00:00Z',
+            picked_at: '2026-07-19T13:00:00Z',
+            source: 'spectator_page',
+            confidence: null,
+            result: 'win',
+            edge: 0.37,
+          },
+          result: 'win',
+          edge: 0.37,
+          percentile: null,
+          streak: {
+            current: 1,
+            best: 2,
+            delta: 1,
+            freeze_used: false,
+            // Below OBITUARY_MIN_STREAK (3, packages/ui/src/swipe.ts) — the contract itself
+            // carries no length threshold (§3.2), so this is a real (not synthetic) shape the
+            // server can emit for a 2-day dead run.
+            broken_run: {
+              length: 2,
+              started_on: '2026-07-17',
+              ended_on: '2026-07-18',
+              last_pick: {
+                pick_id: '018f1e2b-0000-7000-8000-0000000000df',
+                side_label: 'HOLDS',
+                entry_cents: 55,
+                question_slug: 'short-run-death-question',
+              },
+              freezes_survived: 0,
+              longest_odds_cents: 55,
+            },
+          },
+          badges: [],
+        }),
+      }),
+    );
+
+    await page.goto(`/q/${question.slug}`);
+    await expect(page.getByTestId('share-receipt-button')).toBeVisible();
+    await expect(page.getByTestId('obituary-card')).toHaveCount(0);
+  });
+
+  test('broken_run with a null last_pick (unresolvable §3.2 case): obituary renders without a share button or the "Died holding" line', async ({
+    page,
+  }) => {
+    const { question } = await seedQuestion(
+      {},
+      {
+        status: 'revealed',
+        outcome: 'yes',
+        crowdYesAtLock: 6,
+        crowdNoAtLock: 4,
+        revealedAt: new Date(),
+      },
+    );
+
+    await page.route(`**/api/v1/questions/${question.slug}/reveal`, (route) =>
+      route.fulfill({
+        status: 200,
+        json: revealMockBody(question, {
+          pick: {
+            id: '018f1e2b-0000-7000-8000-0000000000f0',
+            question_id: question.id,
+            profile_id: '018f1e2b-0000-7000-8000-0000000000e6',
+            side: 'yes',
+            yes_price_at_entry: 0.63,
+            price_stamped_at: '2026-07-19T13:00:00Z',
+            picked_at: '2026-07-19T13:00:00Z',
+            source: 'spectator_page',
+            confidence: null,
+            result: 'win',
+            edge: 0.37,
+          },
+          result: 'win',
+          edge: 0.37,
+          percentile: null,
+          streak: {
+            current: 1,
+            best: 5,
+            delta: 1,
+            freeze_used: false,
+            broken_run: {
+              length: 5,
+              started_on: '2026-07-10',
+              ended_on: '2026-07-18',
+              last_pick: null,
+              freezes_survived: 0,
+              longest_odds_cents: null,
+            },
+          },
+          badges: [],
+        }),
+      }),
+    );
+
+    await page.goto(`/q/${question.slug}`);
+    await expect(page.getByTestId('obituary-card')).toBeVisible();
+    await expect(page.getByTestId('obituary-share')).toHaveCount(0);
+    await expect(page.getByTestId('obituary-bury')).toBeVisible();
+    await expect(page.getByTestId('obituary-card')).not.toContainText('Died holding');
+  });
+
+  test('prefers-reduced-motion: the obituary wake still renders (no animation wait blocks it)', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const { question } = await seedQuestion(
+      {},
+      {
+        status: 'revealed',
+        outcome: 'yes',
+        crowdYesAtLock: 6,
+        crowdNoAtLock: 4,
+        revealedAt: new Date(),
+      },
+    );
+
+    await page.route(`**/api/v1/questions/${question.slug}/reveal`, (route) =>
+      route.fulfill({
+        status: 200,
+        json: revealMockBody(question, {
+          pick: {
+            id: '018f1e2b-0000-7000-8000-0000000000f1',
+            question_id: question.id,
+            profile_id: '018f1e2b-0000-7000-8000-0000000000e7',
+            side: 'yes',
+            yes_price_at_entry: 0.63,
+            price_stamped_at: '2026-07-19T13:00:00Z',
+            picked_at: '2026-07-19T13:00:00Z',
+            source: 'spectator_page',
+            confidence: null,
+            result: 'win',
+            edge: 0.37,
+          },
+          result: 'win',
+          edge: 0.37,
+          percentile: null,
+          streak: {
+            current: 1,
+            best: 6,
+            delta: 1,
+            freeze_used: false,
+            broken_run: {
+              length: 6,
+              started_on: '2026-07-12',
+              ended_on: '2026-07-18',
+              last_pick: {
+                pick_id: '018f1e2b-0000-7000-8000-0000000000d0',
+                side_label: 'HOLDS',
+                entry_cents: 33,
+                question_slug: 'reduced-motion-death-question',
+              },
+              freezes_survived: 0,
+              longest_odds_cents: 33,
+            },
+          },
+          badges: [],
+        }),
+      }),
+    );
+
+    await page.goto(`/q/${question.slug}`);
+    await expect(page.getByTestId('obituary-card')).toBeVisible();
+  });
 });
 
 test.describe('INV-10 — spectator page is viewer-free at the HTTP layer', () => {

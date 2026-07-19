@@ -19,3 +19,21 @@ export function formatEtClock(iso: string): string {
   }
   return `${map['hour']}:${map['minute']}${(map['dayPeriod'] ?? '').toLowerCase()} ET`;
 }
+
+const SHORT_MONTH_NAMES = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+] as const;
+
+/**
+ * SW9-T2 (obituary-handoff §3.3(1)): formats a `YYYY-MM-DD` calendar date (`zDateOnly`,
+ * `packages/core`) into the short "b./d." label `ObituaryCard` expects, e.g. "2026-07-08" →
+ * "Jul 08". Parsed as plain text rather than `new Date(...)`, so this is immune to the runtime's
+ * local timezone — a bare calendar date has no time-of-day to get wrong across a UTC/ET offset.
+ */
+export function formatShortDate(dateOnly: string): string {
+  const match = /^\d{4}-(\d{2})-(\d{2})$/.exec(dateOnly);
+  if (!match) return dateOnly; // defensive — the contract's zDateOnly guarantees this shape
+  const [, monthStr, dayStr] = match;
+  const month = SHORT_MONTH_NAMES[Number(monthStr) - 1] ?? monthStr;
+  return `${month} ${dayStr}`;
+}
