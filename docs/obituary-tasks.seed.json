@@ -1,0 +1,22 @@
+{
+  "tasks": {
+    "SW9-T1": {
+      "title": "Broken-run derivation + reveal contract (broken_run) [contract-change]",
+      "phase": "SP2",
+      "depends_on": [],
+      "note": "Spec: docs/plans/obituary-handoff.md §3.1-3.2, §3.3(4). replayStreak runs/currentRunStartedOn (additive, ZERO-GUARDED per §3.1) + viewer.streak.broken_run per §3.2's mechanical condition + streak_busted beat re-key. Trigger tests must drive the real reveal endpoint against really-seeded history - no payload mocks (doc §1)."
+    },
+    "SW9-T2": {
+      "title": "The wake: obituary handoff in RevealSequence",
+      "phase": "SP2",
+      "depends_on": ["SW9-T1", "SW9-T3"],
+      "note": "Spec: docs/plans/obituary-handoff.md §2, §3.3(1), §4. Re-lands the wiring PR #75 reverted, keyed off broken_run; Bury it = client dismiss; share targets last_pick.pick_id (T3 must land first so the shared card is the tombstone, not a plain receipt); fix ObituaryCard stamp to -7deg."
+    },
+    "SW9-T3": {
+      "title": "Honest busted-streak card binding + graveyard data [contract-change]",
+      "phase": "SP2",
+      "depends_on": ["SW9-T1"],
+      "note": "Spec: docs/plans/obituary-handoff.md §3.3(2-3), §4. Replaces loadReceiptOg's SPEC-GAP heuristic with the replay binding; ProfilePublic.graveyard closes SW4-T3's ripDays SPEC-GAP; /p/[slug] renders GraveyardShelf."
+    }
+  }
+}
