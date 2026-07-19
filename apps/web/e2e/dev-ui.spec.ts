@@ -13,6 +13,16 @@ test('WS7-T1 design system gallery renders every component state', async ({ page
   await expect(stamps).toContainText('CALLED IT');
   await expect(stamps).toContainText('PENDING');
 
+  // SW3-T2 (§2.7 "four inks"): `called_it` defaults to foil, `void` defaults to punch — both
+  // already rendered in the section above; this checks the ink actually reached the DOM.
+  await expect(stamps.locator('[data-ink="foil"]')).toContainText('CALLED IT');
+  await expect(stamps.locator('[data-ink="punch"]')).toContainText('VOID');
+
+  const stampInks = page.getByTestId('gallery-stamp-ink');
+  await expect(stampInks.locator('[data-ink="rubber"]')).toBeVisible();
+  await expect(stampInks.locator('[data-ink="tape"]')).toBeVisible();
+  await expect(stampInks.locator('[data-ink="punch"]')).toBeVisible();
+
   const priceTags = page.getByTestId('gallery-pricetag');
   await expect(priceTags).toContainText('63¢');
   await expect(priceTags).toContainText('98¢');

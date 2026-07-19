@@ -177,6 +177,19 @@ export default function UiGalleryPage() {
         <Stamp variant="pending" />
       </section>
 
+      {/* SW3-T2 (§2.7 "four inks"): the ink treatments in isolation. `called_it` above already
+          demonstrates its default gold ink; `void` above already demonstrates its default punch
+          ink — this row shows the remaining explicit overrides (tape, and rubber/punch on a
+          non-default variant) so all four are visible on one page. No call site here ever grants
+          the gold ink explicitly — it only ever reaches the DOM through `called_it`'s own
+          default (enforced by the grep test in `packages/ui/test/stamp-ink.test.tsx`). */}
+      <section data-testid="gallery-stamp-ink" className="flex flex-wrap items-center gap-4">
+        <h2 className="text-muted w-full text-sm font-semibold uppercase">Stamp inks</h2>
+        <Stamp variant="win" ink="rubber" />
+        <Stamp variant="pending" ink="tape" />
+        <Stamp variant="loss" ink="punch" />
+      </section>
+
       <section data-testid="gallery-pricetag" className="space-y-3">
         <h2 className="text-muted text-sm font-semibold uppercase">PriceTag</h2>
         {/* PriceTag is a "printed on paper" motif (§10.4 ink token) — always shown on a
