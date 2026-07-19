@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { topPercentDisplay, type QuestionPublic, type RevealPayload } from '@receipts/core';
-import { Stamp, StreakFlame, prefersReducedMotion } from '@receipts/ui';
-import { copy, shareCopy } from '@/lib/copy';
+import { OBITUARY_MIN_STREAK, Stamp, StreakFlame, prefersReducedMotion } from '@receipts/ui';
+import { buildObituaryFacts, copy, shareCopy } from '@/lib/copy';
+import { formatShortDate } from '@/lib/format-et';
 import { ApiClientError, fetchReveal } from '@/lib/pick-client';
+import { ObituaryCard } from './ObituaryCard';
 import ShareSheet from './share/ShareSheet';
 
 export interface RevealSequenceProps {
@@ -73,6 +75,11 @@ export function RevealSequence({ question }: RevealSequenceProps) {
   // revealed question's share affordance can live now that `RevealSequence` (WS7-T3) owns
   // rendering the whole `revealed` state instead of `ViewerStrip`'s old generic pick view.
   const [shareOpen, setShareOpen] = useState(false);
+  // SW9-T2 (obituary-handoff §3.3(1)): "Bury it" is a client-side-only dismiss for the rest of
+  // this mount — no backend persistence (the design doc is explicit: the graveyard already
+  // derives from history, so every dead run is "archived to the shelf" automatically; burying
+  // is acknowledging the funeral, not filing it). Revisiting/remounting shows it again.
+  const [buried, setBuried] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -156,6 +163,15 @@ export function RevealSequence({ question }: RevealSequenceProps) {
   const viewer = payload!.viewer!;
   const flipClass = play ? 'motion-safe:[animation:result-flip_350ms_ease-out_1]' : '';
 
+  // SW9-T2 (obituary-handoff §2, §3.2): the wake. `broken_run` is non-null exactly at the
+  // viewer's first reveal after their participation streak died (server-mechanical condition,
+  // §3.2); `OBITUARY_MIN_STREAK` is the client-side presentation threshold (§3.2 — the contract
+  // itself carries no length floor). Below it, or when null, the normal share button renders
+  // completely unchanged (explicit AC).
+  const brokenRun = viewer.streak.broken_run;
+  const showObituary = !buried && brokenRun !== null && brokenRun.length >= OBITUARY_MIN_STREAK;
+  const deathPick = brokenRun?.last_pick ?? null;
+
   return (
     <div className="space-y-2" data-testid="reveal-sequence-result">
       <div className={`flex items-center gap-2 ${flipClass}`}>
@@ -173,26 +189,38 @@ export function RevealSequence({ question }: RevealSequenceProps) {
           <span className="text-muted text-xs">{copy.question.freezeUsedNote}</span>
         ) : null}
       </div>
-      {/* SW3-T2 (§2.6 "Obituary handoff"): a streak-broke-at-this-reveal handoff to SW4-T1's
-          `ObituaryCard` was attempted here but reverted — see that commit's PR discussion.
-          `RevealPayload.viewer.streak` is a participation streak (§6.6): it increments on any
-          graded pick, including a loss, and only resets on a MISSED day, never at the reveal a
-          viewer just lost. So "the streak broke at this exact reveal" isn't a fact this payload
-          can express without a contract change (e.g. surfacing the win-streak block, or a
-          server-computed broken-run length) — re-attempt once that lands, keyed off the real
-          signal rather than a derived guess. */}
-      <button
-        type="button"
-        onClick={() => setShareOpen(true)}
-        data-testid="share-receipt-button"
-        className="bg-side-a min-h-11 rounded px-3 py-1.5 text-xs font-semibold text-white"
-      >
-        {shareCopy.shareButtonLabel}
-      </button>
+      {showObituary && brokenRun ? (
+        <ObituaryCard
+          days={brokenRun.length}
+          startLabel={formatShortDate(brokenRun.started_on)}
+          endLabel={formatShortDate(brokenRun.ended_on)}
+          facts={buildObituaryFacts(brokenRun.freezes_survived, brokenRun.longest_odds_cents)}
+          sideLabel={deathPick?.side_label}
+          entryCents={deathPick?.entry_cents}
+          onBury={() => setBuried(true)}
+          // §3.2: `last_pick` can be null (unresolvable) — the share action isn't meaningfully
+          // wireable then, so the handler (and with it `ObituaryCard`'s share button, via its
+          // own `interactive = Boolean(onBury || onShare)` pattern) is omitted entirely rather
+          // than opening a sheet with nothing real to target.
+          onShare={deathPick ? () => setShareOpen(true) : undefined}
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShareOpen(true)}
+          data-testid="share-receipt-button"
+          className="bg-side-a min-h-11 rounded px-3 py-1.5 text-xs font-semibold text-white"
+        >
+          {shareCopy.shareButtonLabel}
+        </button>
+      )}
       <ShareSheet
         kind="receipt"
-        targetId={viewer.pick.id}
-        pagePath={`/q/${question.slug}`}
+        // The obituary's share targets the DEATH pick, not this reveal's own pick — SW9-T3 made
+        // that pick's canonical receipt card the tombstone, and `question_slug` in the contract
+        // exists specifically so this link lands on that page (§4 SW9-T2 entry).
+        targetId={showObituary && deathPick ? deathPick.pick_id : viewer.pick.id}
+        pagePath={showObituary && deathPick ? `/q/${deathPick.question_slug}` : `/q/${question.slug}`}
         title={question.headline}
         open={shareOpen}
         onOpenChange={setShareOpen}

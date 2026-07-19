@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { CLAIM_NUDGE_COPY, CLAIM_PUBLICNESS_STATEMENT, shareCopy } from '@/lib/copy';
+import {
+  buildObituaryFacts,
+  CLAIM_NUDGE_COPY,
+  CLAIM_PUBLICNESS_STATEMENT,
+  obituaryCopy,
+  shareCopy,
+} from '@/lib/copy';
 
 /**
  * §10.6 AC (WS7-T5): "copy string matches §10.6 verbatim." Pinned exact text, quoted directly
@@ -35,6 +41,50 @@ describe('§10.6 pinned copy', () => {
 describe('§10.5 share sheet copy', () => {
   it('no copy references money words (§10.6/INV-8 review rule: bet|stake|wager|$)', () => {
     const allCopy = Object.values(shareCopy).join(' ');
+    expect(allCopy).not.toMatch(/\bbet\b|\bstake\b|\bwager\b|\$/i);
+  });
+});
+
+/**
+ * SW9-T2 (obituary-handoff §3.2/§4): the "survived" fact templates + the builder that turns
+ * `broken_run.freezes_survived`/`longest_odds_cents` into `ObituaryCard`'s `facts` prop.
+ */
+describe('obituaryCopy survived-fact templates + buildObituaryFacts (SW9-T2)', () => {
+  it('singularizes "1 freeze spent" but pluralizes for any other count', () => {
+    expect(obituaryCopy.survivedFreeze(1)).toBe('1 freeze spent');
+    expect(obituaryCopy.survivedFreeze(2)).toBe('2 freezes spent');
+    expect(obituaryCopy.survivedFreeze(0)).toBe('0 freezes spent');
+  });
+
+  it('renders the odds fact in cents, never dollars (INV-8)', () => {
+    expect(obituaryCopy.survivedOdds(29)).toBe('Longest odds held: 29¢');
+  });
+
+  it('degrades to an empty list when nothing survived and no odds are resolvable', () => {
+    expect(buildObituaryFacts(0, null)).toEqual([]);
+  });
+
+  it('omits the freeze line when freezes_survived is 0 (not worth a line)', () => {
+    expect(buildObituaryFacts(0, 29)).toEqual([{ text: 'Longest odds held: 29¢' }]);
+  });
+
+  it('omits the odds line when longest_odds_cents is null (no resolvable pick)', () => {
+    expect(buildObituaryFacts(2, null)).toEqual([{ text: '2 freezes spent' }]);
+  });
+
+  it('includes both lines, freeze first, when both are present', () => {
+    expect(buildObituaryFacts(1, 29)).toEqual([
+      { text: '1 freeze spent' },
+      { text: 'Longest odds held: 29¢' },
+    ]);
+  });
+
+  it('no copy references money words (§10.6/INV-8 review rule: bet|stake|wager|$)', () => {
+    const allCopy = [
+      obituaryCopy.survivedFreeze(3),
+      obituaryCopy.survivedOdds(29),
+      ...Object.values(obituaryCopy).filter((v: unknown): v is string => typeof v === 'string'),
+    ].join(' ');
     expect(allCopy).not.toMatch(/\bbet\b|\bstake\b|\bwager\b|\$/i);
   });
 });

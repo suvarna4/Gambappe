@@ -238,6 +238,12 @@ export const obituaryCopy = {
   title: (days: number) => `Here lies a ${days}-day streak.`,
   dates: (start: string, end: string) => `b. ${start} — d. ${end}`,
   survivedLabel: 'Survived',
+  /** SW9-T2 (obituary-handoff §3.2/§4): the two "survived" facts derivable from `broken_run`
+   * (`freezes_survived`, `longest_odds_cents`) — the mock's "hardest day" fact has no data
+   * source and stays omitted (§5 out of scope). Cents render as "¢", never "$" (INV-8). */
+  survivedFreeze: (freezesSurvived: number) =>
+    `${freezesSurvived} freeze${freezesSurvived === 1 ? '' : 's'} spent`,
+  survivedOdds: (longestOddsCents: number) => `Longest odds held: ${longestOddsCents}¢`,
   causeOfDeath: (sideLabel: string, cents: number) => `Died holding ${sideLabel} @ ${cents}¢.`,
   stamp: 'Busted',
   rip: (days: number) => `RIP ${days}`,
@@ -252,6 +258,22 @@ export const obituaryCopy = {
   graveyardRip: (days: number) => `RIP ${days}`,
   graveyardCalledIt: (count: number) => `Called it ×${count}`,
 } as const;
+
+/**
+ * SW9-T2 (obituary-handoff §3.2/§4): builds `ObituaryCard`'s `facts` prop from `broken_run`'s
+ * two derivable fields. Degrades to 0-2 lines (the card itself tolerates 0-3, per SW4-T1):
+ * `freezes_survived === 0` isn't worth a line (nothing was survived), and a `null`
+ * `longest_odds_cents` (§3.2: "null if none") means no run pick was resolvable.
+ */
+export function buildObituaryFacts(
+  freezesSurvived: number,
+  longestOddsCents: number | null,
+): { text: string }[] {
+  const facts: { text: string }[] = [];
+  if (freezesSurvived > 0) facts.push({ text: obituaryCopy.survivedFreeze(freezesSurvived) });
+  if (longestOddsCents !== null) facts.push({ text: obituaryCopy.survivedOdds(longestOddsCents) });
+  return facts;
+}
 
 export const shareCopy = {
   shareButtonLabel: 'Share your receipt',
