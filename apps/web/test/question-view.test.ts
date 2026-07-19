@@ -1,8 +1,10 @@
 /**
  * Unit coverage for `deriveEffectiveStatus`/`toQuestionPublic` (§5.7 effective-state rule,
- * §9.3 crowd-hiding rule) — pure, no DB. Real-Postgres coverage of the query layer itself
- * (`getTodayQuestionPublic`/`getQuestionPublicBySlug`) lives in
- * `test/integration/question-view.test.ts`.
+ * §9.3 crowd-hiding rule, §6.5/§6.7 publication rule — no pre-reveal outcome leak, audit
+ * finding 1.1) — pure, no DB. Both now delegate to `lib/serialize-question.ts` (the JSON API
+ * path), so these tests pin the SHARED semantics of both public read paths. Real-Postgres
+ * coverage of the query layer itself (`getTodayQuestionPublic`/`getQuestionPublicBySlug`)
+ * lives in `test/integration/question-view.test.ts`.
  */
 import { describe, expect, it } from 'vitest';
 import { buildMarket, buildQuestion } from '@receipts/db/testing';
@@ -54,9 +56,17 @@ function row(overrides: Partial<QuestionRow> = {}): QuestionRow {
 }
 
 describe('deriveEffectiveStatus (§5.7)', () => {
-  it('renders scheduled before open_at even if raw status somehow already open', () => {
-    const q = row({ status: 'open' });
+  it('renders scheduled before open_at', () => {
+    const q = row({ status: 'scheduled' });
     expect(deriveEffectiveStatus(q, T0.getTime() - 1)).toBe('scheduled');
+  });
+
+  it('never derives EARLIER than the raw status (shared JSON-path semantics): a raw open before open_at stays open', () => {
+    // Same monotonic-forward-only rule as `effectiveQuestionStatus` (serialize-question.ts),
+    // to which this now delegates — an admin early-open/early-lock keeps its raw status
+    // rather than reappearing as an earlier state just because the clock hasn't caught up.
+    const q = row({ status: 'open' });
+    expect(deriveEffectiveStatus(q, T0.getTime() - 1)).toBe('open');
   });
 
   it('renders open between open_at and lock_at', () => {
@@ -160,5 +170,86 @@ describe('toQuestionPublic (§9.3 crowd-hiding + assembly)', () => {
   it('throws for a slug-less question rather than silently mis-rendering', () => {
     const q = row({ status: 'open', marketId: market.id as string, slug: null });
     expect(() => toQuestionPublic(q, market, T0.getTime() + 1000)).toThrow(/no slug/);
+  });
+});
+
+describe('publication rule (§6.5/§6.7) — no pre-reveal outcome leak (audit finding 1.1)', () => {
+  const market: MarketRow = buildMarket({
+    id: '00000000-0000-0000-0000-0000000000ab',
+    venue: 'kalshi',
+    venueUrl: 'https://kalshi.example/markets/test',
+    yesPrice: 0.63,
+    yesPriceUpdatedAt: T0,
+  }) as MarketRow;
+
+  it('masks outcome/revealed_at on a settled-but-unrevealed question — the exact leak window', () => {
+    // The window §6.5/§6.7 exist for: grading has written `questions.outcome` (say 13:00 ET)
+    // but `reveal:fire` (say 20:00 ET) hasn't flipped raw status to `revealed` yet. The page
+    // must keep the plain `locked` presentation: countdown + lock-snapshot crowd (public at
+    // lock per §9.3), NO outcome, NO revealed_at.
+    const q = row({
+      status: 'locked',
+      marketId: market.id as string,
+      crowdYesAtLock: 7,
+      crowdNoAtLock: 3,
+      outcome: 'yes', // grading already settled it…
+      settledAt: new Date(LOCK.getTime() + 3_600_000),
+      revealedAt: null, // …but the synchronized reveal hasn't fired
+    });
+    const pub = toQuestionPublic(q, market, LOCK.getTime() + 2 * 3_600_000);
+    expect(pub.status).toBe('locked');
+    expect(pub.outcome).toBeNull();
+    expect(pub.revealed_at).toBeNull();
+    // Locked presentation, not a blackout: the lock snapshot stays visible (§9.3).
+    expect(pub.crowd).toEqual({ yes: 7, no: 3, pct_yes: 70 });
+  });
+
+  it('masks even when raw status is still open (grading raced the lock job) and revealed_at is prematurely set', () => {
+    const q = row({
+      status: 'open',
+      marketId: market.id as string,
+      crowdYesAtLock: 4,
+      crowdNoAtLock: 6,
+      outcome: 'no',
+      revealedAt: REVEAL, // defensive: a stray revealed_at must not leak either
+    });
+    const pub = toQuestionPublic(q, market, LOCK.getTime() + 1000);
+    // Effective status derives forward to locked, but `revealed` is a real gate (§5.7):
+    // only `reveal:fire` flipping the raw column may publish the outcome.
+    expect(pub.status).toBe('locked');
+    expect(pub.outcome).toBeNull();
+    expect(pub.revealed_at).toBeNull();
+  });
+
+  it('still serializes outcome + revealed_at once genuinely revealed', () => {
+    const q = row({
+      status: 'revealed',
+      marketId: market.id as string,
+      crowdYesAtLock: 6,
+      crowdNoAtLock: 4,
+      outcome: 'yes',
+      revealedAt: REVEAL,
+    });
+    const pub = toQuestionPublic(q, market, REVEAL.getTime() + 1000);
+    expect(pub.status).toBe('revealed');
+    expect(pub.outcome).toBe('yes');
+    expect(pub.revealed_at).toBe(REVEAL.toISOString());
+  });
+
+  it('voided keeps its PUBLIC void reason (§10.3) but never shows an outcome — even post-reveal voids', () => {
+    // §15.3 / RT-A: `revealed → voided` exists (venue overturn), so a voided row CAN carry a
+    // stale outcome from its earlier revealed life. Void reasons are public; the outcome is not.
+    const q = row({
+      status: 'voided',
+      marketId: market.id as string,
+      voidReason: 'venue overturned the resolution',
+      outcome: 'yes',
+      revealedAt: REVEAL,
+    });
+    const pub = toQuestionPublic(q, market, REVEAL.getTime() + 999_999);
+    expect(pub.status).toBe('voided');
+    expect(pub.void_reason).toBe('venue overturned the resolution');
+    expect(pub.outcome).toBeNull();
+    expect(pub.revealed_at).toBeNull();
   });
 });

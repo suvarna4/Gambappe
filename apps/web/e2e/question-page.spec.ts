@@ -129,6 +129,42 @@ test.describe('question page states (§10.3)', () => {
     await expect(page.getByTestId('question-locked')).toContainText('France 70%');
   });
 
+  test('locked + already graded: the settled outcome does not leak anywhere in the page payload (§6.5/§6.7, audit 1.1)', async ({
+    page,
+    request,
+  }) => {
+    // The pre-reveal leak window: grading has written `questions.outcome`, but `reveal:fire`
+    // hasn't flipped raw status to `revealed`. The spectator page must be byte-indistinguishable
+    // from a plain locked question — the outcome must not appear even in the serialized RSC
+    // flight payload (it previously shipped there via the `question` prop, visible to anyone
+    // reading view-source hours before the synchronized reveal).
+    const now = Date.now();
+    const { question } = await seedQuestion(
+      {},
+      {
+        status: 'locked',
+        openAt: new Date(now - 7_200_000),
+        lockAt: new Date(now - 3_600_000),
+        crowdYesAtLock: 7,
+        crowdNoAtLock: 3,
+        outcome: 'yes',
+        settledAt: new Date(now - 60_000),
+      },
+    );
+
+    await page.goto(`/q/${question.slug}`);
+    await expect(page.getByTestId('question-locked')).toBeVisible();
+    await expect(page.getByTestId('reveal-outcome-stamp')).not.toBeVisible();
+
+    const res = await request.get(`/q/${question.slug}`);
+    expect(res.status()).toBe(200);
+    const html = await res.text();
+    // Matches `"outcome":"yes"` both as plain JSON and in its flight-stream escaped form
+    // (`\"outcome\":\"yes\"`). After the fix the payload carries `"outcome":null`.
+    expect(html).not.toMatch(/outcome\\?":\\?"(yes|no)/);
+    expect(html).not.toMatch(/revealed_at\\?":\\?"/);
+  });
+
   test('revealed: shows the outcome', async ({ page }) => {
     const { question } = await seedQuestion(
       {},

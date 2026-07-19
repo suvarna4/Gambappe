@@ -92,6 +92,29 @@ describe('getQuestionPublicBySlug (§9.2 GET /questions/:slug shape, via Postgre
     expect(result!.crowd).toEqual({ yes: 6, no: 4, pct_yes: 60 });
   });
 
+  it('masks a settled-but-unrevealed outcome — locked presentation until reveal fires (§6.5/§6.7, audit 1.1)', async () => {
+    // Grading wrote `outcome` while the question is still raw `locked` (reveal scheduled for
+    // later). The page path must serve the plain locked presentation: no outcome, no
+    // revealed_at, lock-snapshot crowd only.
+    const { question } = await insertMarketAndQuestion(
+      {},
+      {
+        status: 'locked',
+        crowdYesAtLock: 6,
+        crowdNoAtLock: 4,
+        outcome: 'yes',
+        settledAt: new Date('2026-07-31T17:00:00Z'),
+      },
+    );
+    const result = await getQuestionPublicBySlug(db, question.slug as string, {
+      nowMsValue: (question.lockAt as Date).getTime() + 1000,
+    });
+    expect(result!.status).toBe('locked');
+    expect(result!.outcome).toBeNull();
+    expect(result!.revealed_at).toBeNull();
+    expect(result!.crowd).toEqual({ yes: 6, no: 4, pct_yes: 60 });
+  });
+
   it('renders revealed with outcome + final crowd', async () => {
     const revealedAt = new Date('2026-08-01T00:00:00Z');
     const { question } = await insertMarketAndQuestion(

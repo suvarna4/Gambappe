@@ -3,120 +3,80 @@
  * questions.ts, §9.2 `GET /questions/today` / `GET /questions/:slug`) directly from Postgres,
  * for SSR rendering of `/` and `/q/[slug]` (WS7-T2, §10.1–10.3).
  *
- * Why this reads the DB directly instead of calling the real HTTP route: WS3-T1/T2 (daily
- * question lifecycle + the pick API, which owns the real `GET /api/v1/questions/*` routes)
- * aren't merged yet — `docs/workstream-locks.md` shows WS3-T2 still `in_review`. The design doc
- * explicitly pre-approves this: §19.2 lists "WS7-T2 (vs WS3-T2)" under Mock-start OK ("begin
- * against the packages/core contracts and mocks, merge after the dependency"), and §0.2 says
- * "if your upstream task isn't merged, code against the contract and the mock." This module
- * targets `questionPublicSchema` byte-for-byte (asserted via `.parse` below, so any drift from
- * the real contract fails loudly) and also matches this repo's own established SSR pattern of
- * server components reading `@receipts/db` directly rather than self-fetching their own API
- * (see `apps/web/app/admin/ops/page.tsx`, `apps/web/app/admin/metrics/page.tsx`) — Next.js's
- * documented recommendation is to avoid a same-process HTTP round trip for the initial render
- * anyway. Once WS3-T2 merges, a follow-up can fold this into (or delegate to) its route logic;
- * either is contract-compatible since both target the same zod schema.
+ * Why this reads the DB directly instead of calling the real HTTP route: this is the repo's
+ * established SSR pattern — server components read `@receipts/db` directly rather than
+ * self-fetching their own API (see `apps/web/app/admin/ops/page.tsx`,
+ * `apps/web/app/admin/metrics/page.tsx`); Next.js's documented recommendation is to avoid a
+ * same-process HTTP round trip for the initial render anyway. The client-side pick/undo/poll
+ * surface (`lib/pick-client.ts`) genuinely cannot do this — browser JS has no DB access — so
+ * those calls hit the real HTTP paths.
  *
- * The client-side pick/undo/poll surface (`lib/pick-client.ts`) genuinely cannot do this —
- * browser JS has no DB access — so those calls hit the real HTTP paths and simply won't
- * function until WS3-T2 ships the route handlers (documented there).
+ * Serialization itself is DELEGATED to `serialize-question.ts` — the exact module the real
+ * `GET /api/v1/questions/*` routes use — so the page path and the JSON path cannot drift.
+ * That sharing is load-bearing for the §6.5 publication rule: this module originally copied
+ * `outcome`/`revealed_at` off the raw row ungated, so an ISR-cached spectator page served a
+ * settled-but-unrevealed daily's outcome hours before the synchronized reveal (audit finding
+ * 1.1, PR #43). `serializeQuestionPublic` gates both on the RAW `status = 'revealed'` — a real
+ * transition performed only by `reveal:fire` (§6.7), never inferred from timestamps — which is
+ * precisely the "all public surfaces keep the question in `locked` presentation until reveal"
+ * rule. On top of the shared serializer this module adds only a `questionPublicSchema.parse`
+ * (any drift from the wire contract fails the calling request loudly rather than silently
+ * shipping a malformed page) and the two Postgres lookups.
  */
 import { and, eq, ne } from 'drizzle-orm';
 import { nowMs as coreNowMs, questionPublicSchema, type QuestionPublic } from '@receipts/core';
-import { markets, questions, type Db } from '@receipts/db';
-import { crowdSplit } from '@receipts/ui';
+import {
+  markets,
+  questions,
+  type Db,
+  type MarketRow,
+  type QuestionRow,
+} from '@receipts/db';
+import { effectiveQuestionStatus, serializeQuestionPublic } from './serialize-question';
 import { etDateString } from './ops-dashboard';
 
-export type QuestionRow = typeof questions.$inferSelect;
-export type MarketRow = typeof markets.$inferSelect;
-
-type EffectiveStatus = QuestionPublic['status'];
+// Re-exported so existing importers (tests) keep working; these are the same `$inferSelect`
+// row types `serialize-question.ts` consumes — one shape across both public read paths.
+export type { MarketRow, QuestionRow };
 
 /**
  * §5.7 "Effective-state rule": read paths derive presentation from timestamps, not the raw
  * `status` column alone — a question whose `lock_at` has passed renders as locked even if the
  * lock job hasn't run yet (worker-outage tolerance; the pick API independently enforces
- * `lock_at` via the DB clock, §6.2). The design doc names the open→locked edge explicitly;
- * this applies the same reasoning symmetrically to scheduled→open, since §5.7's stated
- * principle ("read paths derive presentation from timestamps, not status alone") isn't scoped
- * to one edge only and a worker outage can just as easily leave `open_at` unflipped.
- * `revealed`/`voided` are always terminal for display — reaching them requires real settlement
- * work (grading, the reveal job, or an admin void), never just elapsed time, so no timestamp
- * can promote a question into either.
+ * `lock_at` via the DB clock, §6.2).
+ *
+ * Thin delegate over the JSON API path's `effectiveQuestionStatus` so the page and the API can
+ * never disagree about a question's presented state (audit finding 1.1, PR #43). Inherits its
+ * exact semantics, including: derivation is monotonic-FORWARD-only (an admin early-lock/open
+ * with a future timestamp keeps its raw status, never reappears as an earlier state), and
+ * `revealed`/`voided`/`draft` are real gates never reached by timestamp math alone.
  */
 export function deriveEffectiveStatus(
   row: Pick<QuestionRow, 'status' | 'openAt' | 'lockAt'>,
   nowMsValue: number,
-): EffectiveStatus {
-  if (row.status === 'revealed' || row.status === 'voided' || row.status === 'draft') {
-    return row.status;
-  }
-  if (nowMsValue < row.openAt.getTime()) return 'scheduled';
-  if (nowMsValue < row.lockAt.getTime()) return 'open';
-  return 'locked';
+): QuestionPublic['status'] {
+  // `effectiveQuestionStatus` only reads `status`/`openAt`/`lockAt`; the cast just widens the
+  // declared parameter type, it does not touch any other column.
+  return effectiveQuestionStatus(row as QuestionRow, new Date(nowMsValue));
 }
 
 /**
- * Assembles the §9.2 public question shape from raw rows, applying the effective-status rule
- * above and the §9.3 crowd-hiding rule ("hidden while `open` — everywhere, with no exceptions").
- * `.parse`s the result against the real contract schema before returning — any field drift
- * between this assembly and `questionPublicSchema` fails the calling request loudly rather
- * than silently shipping a malformed page.
+ * Assembles the §9.2 public question shape from raw rows by delegating to the JSON API's
+ * serializer (effective status per §5.7, crowd-hiding per §9.3, and the §6.5/§6.7 publication
+ * rule masking `outcome`/`revealed_at` until the question is GENUINELY revealed — raw status,
+ * set only by `reveal:fire`). A settled-but-unrevealed daily therefore presents as plain
+ * `locked` (countdown + lock-snapshot crowd, which is public at lock per §9.3); `void_reason`
+ * passes through untouched (void reasons are public, §10.3 state table). `.parse`s the result
+ * against the real contract schema before returning.
  */
 export function toQuestionPublic(
   question: QuestionRow,
   market: MarketRow,
   nowMsValue: number,
 ): QuestionPublic {
-  const status = deriveEffectiveStatus(question, nowMsValue);
-
-  // §9.3: null while `scheduled`/`open` — no exceptions. Once locked/revealed/voided, both API
-  // and page read the LOCK snapshot (never the live counters), same as the reveal display and
-  // the contrarian metric (§5.3 `crowd_yes_at_lock`/`crowd_no_at_lock` column notes). A question
-  // voided before ever locking has no snapshot to show, so crowd stays null.
-  const crowdEligible = status === 'locked' || status === 'revealed' || status === 'voided';
-  const hasLockSnapshot = question.crowdYesAtLock !== null && question.crowdNoAtLock !== null;
-  const crowd =
-    crowdEligible && hasLockSnapshot
-      ? {
-          yes: question.crowdYesAtLock!,
-          no: question.crowdNoAtLock!,
-          pct_yes: crowdSplit(question.crowdYesAtLock!, question.crowdNoAtLock!).yesPct,
-        }
-      : null;
-
-  if (!question.slug) {
-    // Curated-but-unslugged questions aren't spectator-servable; callers treat this as
-    // not-found rather than crash (draft rows are already filtered at the query level, but a
-    // defensive guard here keeps this function safe to call directly in tests).
-    throw new Error(`question ${question.id} has no slug — not servable`);
-  }
-
-  const publicShape: QuestionPublic = {
-    id: question.id as QuestionPublic['id'],
-    slug: question.slug,
-    kind: question.kind,
-    status,
-    question_date: question.questionDate,
-    headline: question.headline,
-    blurb: question.blurb,
-    yes_label: question.yesLabel,
-    no_label: question.noLabel,
-    open_at: question.openAt.toISOString(),
-    lock_at: question.lockAt.toISOString(),
-    reveal_at: question.revealAt.toISOString(),
-    yes_price: market.yesPrice,
-    yes_price_updated_at: market.yesPriceUpdatedAt ? market.yesPriceUpdatedAt.toISOString() : null,
-    crowd,
-    outcome: question.outcome,
-    revealed_at: question.revealedAt ? question.revealedAt.toISOString() : null,
-    void_reason: question.voidReason,
-    is_volatile: question.isVolatile,
-    venue: market.venue,
-    venue_url: market.venueUrl,
-  };
-
-  return questionPublicSchema.parse(publicShape);
+  return questionPublicSchema.parse(
+    serializeQuestionPublic(question, market, new Date(nowMsValue)),
+  );
 }
 
 async function loadQuestionWithMarket(
