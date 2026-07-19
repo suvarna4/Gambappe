@@ -64,30 +64,42 @@ export type PlacePickResult =
   | { outcome: 'already_picked'; pick: PickRow };
 
 /**
- * §6.2 steps 3+5: places a pick inside one transaction. The `SELECT ... FOR SHARE` on the
- * question row is the clock-authority + serialization point — Postgres (not app code)
- * evaluates `lock_at > now()`, and holding the SHARE lock for the transaction's duration
- * blocks a concurrent `question:lock` job's `FOR UPDATE` until we commit or roll back, so a
- * pick can never slip in between the lock job's status flip and its counter snapshot (§6.2).
+ * §6.2 steps 3+5: places a pick inside one transaction. The guarded counter UPDATE on the
+ * question row is BOTH the clock-authority check and the serialization point — Postgres (not
+ * app code) evaluates `status = 'open' AND lock_at > now()` in the same statement that
+ * increments the crowd counter, taking one exclusive row lock up front. Holding that lock for
+ * the transaction's duration blocks a concurrent `question:lock` job's `FOR UPDATE` until we
+ * commit or roll back, so a pick can never slip in between the lock job's status flip and its
+ * counter snapshot (§6.2).
+ *
+ * Deliberately NOT `SELECT ... FOR SHARE` + a later counter UPDATE: two concurrent picks on the
+ * same question would each hold the share lock while waiting to upgrade for the UPDATE — a
+ * guaranteed 40P01 deadlock on the hottest row in the product (everyone picks the same daily
+ * question). One exclusive lock from the first statement means concurrent pickers briefly
+ * serialize on the increment instead.
+ *
  * Unique violation on `(question_id, profile_id)` → `already_picked` with the existing row
- * (idempotent-friendly 409, §6.2 step 5 / Appendix C `ALREADY_PICKED`).
+ * (idempotent-friendly 409, §6.2 step 5 / Appendix C `ALREADY_PICKED`). The increment runs
+ * INSIDE the savepoint with the insert, so that rollback also undoes the counter bump.
  */
 export async function placePickTx(db: Db, input: PlacePickInput): Promise<PlacePickResult> {
   return db.transaction(async (tx) => {
-    const guard = await tx.execute(sql`
-      SELECT status, (lock_at > now()) AS not_locked_by_db_clock
-      FROM questions WHERE id = ${input.questionId} FOR SHARE
-    `);
-    const row = guard.rows[0];
-    const eligible = row && row['status'] === 'open' && row['not_locked_by_db_clock'] === true;
-    if (!eligible) return { outcome: 'question_locked' };
-
     try {
       // Nested transaction (Postgres SAVEPOINT under the hood, drizzle-orm): a unique-violation
-      // here only rolls back TO the savepoint, leaving the outer transaction (and its FOR SHARE
-      // lock) usable for the `getPick` lookup below — without it, Postgres marks the whole
-      // transaction aborted after any error and every subsequent statement fails with 25P02.
+      // here only rolls back TO the savepoint — undoing the counter increment with it — while
+      // leaving the outer transaction usable for the `getPick` lookup below. Without it,
+      // Postgres marks the whole transaction aborted after any error and every subsequent
+      // statement fails with 25P02.
       const inserted = await tx.transaction(async (tx2) => {
+        const countColumn = input.side === 'yes' ? sql`yes_count` : sql`no_count`;
+        const guard = await tx2.execute(sql`
+          UPDATE questions
+          SET ${countColumn} = ${countColumn} + 1, updated_at = ${input.pickedAt}
+          WHERE id = ${input.questionId} AND status = 'open' AND lock_at > now()
+          RETURNING id
+        `);
+        if ((guard.rowCount ?? 0) === 0) return null;
+
         const [row2] = await tx2
           .insert(picks)
           .values({
@@ -103,16 +115,10 @@ export async function placePickTx(db: Db, input: PlacePickInput): Promise<PlaceP
           })
           .returning();
         if (!row2) throw new Error('placePickTx: no row returned from insert');
-
-        const column = input.side === 'yes' ? questions.yesCount : questions.noCount;
-        await tx2
-          .update(questions)
-          .set({ [input.side === 'yes' ? 'yesCount' : 'noCount']: sql`${column} + 1`, updatedAt: input.pickedAt })
-          .where(eq(questions.id, input.questionId));
-
         return row2;
       });
 
+      if (!inserted) return { outcome: 'question_locked' };
       return { outcome: 'inserted', pick: inserted };
     } catch (err) {
       if (pgErrorCode(err) === UNIQUE_VIOLATION) {

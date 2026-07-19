@@ -117,6 +117,38 @@ describe('placePickTx (§6.2 steps 3+5)', () => {
     expect(result.outcome).toBe('question_locked');
   });
 
+  it('parallel picks by DIFFERENT profiles never deadlock and count correctly (40P01 regression)', async () => {
+    // Regression for the FOR SHARE → counter-UPDATE lock-upgrade deadlock: N overlapping
+    // transactions on the SAME question row (the normal case — everyone picks the same daily
+    // question). Under the old shape, any two overlapping picks deadlocked (reproduced as
+    // Postgres 40P01); the guarded-UPDATE-first shape serializes on one exclusive row lock.
+    const question = await insertOpenQuestion();
+    const pickers = Array.from({ length: 8 }, () => buildProfile());
+    await db.insert(profiles).values(pickers);
+
+    const at = new Date(question.openAt!.getTime() + 60_000);
+    const results = await Promise.all(
+      pickers.map((p, i) =>
+        placePickTx(db, {
+          id: uuidv7(),
+          questionId: question.id as string,
+          profileId: p.id as string,
+          side: i % 2 === 0 ? ('yes' as const) : ('no' as const),
+          yesPriceAtEntry: 0.6,
+          priceStampedAt: at,
+          pickedAt: at,
+          source: 'web' as const,
+        }),
+      ),
+    );
+
+    expect(results.map((r) => r.outcome)).toEqual(Array.from({ length: 8 }, () => 'inserted'));
+
+    const [after] = await db.select().from(questions).where(eq(questions.id, question.id as string));
+    expect(after!.yesCount).toBe(4);
+    expect(after!.noCount).toBe(4);
+  });
+
   it('increments the correct side counter', async () => {
     const question = await insertOpenQuestion();
     const [p1, p2] = [buildProfile(), buildProfile()];

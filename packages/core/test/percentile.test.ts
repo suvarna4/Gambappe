@@ -45,6 +45,60 @@ describe('computePercentiles (§8.6)', () => {
     expect(a[0]).toBeCloseTo(b[2]!, 5);
     expect(a[2]).toBeCloseTo(b[3]!, 5);
   });
+
+  it('a NaN input never corrupts other members\' percentiles (real tie groups stay intact)', () => {
+    // Corrupt-data tolerance: an inconsistent `a - b` comparator would let one NaN split real
+    // tie groups apart. Finite members must keep the exact values they'd have if the NaN rows
+    // simply never compared (the old pairwise behavior).
+    const result = computePercentiles([1, NaN, 1]);
+    expect(result[0]).toBeCloseTo(25, 5); // (0 + 0.5*1)/2*100, the NaN contributing nothing
+    expect(result[2]).toBeCloseTo(25, 5);
+
+    const bigger = computePercentiles([3, 1, NaN, 1, 3, 1]);
+    expect(bigger[1]).toBeCloseTo(20, 5); // the 1s: (0 + 0.5*2)/5*100
+    expect(bigger[3]).toBeCloseTo(20, 5);
+    expect(bigger[5]).toBeCloseTo(20, 5);
+    expect(bigger[0]).toBeCloseTo(70, 5); // the 3s: (3 + 0.5*1)/5*100
+    expect(bigger[4]).toBeCloseTo(70, 5);
+  });
+
+  it('matches the pairwise §8.6 definition on tie-heavy pseudo-random inputs (differential)', () => {
+    // Reference: the definition verbatim (the pre-optimization O(n²) implementation).
+    function pairwiseReference(scores: readonly number[]): number[] {
+      const n = scores.length;
+      if (n === 0) return [];
+      if (n === 1) return [100];
+      return scores.map((sx, i) => {
+        let lower = 0;
+        let tiedOthers = 0;
+        for (let j = 0; j < n; j++) {
+          if (j === i) continue;
+          const sy = scores[j]!;
+          if (sy < sx) lower++;
+          else if (sy === sx) tiedOthers++;
+        }
+        return ((lower + 0.5 * tiedOthers) / (n - 1)) * 100;
+      });
+    }
+
+    // Deterministic LCG so failures are reproducible; values drawn from a SMALL bucket set to
+    // force heavy tie groups (the case the tie-group math must get exactly right).
+    let seed = 42;
+    const rand = () => {
+      seed = (seed * 1103515245 + 12345) % 2 ** 31;
+      return seed / 2 ** 31;
+    };
+    for (let trial = 0; trial < 25; trial++) {
+      const n = 2 + Math.floor(rand() * 60);
+      const scores = Array.from({ length: n }, () => Math.floor(rand() * 5) / 4 - 0.5);
+      const expected = pairwiseReference(scores);
+      const actual = computePercentiles(scores);
+      expect(actual).toHaveLength(expected.length);
+      for (let i = 0; i < n; i++) {
+        expect(actual[i]).toBeCloseTo(expected[i]!, 10);
+      }
+    }
+  });
 });
 
 describe('topPercentDisplay (§8.6 "Top X%")', () => {

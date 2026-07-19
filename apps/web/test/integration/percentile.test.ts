@@ -86,6 +86,44 @@ describe('getViewerPercentile (§8.6 bot-exclusion asymmetry)', () => {
     expect(cachedBotField).toBeNull(); // not polluting the shared excluded-set cache
   });
 
+  it('cold-cache burst: concurrent viewers all get correct percentiles (single-flight guard)', async () => {
+    const market = buildMarket();
+    await db.insert(markets).values(market);
+    const question = buildQuestion(market.id as string, { status: 'revealed' });
+    await db.insert(questions).values(question);
+
+    const viewers = Array.from({ length: 6 }, () => buildProfile({ botScore: 0 }));
+    await db.insert(profiles).values(viewers);
+    await db.insert(picks).values(
+      viewers.map((p, i) =>
+        buildPick(question.id as string, p.id as string, {
+          id: uuidv7(),
+          side: 'yes',
+          result: i < 3 ? 'win' : 'loss',
+          // Distinct edges → strict ordering: winners at 0.5/0.4/0.3, losers at -0.5/-0.6/-0.7.
+          edge: i < 3 ? 0.5 - i * 0.1 : -0.5 - (i - 3) * 0.1,
+        }),
+      ),
+    );
+
+    // All 6 arrive concurrently against a cold cache — the reveal-minute worst case the
+    // recompute lock exists for. Every response must be individually correct regardless of
+    // whether it came from the winner's populate, a poll hit, or the no-write fallback.
+    const results = await Promise.all(
+      viewers.map((p) => getViewerPercentile(db, redis, question.id as string, p.id as string)),
+    );
+
+    expect(results[0]).toBeCloseTo(100, 5); // best edge
+    expect(results[5]).toBeCloseTo(0, 5); // worst edge
+    // Strictly-ordered distinct edges over n=6 → percentiles are i/(n-1)*100 by rank.
+    const sorted = [...(results as number[])].sort((a, b) => a - b);
+    sorted.forEach((value, rank) => expect(value).toBeCloseTo((rank / 5) * 100, 5));
+
+    // Cache ended up populated (by exactly the winner) and every viewer's later read hits it.
+    const cachedAgain = await getViewerPercentile(db, redis, question.id as string, viewers[0]!.id as string);
+    expect(cachedAgain).toBeCloseTo(100, 5);
+  });
+
   it('returns null for a profile with no graded pick on the question at all', async () => {
     const market = buildMarket();
     await db.insert(markets).values(market);

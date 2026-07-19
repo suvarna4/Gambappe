@@ -150,8 +150,9 @@ export interface LockQuestionResult {
 
 /**
  * `question:lock` (WS3-T1, §6.2 lock job): `open` → `locked`. `FOR UPDATE` on the question row
- * serializes against a concurrent pick's `SELECT ... FOR SHARE` (§6.2 step 5) — a pick can
- * never slip between this transition and the counter snapshot below, in either direction.
+ * serializes against a concurrent pick's guarded counter UPDATE (§6.2 step 5, `placePickTx` in
+ * picks.ts — an exclusive row lock held to the pick's commit) — a pick can never slip between
+ * this transition and the counter snapshot below, in either direction.
  * Crowd snapshot excludes picks from profiles with `bot_score >= BOT_EXCLUDE_THRESHOLD` at
  * snapshot time (§6.2: "same-day bot floods are filtered at the moment it matters"). `price` is
  * the already-resolved lock-time stamp (cache/DB ladder, §6.2 step 4 rules) or `null` if no

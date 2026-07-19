@@ -76,11 +76,19 @@ async function computeViewerStreakBlock(
  * narrative (its beats are nemesis/duo/streak-specific) — this is a minimal deterministic
  * placeholder, not a `packages/engine` beat, pending a copy pass (§10.6/WS14-T3).
  */
-function buildNarrativeLine(question: QuestionRow, crowdPctYes: number): string {
+function buildNarrativeLine(question: QuestionRow, crowdYes: number, crowdNo: number): string {
   const winningLabel = question.outcome === 'yes' ? question.yesLabel : question.noLabel;
-  const crowdPickedYes = crowdPctYes >= 50;
+  // No crowd at all (degenerate: revealed with zero lock-snapshot picks) → there's no honest
+  // "N% called it / had it wrong" to attribute, so just state the outcome.
+  const total = crowdYes + crowdNo;
+  if (total === 0) return `${winningLabel} it is.`;
+  // Majority from the raw COUNTS, never a rounded percent (49.6% rounds to 50 and would flip
+  // which side the narrative attributes to the crowd). Non-zero tie → yes side, matching the
+  // old `pct >= 50` behavior exactly.
+  const crowdPickedYes = crowdYes >= crowdNo;
   const crowdWasRight = (crowdPickedYes && question.outcome === 'yes') || (!crowdPickedYes && question.outcome === 'no');
-  const crowdSidePct = Math.round(crowdPickedYes ? crowdPctYes : 100 - crowdPctYes);
+  const crowdSideCount = crowdPickedYes ? crowdYes : crowdNo;
+  const crowdSidePct = Math.round((crowdSideCount / total) * 100);
   return crowdWasRight
     ? `${crowdSidePct}% called it. ${winningLabel} it is.`
     : `${crowdSidePct}% had it wrong. ${winningLabel} came through instead.`;
@@ -105,7 +113,9 @@ export async function buildRevealPayload(args: BuildRevealPayloadArgs): Promise<
   const questionPublic = serializeQuestionPublic(question, market, at);
   const yes = question.crowdYesAtLock ?? 0;
   const no = question.crowdNoAtLock ?? 0;
-  const crowd = { yes, no, pct_yes: yes + no === 0 ? 0 : (yes / (yes + no)) * 100 };
+  // Rounded for the same reason `serializeQuestionPublic`'s crowd block is — every display of
+  // pct_yes is an integer percent; majority logic (buildNarrativeLine) reads the raw counts.
+  const crowd = { yes, no, pct_yes: yes + no === 0 ? 0 : Math.round((yes / (yes + no)) * 100) };
 
   let viewer: RevealViewer | undefined;
   if (viewerProfileId) {
@@ -145,7 +155,7 @@ export async function buildRevealPayload(args: BuildRevealPayloadArgs): Promise<
     outcome: question.outcome,
     crowd,
     viewer,
-    narrative_line: buildNarrativeLine(question, crowd.pct_yes),
+    narrative_line: buildNarrativeLine(question, yes, no),
     share: {
       page_url: `${appUrl}/q/${question.slug}`,
       og_url: `${appUrl}/api/og/question/${question.slug}?v=${ogHash}`,

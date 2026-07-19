@@ -15,11 +15,16 @@ export function revealHashKey(questionId: string): string {
   return `reveal:${questionId}`;
 }
 
-/** Computes and writes the full `reveal:{questionId}` percentile hash. No-op (hash left absent)
- * when there are no bot-excluded graded picks to score. */
+/** Computes and writes the full `reveal:{questionId}` percentile hash. An empty graded set
+ * DELETES any existing hash rather than leaving it (a re-run after a set-shrinking event —
+ * regrade voiding every pick, bot re-score — must not keep serving stale members). */
 export async function computeAndCachePercentiles(db: Db, redis: Redis, questionId: string): Promise<void> {
+  const key = revealHashKey(questionId);
   const entries = await getGradedPickScoresForQuestion(db, questionId);
-  if (entries.length === 0) return;
+  if (entries.length === 0) {
+    await redis.del(key);
+    return;
+  }
 
   const percentiles = computePercentiles(entries.map((e) => e.edge));
   const fields: Record<string, string> = {};
@@ -27,6 +32,13 @@ export async function computeAndCachePercentiles(db: Db, redis: Redis, questionI
     fields[e.profileId] = String(percentiles[i]);
   });
 
-  await redis.hset(revealHashKey(questionId), fields);
-  await redis.expire(revealHashKey(questionId), REVEAL_HASH_TTL_S);
+  // DEL + HSET + EXPIRE in one MULTI, mirroring `apps/web/lib/percentile.ts`'s
+  // `recomputeAndCache` (same rationale, deliberately duplicated per the no-cross-app-import
+  // rule): the hash is a full SNAPSHOT of the current graded set — a bare hset would merge over
+  // a previous write and resurrect members a regrade/bot re-score removed — and it can never be
+  // committed without its TTL. Per-command errors from exec() are surfaced, not swallowed.
+  const execResults = await redis.multi().del(key).hset(key, fields).expire(key, REVEAL_HASH_TTL_S).exec();
+  if (!execResults) throw new Error('computeAndCachePercentiles: MULTI discarded');
+  const execError = execResults.find(([err]) => err !== null)?.[0];
+  if (execError) throw execError;
 }

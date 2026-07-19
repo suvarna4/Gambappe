@@ -5,6 +5,7 @@
  * (`computePercentiles` + `getGradedPickScoresForQuestion`); only the thin Redis glue differs
  * per runtime (no cross-app import between `apps/web`/`apps/worker`).
  */
+import { randomUUID } from 'node:crypto';
 import type { Redis } from 'ioredis';
 import { computePercentiles } from '@receipts/core';
 import { getAllGradedPickScoresForQuestion, getGradedPickScoresForQuestion, type Db } from '@receipts/db';
@@ -25,7 +26,13 @@ export async function recomputeAndCache(db: Db, redis: Redis, questionId: string
   await ensureRedisConnected(redis);
   const entries = await getGradedPickScoresForQuestion(db, questionId);
   const byProfile = new Map<string, number>();
-  if (entries.length === 0) return byProfile;
+  if (entries.length === 0) {
+    // An empty graded set must still INVALIDATE (a regrade voiding every pick would otherwise
+    // leave the whole pre-regrade hash serving stale percentiles) — snapshot semantics apply
+    // to the empty snapshot too.
+    await redis.del(revealHashKey(questionId));
+    return byProfile;
+  }
 
   const percentiles = computePercentiles(entries.map((e) => e.edge));
   const fields: Record<string, string> = {};
@@ -33,10 +40,41 @@ export async function recomputeAndCache(db: Db, redis: Redis, questionId: string
     fields[e.profileId] = String(percentiles[i]);
     byProfile.set(e.profileId, percentiles[i]!);
   });
-  await redis.hset(revealHashKey(questionId), fields);
-  await redis.expire(revealHashKey(questionId), REVEAL_HASH_TTL_S);
+  // One MULTI, three properties: DEL first so the hash is a full SNAPSHOT of the current graded
+  // set (a bare hset merges — a regrade that shrinks the set would leave stale members serving
+  // pre-regrade percentiles); EXPIRE in the same transaction so the hash can never be committed
+  // without its TTL; and all-or-nothing so a crash mid-sequence can't leave a deleted-but-empty
+  // or TTL-less key. `exec()` resolves per-command errors in its result array instead of
+  // rejecting — surface them so callers' failure paths (e.g. regrade's invalidate-on-failure)
+  // actually fire.
+  const key = revealHashKey(questionId);
+  const execResults = await redis.multi().del(key).hset(key, fields).expire(key, REVEAL_HASH_TTL_S).exec();
+  if (!execResults) throw new Error('recomputeAndCache: MULTI discarded');
+  const execError = execResults.find(([err]) => err !== null)?.[0];
+  if (execError) throw execError;
   return byProfile;
 }
+
+/** Stampede guard for the cache-miss path below: only one concurrent request per question runs
+ * the recompute-and-populate; the rest briefly poll the cache and then, as a bounded fallback,
+ * compute for themselves WITHOUT writing (correct answer, no write storm). */
+const RECOMPUTE_LOCK_TTL_S = 10;
+const RECOMPUTE_POLL_ATTEMPTS = 5;
+const RECOMPUTE_POLL_INTERVAL_MS = 100;
+
+function recomputeLockKey(questionId: string): string {
+  return `reveal:${questionId}:recompute-lock`;
+}
+
+/** Compare-and-delete: release the lock only if WE still hold it. Without the token check, a
+ * recompute that outlives the lock TTL would blindly DEL a successor holder's lock and admit a
+ * third recomputer (the classic non-token distributed-lock misdelete). */
+const RELEASE_LOCK_LUA = `
+if redis.call('get', KEYS[1]) == ARGV[1] then
+  return redis.call('del', KEYS[1])
+end
+return 0
+`;
 
 /** `null` only when the profile truly has no graded pick on this question (callers only call
  * this once a pick is known graded, so this is effectively unreachable in practice). A
@@ -53,10 +91,46 @@ export async function getViewerPercentile(
   const cached = await redis.hget(revealHashKey(questionId), profileId);
   if (cached !== null) return Number(cached);
 
-  const recomputed = await recomputeAndCache(db, redis, questionId);
-  const percentile = recomputed.get(profileId);
-  if (percentile !== undefined) return percentile;
+  // Cache miss (worker lag at reveal minute — the reveal-spike worst case). Single-flight the
+  // shared recompute: the SET NX winner populates the cache for everyone; losers poll it
+  // briefly, then fall back to a private no-write compute rather than piling N identical
+  // recompute+hset storms onto the pool.
+  let recomputed: Map<string, number> | null = null;
+  const lockKey = recomputeLockKey(questionId);
+  const lockToken = randomUUID();
+  const lockAcquired = (await redis.set(lockKey, lockToken, 'EX', RECOMPUTE_LOCK_TTL_S, 'NX')) === 'OK';
+  if (lockAcquired) {
+    try {
+      recomputed = await recomputeAndCache(db, redis, questionId);
+    } finally {
+      await redis.eval(RELEASE_LOCK_LUA, 1, lockKey, lockToken).catch(() => {});
+    }
+  } else {
+    for (let attempt = 0; attempt < RECOMPUTE_POLL_ATTEMPTS; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, RECOMPUTE_POLL_INTERVAL_MS));
+      const polled = await redis.hget(revealHashKey(questionId), profileId);
+      if (polled !== null) return Number(polled);
+    }
+  }
 
+  if (recomputed) {
+    const percentile = recomputed.get(profileId);
+    if (percentile !== undefined) return percentile;
+  } else {
+    // Poll budget exhausted without the lock holder finishing. Compute privately (no cache
+    // write) against the same excluded-set denominator the cache would have held (§8.6) —
+    // a non-excluded viewer must never be ranked against the full set just because they
+    // arrived during someone else's recompute.
+    const entries = await getGradedPickScoresForQuestion(db, questionId);
+    const idxExcludedSet = entries.findIndex((e) => e.profileId === profileId);
+    if (idxExcludedSet !== -1) {
+      const percentiles = computePercentiles(entries.map((e) => e.edge));
+      return percentiles[idxExcludedSet] ?? null;
+    }
+  }
+
+  // Viewer absent from the excluded set → they're bot-excluded (§8.6: "excluded profiles get
+  // their own percentile against the full set") — computed on demand, never cached.
   const allEntries = await getAllGradedPickScoresForQuestion(db, questionId);
   const idx = allEntries.findIndex((e) => e.profileId === profileId);
   if (idx === -1) return null; // genuinely no graded pick at all

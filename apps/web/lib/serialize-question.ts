@@ -65,10 +65,17 @@ export function serializeQuestionPublic(question: QuestionRow, market: MarketRow
       ? {
           yes: question.crowdYesAtLock,
           no: question.crowdNoAtLock,
+          // Rounded at the serialization boundary: every display of this value (§10.1's own
+          // "The crowd said 63%" archetype, og:description, JSON-LD, the /q archive) is an
+          // integer percent — an unrounded 2/3 here surfaced as "66.66666666666666%" in meta
+          // tags. Majority questions must compare the raw COUNTS, never this rounded value
+          // (49.6 rounds to 50 and would flip sides).
           pct_yes:
             question.crowdYesAtLock + question.crowdNoAtLock === 0
               ? 0
-              : (question.crowdYesAtLock / (question.crowdYesAtLock + question.crowdNoAtLock)) * 100,
+              : Math.round(
+                  (question.crowdYesAtLock / (question.crowdYesAtLock + question.crowdNoAtLock)) * 100,
+                ),
         }
       : null;
 

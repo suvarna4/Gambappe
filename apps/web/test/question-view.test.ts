@@ -130,6 +130,17 @@ describe('toQuestionPublic (§9.3 crowd-hiding + assembly)', () => {
     expect(pub.crowd).toEqual({ yes: 7, no: 3, pct_yes: 70 });
   });
 
+  it('rounds pct_yes to an integer percent (2/3 split → 67, never 66.66666666666666)', () => {
+    const q = row({
+      status: 'locked',
+      marketId: market.id as string,
+      crowdYesAtLock: 2,
+      crowdNoAtLock: 1,
+    });
+    const pub = toQuestionPublic(q, market, LOCK.getTime() + 1000);
+    expect(pub.crowd).toEqual({ yes: 2, no: 1, pct_yes: 67 });
+  });
+
   it('shows the lock snapshot on revealed and voided too', () => {
     const revealed = row({
       status: 'revealed',
