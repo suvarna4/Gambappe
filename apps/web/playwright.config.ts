@@ -20,6 +20,16 @@ process.env.FLAG_DUO_QUEUE ??= 'true';
 // ISR after directly advancing question state (lock/reveal) via repository calls instead of the
 // real worker cron — same "harmless test-only default" rationale as the stopgap token above.
 process.env.INTERNAL_API_SECRET ??= 'e2e-test-internal-secret';
+// Auth.js requires `secret` to be configured (`auth.ts`) — without it, `auth()` logs
+// `MissingSecret` and silently resolves every request as unauthenticated instead of throwing,
+// which every OTHER e2e spec never notices (none of them depend on `auth()` actually resolving
+// a real session — they're anonymous/ghost-only scenarios where "no session" is the expected
+// outcome anyway). `golden-loop.spec.ts` is the first spec that seeds a real Auth.js database
+// session and needs `auth()` to actually recognize it (the claim-completion step) — CI's e2e
+// job doesn't set `AUTH_SECRET` (`.github/workflows/ci.yml`), so without this default the claim
+// step deterministically renders the pre-auth `ClaimEntry` instead of `ClaimCompletion` there,
+// even though it's invisible locally if you happen to always export `AUTH_SECRET` by hand.
+process.env.AUTH_SECRET ??= 'e2e-test-auth-secret-e2e-test-auth-secret';
 // `apps/web/lib/venues.ts`'s `defaultVenueAdapters()` constructs a real `KalshiAdapter`/
 // `PolymarketAdapter` eagerly (§6.2 step 4's synchronous price-fetch fallback) — construction
 // itself throws when these base-URL env vars are unset, regardless of whether the fetch is ever
