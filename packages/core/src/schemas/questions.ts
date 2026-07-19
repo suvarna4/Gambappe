@@ -9,7 +9,7 @@ import {
   QUESTION_STATUS,
   VENUE,
 } from '../enums.js';
-import { zQuestionId } from '../ids.js';
+import { zPickId, zQuestionId } from '../ids.js';
 import { zDateOnly, zProbability, zSlug, zTimestamp } from './common.js';
 import { pickSchema } from './picks.js';
 
@@ -69,12 +69,53 @@ export const getQuestionResponseSchema = questionPublicSchema;
 
 // --- GET /questions/:slug/reveal (§6.7 RevealPayload; 423 REVEAL_NOT_READY pre-reveal) --------
 
+/**
+ * "Died holding …" — the dead run's final ANSWERED pick (SW9-T1, obituary-handoff §3.1/§3.2).
+ * The run's `ended_on` can be a date the viewer never picked (a contiguous voided day, or a
+ * freeze-covered missed day, both of which extend the run), so this is the latest answered
+ * daily <= `ended_on` within the run — never "the pick on `ended_on`". Null when unresolvable;
+ * the UI then omits the line (SW4-T1 degrade rule).
+ */
+export const brokenRunLastPickSchema = z.object({
+  /** The viewer's own pick — powers the obituary share path (SW9-T2). */
+  pick_id: zPickId,
+  /** The death question's label for the held side ("Died holding {SIDE}"). */
+  side_label: z.string(),
+  /** Implied entry price of the held side, in cents ("@ {c}¢"). */
+  entry_cents: z.number().int().min(0).max(100),
+  /** Slug of the question the pick was on — the share path's landing page (SW9-T2). */
+  question_slug: zSlug,
+});
+
+/**
+ * The viewer's most recently completed (broken) participation run (SW9-T1, obituary-handoff
+ * §3.2). Emitted iff this reveal is the "wake" — the viewer's first counted daily since the
+ * break: `runs.length > 0 && currentRunStartedOn === question_date` on the through-
+ * `question_date` replay. No length threshold server-side — the contract carries the fact;
+ * `OBITUARY_MIN_STREAK` (packages/ui) stays a client presentation rule.
+ */
+export const brokenRunSchema = z.object({
+  /** Counted days of the dead run — always >= 1 (§3.1 zero-guard). */
+  length: z.number().int().positive(),
+  /** First counted (answered) date of the dead run. */
+  started_on: zDateOnly,
+  /** Last counted date (possibly voided/freeze-covered — NOT the missed day that killed it). */
+  ended_on: zDateOnly,
+  last_pick: brokenRunLastPickSchema.nullable(),
+  /** Recorded freeze uses with covered date in (started_on, ended_on] — half-open (§3.1). */
+  freezes_survived: z.number().int().nonnegative(),
+  /** Cheapest implied entry (cents) among the run's answered picks; null if none resolvable. */
+  longest_odds_cents: z.number().int().min(0).max(100).nullable(),
+});
+
 /** Viewer streak block within the reveal payload. */
 export const revealStreakSchema = z.object({
   current: z.number().int().nonnegative(),
   best: z.number().int().nonnegative(),
   delta: z.number().int(),
   freeze_used: z.boolean(),
+  /** Non-null only at the wake reveal (see `brokenRunSchema`) — SW9-T1 contract-change. */
+  broken_run: brokenRunSchema.nullable(),
 });
 
 export const revealViewerSchema = z.object({

@@ -183,8 +183,13 @@ export async function runRevealFire(
           profileId: gp.profileId,
           handle: profile?.handle ?? gp.profileId,
           questionDate,
-          previousStreak: streakResult.previousStreak,
           currentStreak: streakResult.currentStreak,
+          // SW9-T1 (obituary-handoff §3.3(4)): the `streak_busted` beat is keyed off the SAME
+          // replay-derived wake signal the reveal payload's `broken_run` uses — plumbed straight
+          // from `applyStreakForParticipant`'s replay, never re-derived (and never the live
+          // `profiles.current_streak`, which `streak:sweep` may have zeroed the day before).
+          runs: streakResult.runs,
+          currentRunStartedOn: streakResult.currentRunStartedOn,
           freezeUsedForGap: streakResult.freezeUsedForGap,
           freezeBankAfter: streakResult.freezeBankAfter,
           calledIt,

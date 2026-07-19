@@ -10,11 +10,16 @@ import {
   getPick,
   getProfileById,
   getPicksForProfile,
+  getQuestionById,
   listRevealedOrVoidedDailyThrough,
   replayStreak,
   type Db,
   type MarketRow,
+  type PickRow,
   type QuestionRow,
+  type ReplayDailyQuestion,
+  type ReplayFreezeUse,
+  type StreakReplayResult,
 } from '@receipts/db';
 import { addDaysToDateString, type RevealPayload, type RevealViewer } from '@receipts/core';
 import { serializeQuestionPublic } from './serialize-question';
@@ -30,6 +35,92 @@ import { questionOgHash } from './og/entities';
  * excluding it (`before`), and diffing the two — never the live profile row (reuses
  * `streak-replay.ts`, not re-derived).
  */
+type BrokenRunBlock = NonNullable<RevealViewer['streak']['broken_run']>;
+type BrokenRunLastPick = NonNullable<BrokenRunBlock['last_pick']>;
+
+/** Implied entry price of the HELD side, in integer cents (the receipt's "@ {c}¢"). */
+function impliedEntryCents(pick: PickRow): number {
+  return Math.round((pick.side === 'yes' ? pick.yesPriceAtEntry : 1 - pick.yesPriceAtEntry) * 100);
+}
+
+/**
+ * SW9-T1 (obituary-handoff §3.2): the `broken_run` block. Emitted iff this reveal is the wake —
+ * the viewer's first counted daily since a break — per the doc's MECHANICAL condition, both
+ * values from the AFTER replay (the through-`questionDate` one; the before-replay can never
+ * satisfy it): `runs.length > 0 && currentRunStartedOn === questionDate`. No calendar-adjacency
+ * check between the dead run and the live one (a death requires >= 1 uncovered revealed day
+ * strictly between them, so "ended the day before" is always false); run-sequence adjacency is
+ * automatic. The first-ever-pick case is excluded by `runs.length > 0` (§3.1's zero-guard is
+ * what makes that exclusion sound). No length threshold server-side — `OBITUARY_MIN_STREAK`
+ * stays a client presentation rule.
+ */
+async function computeBrokenRunBlock(
+  db: Db,
+  after: StreakReplayResult,
+  historyThrough: ReplayDailyQuestion[],
+  picks: PickRow[],
+  freezeUses: ReplayFreezeUse[],
+  questionDate: string,
+): Promise<BrokenRunBlock | null> {
+  if (!(after.runs.length > 0 && after.currentRunStartedOn === questionDate)) return null;
+  const deadRun = after.runs.at(-1)!;
+
+  // The dead run's ANSWERED days (replayStreak's own `answered` predicate: a non-void pick on a
+  // revealed daily), date-ascending. §3.1: `endedOn` itself can be a voided or freeze-covered
+  // date the viewer never picked, so "last pick" is the latest answered date <= endedOn within
+  // the run — never "the pick on endedOn".
+  const pickByQuestionId = new Map(picks.map((p) => [p.questionId, p] as const));
+  const runAnsweredPicks = historyThrough
+    .filter(
+      (q) =>
+        q.status === 'revealed' &&
+        q.questionDate >= deadRun.startedOn &&
+        q.questionDate <= deadRun.endedOn,
+    )
+    .sort((a, b) => a.questionDate.localeCompare(b.questionDate))
+    .map((q) => ({ question: q, pick: pickByQuestionId.get(q.id) }))
+    .filter((e): e is { question: ReplayDailyQuestion; pick: PickRow } => e.pick !== undefined && e.pick.result !== 'void');
+
+  // "Died holding {SIDE} @ {c}¢" — side_label needs the death question's own labels (one extra
+  // fetch by id); pick_id/entry_cents/question_slug come from data already in hand. Null when
+  // unresolvable → the UI omits the line (SW4-T1 degrade rule).
+  let lastPick: BrokenRunBlock['last_pick'] = null;
+  const finalAnswered = runAnsweredPicks.at(-1);
+  if (finalAnswered) {
+    const deathQuestion = await getQuestionById(db, finalAnswered.question.id);
+    // A null slug (nullable column, though never for a real daily) makes the share path
+    // unbuildable — treat it as unresolvable and degrade to null (SW4-T1 rule).
+    if (deathQuestion && deathQuestion.slug) {
+      lastPick = {
+        pick_id: finalAnswered.pick.id as BrokenRunLastPick['pick_id'],
+        side_label: finalAnswered.pick.side === 'yes' ? deathQuestion.yesLabel : deathQuestion.noLabel,
+        entry_cents: impliedEntryCents(finalAnswered.pick),
+        question_slug: deathQuestion.slug,
+      };
+    }
+  }
+
+  // §3.1: half-open interval (startedOn, endedOn] — the tail-covered case means the boundary
+  // date belongs to the run. No "burned on the fatal gap" class: every covered prefix of a
+  // would-be-fatal gap is absorbed into the run (advancing endedOn), the killing date is by
+  // definition uncovered, and streak:sweep only processes positive streaks — nothing burns
+  // after death.
+  const freezesSurvived = freezeUses.filter(
+    (f) => f.coveredDate > deadRun.startedOn && f.coveredDate <= deadRun.endedOn,
+  ).length;
+
+  const oddsCents = runAnsweredPicks.map((e) => impliedEntryCents(e.pick));
+
+  return {
+    length: deadRun.length,
+    started_on: deadRun.startedOn,
+    ended_on: deadRun.endedOn,
+    last_pick: lastPick,
+    freezes_survived: freezesSurvived,
+    longest_odds_cents: oddsCents.length > 0 ? Math.min(...oddsCents) : null,
+  };
+}
+
 async function computeViewerStreakBlock(
   db: Db,
   profileId: string,
@@ -45,6 +136,7 @@ async function computeViewerStreakBlock(
   const before = replayStreak(historyBefore, picks, freezeUses);
   const after = replayStreak(historyThrough, picks, freezeUses);
   const delta = after.currentStreak - before.currentStreak;
+  const brokenRun = await computeBrokenRunBlock(db, after, historyThrough, picks, freezeUses, questionDate);
 
   // NOT `before.lastCountedDate`: replayStreak's non-participant branch ADVANCES
   // lastCountedDate across every freeze-covered gap day, so by the time replay finishes it
@@ -68,7 +160,13 @@ async function computeViewerStreakBlock(
     (f) => (lastAnsweredDate === undefined || f.coveredDate > lastAnsweredDate) && f.coveredDate < questionDate,
   );
 
-  return { current: after.currentStreak, best: after.bestStreak, delta, freeze_used: freezeUsed };
+  return {
+    current: after.currentStreak,
+    best: after.bestStreak,
+    delta,
+    freeze_used: freezeUsed,
+    broken_run: brokenRun,
+  };
 }
 
 /**
@@ -128,7 +226,7 @@ export async function buildRevealPayload(args: BuildRevealPayloadArgs): Promise<
         const badges: RevealViewer['badges'] = pick.result === 'win' && isCalledIt(impliedProb) ? ['called_it'] : [];
         const streak = question.questionDate
           ? await computeViewerStreakBlock(db, profile.id, question.questionDate)
-          : { current: profile.currentStreak, best: profile.bestStreak, delta: 0, freeze_used: false };
+          : { current: profile.currentStreak, best: profile.bestStreak, delta: 0, freeze_used: false, broken_run: null };
 
         viewer = {
           pick: serializePick(pick),
