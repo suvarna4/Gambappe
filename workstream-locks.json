@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T14:35:09.894Z",
+  "updated_at": "2026-07-19T14:35:11.546Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1619,13 +1619,13 @@
         "SW2-T4"
       ],
       "mock_start_ok": false,
-      "note": null,
-      "status": "claimed",
+      "note": "Merged to main via PR #73 (commit b486590)",
+      "status": "done",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/daily-question-swipe-ux-f0p4wq",
-      "pr": null,
+      "pr": "https://github.com/suvarna4/Gambappe/pull/73",
       "claimed_at": "2026-07-19T14:35:09.893Z",
-      "updated_at": "2026-07-19T14:35:09.893Z"
+      "updated_at": "2026-07-19T14:35:11.546Z"
     },
     "SW8-T2": {
       "title": "Visual gallery tiles + screenshot snapshot gate",
