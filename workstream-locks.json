@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T08:40:27.876Z",
+  "updated_at": "2026-07-19T08:41:27.865Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1393,13 +1393,13 @@
       "phase": "SP1",
       "depends_on": [],
       "mock_start_ok": false,
-      "note": null,
-      "status": "available",
-      "owner": null,
+      "note": "Starting: side-axis sweep (NO-left/YES-right) across current UI + templates",
+      "status": "claimed",
+      "owner": "claude-sonnet5-vf9acd-orchestrator",
       "branch": null,
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-19T08:18:25.516Z"
+      "claimed_at": "2026-07-19T08:41:27.854Z",
+      "updated_at": "2026-07-19T08:41:27.854Z"
     },
     "SW2-T4": {
       "title": "Desktop layout + keyboard layer + focus order",
