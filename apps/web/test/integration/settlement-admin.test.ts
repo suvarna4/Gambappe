@@ -480,7 +480,15 @@ describe('regradeQuestion (§6.5, §6.6, §8.6)', () => {
     // Pre-seed a hash that a stale-serving bug would incorrectly leave behind.
     await redis.hset(revealHashKey(question.id as string), { stale: '999' });
 
-    const hsetSpy = vi.spyOn(redis, 'hset').mockRejectedValueOnce(new Error('simulated redis failure'));
+    // The recompute writes via a single MULTI (del+hset+expire) — fail its exec() to simulate
+    // Redis dying on the cache write while the DB-level regrade has already committed.
+    const brokenChain = {
+      del: () => brokenChain,
+      hset: () => brokenChain,
+      expire: () => brokenChain,
+      exec: () => Promise.reject(new Error('simulated redis failure')),
+    };
+    const multiSpy = vi.spyOn(redis, 'multi').mockReturnValueOnce(brokenChain as never);
     try {
       const result = await regradeQuestion(db, redis, question.id as string, 'no', at);
       expect(result.regraded).toBe(true); // the DB-level regrade still succeeds and is reported as such
@@ -493,7 +501,7 @@ describe('regradeQuestion (§6.5, §6.6, §8.6)', () => {
       const cached = await redis.hgetall(revealHashKey(question.id as string));
       expect(cached).toEqual({});
     } finally {
-      hsetSpy.mockRestore();
+      multiSpy.mockRestore();
     }
   });
 });

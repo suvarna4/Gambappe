@@ -33,9 +33,18 @@ export async function recomputeAndCache(db: Db, redis: Redis, questionId: string
     fields[e.profileId] = String(percentiles[i]);
     byProfile.set(e.profileId, percentiles[i]!);
   });
-  // MULTI so the hash can never be committed without its TTL (a crash between a separate
-  // hset and expire would otherwise leave an immortal hash).
-  await redis.multi().hset(revealHashKey(questionId), fields).expire(revealHashKey(questionId), REVEAL_HASH_TTL_S).exec();
+  // One MULTI, three properties: DEL first so the hash is a full SNAPSHOT of the current graded
+  // set (a bare hset merges — a regrade that shrinks the set would leave stale members serving
+  // pre-regrade percentiles); EXPIRE in the same transaction so the hash can never be committed
+  // without its TTL; and all-or-nothing so a crash mid-sequence can't leave a deleted-but-empty
+  // or TTL-less key. `exec()` resolves per-command errors in its result array instead of
+  // rejecting — surface them so callers' failure paths (e.g. regrade's invalidate-on-failure)
+  // actually fire.
+  const key = revealHashKey(questionId);
+  const execResults = await redis.multi().del(key).hset(key, fields).expire(key, REVEAL_HASH_TTL_S).exec();
+  if (!execResults) throw new Error('recomputeAndCache: MULTI discarded');
+  const execError = execResults.find(([err]) => err !== null)?.[0];
+  if (execError) throw execError;
   return byProfile;
 }
 
