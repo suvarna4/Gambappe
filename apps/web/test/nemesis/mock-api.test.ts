@@ -1,3 +1,10 @@
+/**
+ * Unit tests for the (now rematch-request-only) nemesis mock backend. `getCurrentPairing`,
+ * `getPairingById`, `getProfileRef`, and `getNemesisHistory` were removed from `mock-api.ts`
+ * by WS5-T4 (real implementations now live in `apps/web/lib/nemesis/service.ts`, exercised by
+ * `apps/web/test/integration/nemesis-matchup-api.test.ts` against real Postgres) — see
+ * `mock-api.ts`'s file header for the full explanation.
+ */
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ApiError } from '@receipts/core';
 import {
@@ -5,108 +12,13 @@ import {
   acceptRematchRequest,
   createRematchRequest,
   declineRematchRequest,
-  getCurrentPairing,
   getIncomingRematchRequest,
-  getNemesisHistory,
   getOutgoingRematchRequest,
-  getPairingById,
-  getProfileRef,
 } from '../../lib/nemesis/mock-api';
-import {
-  CURRENT_OPPONENT,
-  CURRENT_PAIRING_ID,
-  PAST_NEMESIS_DRAW,
-  PAST_NEMESIS_LOSS,
-  PAST_NEMESIS_WIN,
-  PAST_PAIRING_DRAW_ID,
-  PAST_PAIRING_LOSS_ID,
-  PAST_PAIRING_WIN_ID,
-  VIEWER,
-} from '../../lib/nemesis/mock-fixtures';
+import { PAST_NEMESIS_DRAW, PAST_NEMESIS_LOSS, PAST_NEMESIS_WIN, VIEWER } from '../../lib/nemesis/mock-fixtures';
 
 beforeEach(() => {
   __resetRematchRequestsForTests();
-});
-
-describe('getCurrentPairing', () => {
-  it("returns the viewer's active pairing with a masked-then-revealed scoreboard", () => {
-    const { pairing } = getCurrentPairing(VIEWER.profile_id);
-    expect(pairing).not.toBeNull();
-    expect(pairing?.status).toBe('active');
-    expect(pairing?.a.profile_id).toBe(VIEWER.profile_id);
-    expect(pairing?.b.profile_id).toBe(CURRENT_OPPONENT.profile_id);
-    // Rows 1-3 locked (revealed), row 4+5 not yet locked (masked) — see mock-fixtures.ts.
-    const rows = pairing!.scoreboard;
-    expect(rows).toHaveLength(5);
-    expect(rows[0]!.a).not.toBeNull();
-    expect(rows[1]!.a).not.toBeNull();
-    expect(rows[2]!.a).not.toBeNull();
-    expect(rows[3]!.a).toBeNull();
-    expect(rows[3]!.b).toBeNull();
-    expect(rows[4]!.a).toBeNull();
-    expect(rows[4]!.b).toBeNull();
-  });
-
-  it('returns null for anyone who is not the mock viewer', () => {
-    const { pairing } = getCurrentPairing('someone-else');
-    expect(pairing).toBeNull();
-  });
-});
-
-describe('getPairingById', () => {
-  it('returns the current pairing by id (public shape, no auth check)', () => {
-    const pairing = getPairingById(CURRENT_PAIRING_ID);
-    expect(pairing?.id).toBe(CURRENT_PAIRING_ID);
-  });
-
-  it('returns a completed past pairing with a win verdict', () => {
-    const pairing = getPairingById(PAST_PAIRING_WIN_ID);
-    expect(pairing?.status).toBe('completed');
-    expect(pairing?.winner_profile_id).toBe(VIEWER.profile_id);
-    expect(pairing?.score).toEqual({ a: 3, b: 1 });
-  });
-
-  it('returns a completed past pairing with a loss verdict', () => {
-    const pairing = getPairingById(PAST_PAIRING_LOSS_ID);
-    expect(pairing?.status).toBe('completed');
-    expect(pairing?.winner_profile_id).toBe(PAST_NEMESIS_LOSS.profile_id);
-    expect(pairing?.score).toEqual({ a: 1, b: 3 });
-  });
-
-  it('returns a completed past pairing with a draw (no winner)', () => {
-    const pairing = getPairingById(PAST_PAIRING_DRAW_ID);
-    expect(pairing?.status).toBe('completed');
-    expect(pairing?.winner_profile_id).toBeNull();
-  });
-
-  it('returns null for an unknown id', () => {
-    expect(getPairingById('00000000-0000-4000-8000-999999999999')).toBeNull();
-  });
-});
-
-describe('getProfileRef', () => {
-  it('returns rating info for a known slug', () => {
-    const ref = getProfileRef(CURRENT_OPPONENT.slug);
-    expect(ref?.handle).toBe(CURRENT_OPPONENT.handle);
-    expect(ref?.rating?.glicko_rating).toBe(CURRENT_OPPONENT.rating.glicko_rating);
-  });
-
-  it('returns null for an unknown slug', () => {
-    expect(getProfileRef('nobody-0000')).toBeNull();
-  });
-});
-
-describe('getNemesisHistory', () => {
-  it("returns the viewer's history entries", () => {
-    const { data } = getNemesisHistory(VIEWER.profile_id);
-    expect(data).toHaveLength(3);
-    expect(data.map((e) => e.outcome).sort()).toEqual(['draw', 'loss', 'win']);
-  });
-
-  it('returns empty for anyone else', () => {
-    const { data } = getNemesisHistory('someone-else');
-    expect(data).toHaveLength(0);
-  });
 });
 
 describe('rematch requests (§8.4 step 0: create = requester consent, accept = target consent = mutual)', () => {

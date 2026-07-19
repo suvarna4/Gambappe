@@ -77,8 +77,12 @@ export function decodePicksCursor(raw: string | null | undefined): ProfilePicksC
  * reveal fires (or the question voids) — grading may already have written `result`/`edge`
  * internally, but nothing observable may change before then (§6.5, §9.3). Bonus questions
  * (`nemesis_bonus`/`duo_bonus`) have no held reveal and publish immediately (§8.8.1).
+ *
+ * Exported (WS5-T4): the nemesis matchup scoreboard (`apps/web/lib/nemesis/service.ts`) needs
+ * this exact same publication rule for a shared question's pick result — reused rather than
+ * re-derived to avoid the two masking rules drifting apart.
  */
-function isPubliclyResolved(question: { kind: string; status: string }): boolean {
+export function isPubliclyResolved(question: { kind: string; status: string }): boolean {
   if (question.kind !== 'daily') return true;
   return question.status === 'revealed' || question.status === 'voided';
 }
