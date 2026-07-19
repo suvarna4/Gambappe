@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T14:34:44.338Z",
+  "updated_at": "2026-07-19T14:34:45.982Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1487,12 +1487,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-session-35b05898-7175",
+      "branch": "claude/daily-question-swipe-ux-f0p4wq",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-19T08:18:25.516Z"
+      "claimed_at": "2026-07-19T14:34:45.982Z",
+      "updated_at": "2026-07-19T14:34:45.982Z"
     },
     "SW5-T1": {
       "title": "Nemesis daily flip on the receipt slip (sealed until viewer locks)",
