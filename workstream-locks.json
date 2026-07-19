@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T08:18:38.499Z",
+  "updated_at": "2026-07-19T08:18:39.944Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1246,13 +1246,13 @@
       "phase": "SP1",
       "depends_on": [],
       "mock_start_ok": false,
-      "note": null,
-      "status": "claimed",
+      "note": "add-tasks subcommand + tests + seed shipped on branch claude/daily-question-swipe-ux-f0p4wq (plan + registration in one PR); mark done when merged",
+      "status": "in_review",
       "owner": "claude-session-01RU7xfuiYTVXMUbpHWEfcfJ",
       "branch": "claude/daily-question-swipe-ux-f0p4wq",
       "pr": null,
       "claimed_at": "2026-07-19T08:18:38.498Z",
-      "updated_at": "2026-07-19T08:18:38.498Z"
+      "updated_at": "2026-07-19T08:18:39.944Z"
     },
     "SW0-T2": {
       "title": "Tokens, fonts, glow/motion scale, side-axis + swipe constants",
