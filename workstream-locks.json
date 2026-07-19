@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T14:39:27.472Z",
+  "updated_at": "2026-07-19T15:12:09.283Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1442,12 +1442,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/sw3-t2-choreography-foil",
-      "pr": null,
+      "pr": "https://github.com/suvarna4/Gambappe/pull/75",
       "claimed_at": "2026-07-19T14:39:27.471Z",
-      "updated_at": "2026-07-19T14:39:27.471Z"
+      "updated_at": "2026-07-19T15:12:09.283Z"
     },
     "SW4-T1": {
       "title": "Obituary card + busted-streak template upgrade",
