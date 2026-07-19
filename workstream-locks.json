@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T12:38:05.126Z",
+  "updated_at": "2026-07-19T12:38:17.989Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1287,13 +1287,13 @@
         "SW0-T2"
       ],
       "mock_start_ok": false,
-      "note": "built on integration branch (dep SW0-T2 committed, not yet merged); ui tests + web build + visual verified",
-      "status": "in_review",
+      "note": "reassigned to claude-session-35b05898-7175 to take over/finish",
+      "status": "available",
       "owner": null,
       "branch": null,
       "pr": null,
       "claimed_at": null,
-      "updated_at": "2026-07-19T08:43:08.416Z"
+      "updated_at": "2026-07-19T12:38:17.989Z"
     },
     "SW1-T2": {
       "title": "SwipeBallot gesture engine (drag/arm/commit, age gate, haptics, guardrails)",
