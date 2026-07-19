@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T23:19:53.265Z",
+  "updated_at": "2026-07-19T23:25:06.600Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1678,13 +1678,13 @@
         "SW9-T3"
       ],
       "mock_start_ok": false,
-      "note": "Implemented: RevealSequence wired to ObituaryCard on broken_run>=OBITUARY_MIN_STREAK; obituaryCopy survived-fact templates; ObituaryCard sideLabel/entryCents optional + -rotate-[7deg] fix. Real-HTTP e2e (obituary-wake.spec.ts) + mocked-payload UI branch tests + unit tests all green; lint/typecheck/build clean. Not pushed — awaiting review.",
+      "note": "PR #82 open, all verify+e2e green (verified independently), fable review pending — last task in SW9 backlog",
       "status": "in_review",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/sw9-t2-obituary-wake",
-      "pr": null,
+      "pr": "https://github.com/Gambappe/Gambappe/pull/82",
       "claimed_at": "2026-07-19T22:57:23.797Z",
-      "updated_at": "2026-07-19T23:19:53.265Z"
+      "updated_at": "2026-07-19T23:25:06.600Z"
     },
     "SW9-T3": {
       "title": "Honest busted-streak card binding + graveyard data [contract-change]",
