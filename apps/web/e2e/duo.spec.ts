@@ -54,11 +54,15 @@ test.describe('public duo pages (§9.2, real Postgres)', () => {
     const { a, b, duo } = await seedDuo();
 
     await page.goto(`/duos/${duo.id}`);
-    await expect(page.getByText(a.handle)).toBeVisible();
-    await expect(page.getByText(b.handle)).toBeVisible();
-    await expect(page.getByText('Tier 1 · Paper')).toBeVisible();
-    await expect(page.getByText('1580')).toBeVisible();
-    await expect(page.getByText('No matches yet.')).toBeVisible();
+    // Scoped to <main> — the page's own <title> is `${a.handle} & ${b.handle} — Receipts`
+    // (generateMetadata), so an unscoped page.getByText(a.handle)/getByText(b.handle) is a
+    // strict-mode violation: it matches both the visible partner text and the <title> element.
+    const main = page.locator('main');
+    await expect(main.getByText(a.handle)).toBeVisible();
+    await expect(main.getByText(b.handle)).toBeVisible();
+    await expect(main.getByText('Tier 1 · Paper')).toBeVisible();
+    await expect(main.getByText('1580')).toBeVisible();
+    await expect(main.getByText('No matches yet.')).toBeVisible();
   });
 
   test('/duos/[id] 404s for an unknown id', async ({ page }) => {
