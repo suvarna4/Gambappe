@@ -228,3 +228,85 @@ export const settingsCopy = {
   deleteDoneBody: 'Your picks and profile are gone. Thanks for playing.',
   deleteDoneHomeLink: 'Home',
 } as const;
+
+/** WS7-T7 (duo UI) section (design doc §8.5/§8.9/§8.10, §9.2, §10.1 `/duos/[id]`, `/ladder`).
+ * `DUO_TIER_NAMES` are the §8.10 "Tier display names (`Paper → Carbon → Ribbon → Ledger →
+ * Archive`)" — primary copy is always "Tier N" (P11), the name secondary, per §8.10's own
+ * wording ("'Tier 1..5' is primary copy, the name secondary"). Indexed 0 = tier 1. */
+export const DUO_TIER_NAMES = ['Paper', 'Carbon', 'Ribbon', 'Ledger', 'Archive'] as const;
+
+export function duoTierLabel(tier: number): string {
+  const name = DUO_TIER_NAMES[tier - 1];
+  return name ? `Tier ${tier} · ${name}` : `Tier ${tier}`;
+}
+
+export const duoCopy = {
+  hubHeading: 'Your duo',
+  claimRequiredNotice: 'Claim your account to join a duo.',
+  loadError: 'Could not load your duo — try again.',
+
+  /** §8.5 eligibility: `DUO_MIN_PICKS` graded picks, claimed + active, no active duo already. */
+  notEligible: (gradedPicks: number, required: number) =>
+    `${gradedPicks}/${required} graded picks — you'll be able to queue for a duo once you reach ${required}.`,
+
+  notQueuedBody: "You're not in the duo queue right now. Partners are matched by rating — join and we'll pair you when a good match is waiting.",
+  joinQueueCta: 'Join duo queue',
+  joiningQueue: 'Joining…',
+  joinQueueError: 'Could not join the queue — try again.',
+
+  /** SPEC-GAP(ws7-t7): §9.2 has no endpoint for "am I currently queued" independent of
+   * `GET /duo/current` (which only surfaces a MATCHED duo) — the hub infers queued state from
+   * the join call's own response (a fresh `waiting` entry, or an `already_queued` eligibility
+   * rejection treated as confirmation) rather than from page load. A page reload while still
+   * waiting shows the "join queue" button again; clicking it just confirms you're already in
+   * — see `DuoHubClient`'s header for the full explanation. */
+  queuedBody: "You're in the queue — you'll be paired once a good match is waiting. This can take a little while.",
+  leaveQueueCta: 'Leave queue',
+  leavingQueue: 'Leaving…',
+  leaveQueueError: 'Could not leave the queue — try again.',
+
+  viewDuoCta: 'View your duo',
+  viewLadderCta: 'View the ladder',
+
+  matchScheduledLabel: 'Match starts',
+  matchActiveLabel: 'Match in progress',
+  matchScoreLabel: 'Score',
+  noActiveMatch: 'No active match this window.',
+
+  disbandHeading: 'Disband this duo',
+  disbandWarning:
+    'This ends your duo immediately. Your partner is notified — there is no undo.',
+  disbandButton: 'Disband duo',
+  disbandConfirmPrompt: 'Disband your duo with {partner}? This cannot be undone.',
+  disbandConfirmButton: 'Yes, disband',
+  disbandCancelButton: 'Never mind',
+  disbandError: 'Could not disband your duo — try again.',
+  disbandDone: "Your duo's been disbanded.",
+
+  matchesPlayedLabel: 'Matches played',
+  ratingLabel: 'Rating',
+  /** §8.9: "You two hit {joint}% together — {better|worse} than either of you alone" — the
+   * design doc's own gate for "better" is `joint_hit_rate > max(acc_a, acc_b)`, but
+   * `duoPublicSchema` (§9.2 `GET /duos/:id`) exposes only `joint_hit_rate` and `synergy`
+   * (= joint − MEAN(acc_a, acc_b), per §8.9's `expected` definition) — individual partner
+   * accuracies aren't in the public contract, so the exact `max`-based comparison can't be
+   * computed client-side. SPEC-GAP(ws7-t7): this uses `synergy`'s sign (joint vs. the mean) as
+   * the pragmatic proxy — pinned copy's binary {better|worse} choice, no third "equal" variant,
+   * so `synergy === 0` (rare with floats) reads as "worse" rather than inventing new wording. A
+   * `packages/core` contract change exposing both individual accuracies would let a future task
+   * implement the literal `max` comparison. */
+  chemistryLine: (jointHitRatePct: number, synergy: number) =>
+    `You two hit ${jointHitRatePct}% together — ${synergy > 0 ? 'better' : 'worse'} than either of you alone`,
+  chemistryPending: 'Chemistry shows up once you have played more together.',
+
+  historyHeading: 'Match history',
+  historyEmpty: 'No matches yet.',
+
+  ladderHeading: 'Duo ladder',
+  ladderTierColumn: 'Tier',
+  ladderDuoColumn: 'Duo',
+  ladderWinsColumn: 'Wins',
+  ladderRatingColumn: 'Rating',
+  ladderEmpty: 'No duos on the ladder yet.',
+  ladderLoadMore: 'Load more',
+} as const;

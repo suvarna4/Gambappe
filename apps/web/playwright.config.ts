@@ -11,6 +11,11 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000';
 // process.env as-is, so setting them here before defineConfig is enough).
 process.env.ADMIN_STOPGAP_TOKEN ??= 'e2e-test-stopgap-token';
 process.env.ADMIN_STOPGAP_IP_ALLOWLIST ??= '127.0.0.1';
+// WS7-T7 duo.spec.ts exercises `/duo`, `/duos/[id]`, `/ladder` — all behind the `duo_queue`
+// flag (§4.6), same as every duo API route (default off, §19.5 "Gate P1.5: duo behind flag
+// until one internal ladder window completes cleanly"). Same inherit-into-webServer mechanism
+// as `ADMIN_STOPGAP_TOKEN` above.
+process.env.FLAG_DUO_QUEUE ??= 'true';
 
 export default defineConfig({
   testDir: './e2e',
