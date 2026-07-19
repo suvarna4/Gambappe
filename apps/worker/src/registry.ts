@@ -36,6 +36,7 @@ import { fingerprintNightlyHandler } from './jobs/fingerprint-nightly.js';
 import { gradeFollowupHandler } from './jobs/grade-followup.js';
 import { maintenancePruneHandler } from './jobs/maintenance-prune.js';
 import { nemesisAssignHandler } from './jobs/nemesis-assign.js';
+import { nemesisConcludeHandler } from './jobs/nemesis-conclude.js';
 import { nemesisLastdayHandler } from './jobs/nemesis-lastday.js';
 import { notifyDispatchHandler } from './jobs/notify-dispatch.js';
 import { preLockReminderHandler } from './jobs/pre-lock-reminder.js';
@@ -46,7 +47,6 @@ import { revealFireHandler } from './jobs/reveal-fire.js';
 import { settlementPollHandler } from './jobs/settlement-poll.js';
 import { streakFreezeGrantHandler } from './jobs/streak-freeze-grant.js';
 import { streakSweepHandler } from './jobs/streak-sweep.js';
-import { stubHandler } from './jobs/stubs.js';
 import { venuePriceTickHandler } from './jobs/venue-price-tick.js';
 import { venueSyncCatalogHandler } from './jobs/venue-sync-catalog.js';
 import { walletIngestHandler } from './jobs/wallet-ingest.js';
@@ -139,7 +139,7 @@ export const JOB_REGISTRY: readonly JobDefinition[] = [
     name: 'nemesis:conclude',
     owner: 'WS5-T3',
     cron: '0 22 * * 0', // Sun 22:00 ET
-    handler: stubHandler('nemesis:conclude', 'WS5-T3'),
+    handler: nemesisConcludeHandler,
   },
   {
     name: 'nemesis:lastday',
