@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T00:16:41.049Z",
+  "updated_at": "2026-07-19T00:16:42.492Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -866,12 +866,12 @@
       ],
       "mock_start_ok": false,
       "note": "PR #48 open: GET /api/oembed (same-host pattern-match, SSRF-hardened, never fetches url=) + /sitemap.xml (revealed questions + visible profiles). Unit/integration/e2e all green.",
-      "status": "in_review",
+      "status": "done",
       "owner": "claude-code-web-session-9c961fec",
       "branch": "feat/ws8-t4-oembed-sitemap",
       "pr": "https://github.com/suvarna4/Gambappe/pull/48",
       "claimed_at": "2026-07-18T22:40:38.586Z",
-      "updated_at": "2026-07-18T23:40:25.795Z"
+      "updated_at": "2026-07-19T00:16:42.492Z"
     },
     "WS8-T5": {
       "title": "SEO archive pass",
