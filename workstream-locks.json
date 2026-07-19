@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T01:00:54.474Z",
+  "updated_at": "2026-07-19T01:25:19.706Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -566,12 +566,12 @@
       ],
       "mock_start_ok": false,
       "note": "Claiming — WS5-T3 just merged. Dispatching background implementer.",
-      "status": "claimed",
+      "status": "done",
       "owner": "claude-code-web-session-9c961fec",
       "branch": "feat-ws5-t4-matchup-history-apis",
       "pr": null,
       "claimed_at": "2026-07-19T00:17:02.461Z",
-      "updated_at": "2026-07-19T00:17:02.461Z"
+      "updated_at": "2026-07-19T01:25:19.701Z"
     },
     "WS5-T5": {
       "title": "Rematch + pause/block integration",
