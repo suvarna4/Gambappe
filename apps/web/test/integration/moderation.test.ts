@@ -233,4 +233,38 @@ describe('applyBlock / pairing mid-week exit (§5.7, §14.3)', () => {
     const notifs = await db.select().from(notifications);
     expect(notifs).toHaveLength(2);
   });
+
+  it('counts the week\'s graded DAILY questions as shared — a block cannot cancel a week already lost on dailies', async () => {
+    // Regression for the WS5-T1-flagged gap: applyBlock originally read only the pairing's
+    // nemesis_bonus questions (pairing_questions), so a graded daily — 7 of the week's ~7-10
+    // shared questions — was invisible and the pairing cancelled with no rating effect,
+    // erasing a week the blocker was losing. Same fixture as the bonus test above, but the
+    // graded question is a plain daily inside the pairing's week, never linked via
+    // pairing_questions.
+    const { a, b, pairingId } = await makeActivePairing();
+
+    const market = await insertMarket(db, buildMarket());
+    const question = await insertQuestion(
+      db,
+      buildQuestion(market.id, { kind: 'daily', questionDate: '2026-07-21', status: 'revealed' }),
+    );
+    // blocked profile B won the daily; blocker A lost — the block must not erase this.
+    await db.insert(picks).values([
+      { id: uuidv7(), questionId: question.id, profileId: a.profileId, side: 'no', yesPriceAtEntry: 0.6, priceStampedAt: NOW, result: 'loss', edge: -0.6 },
+      { id: uuidv7(), questionId: question.id, profileId: b.profileId, side: 'yes', yesPriceAtEntry: 0.6, priceStampedAt: NOW, result: 'win', edge: 0.4 },
+    ]);
+
+    await applyBlock(db, a.profileId, b.profileId, NOW);
+
+    const [pairing] = await db.select().from(nemesisPairings).where(eq(nemesisPairings.id, pairingId));
+    expect(pairing?.status).toBe('completed'); // NOT cancelled — the daily counts
+    expect(pairing?.scoreA).toBe(0);
+    expect(pairing?.scoreB).toBe(1);
+    expect(pairing?.winnerProfileId).toBe(b.profileId);
+
+    const [ratingA] = await db.select().from(ratings).where(eq(ratings.profileId, a.profileId));
+    const [ratingB] = await db.select().from(ratings).where(eq(ratings.profileId, b.profileId));
+    expect(ratingA!.glickoRating).toBeLessThan(1500); // the blocker still takes the loss
+    expect(ratingB!.glickoRating).toBeGreaterThan(1500);
+  });
 });

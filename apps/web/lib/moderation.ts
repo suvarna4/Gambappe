@@ -7,6 +7,7 @@
 import { uuidv7 } from 'uuidv7';
 import { updateGlicko2, scoreNemesisWeek, type GlickoGame } from '@receipts/engine';
 import {
+  addDaysToDateString,
   AUTOPAUSE_REPORT_N,
   AUTOPAUSE_REPORT_WINDOW_D,
   BOT_EXCLUDE_THRESHOLD,
@@ -15,8 +16,8 @@ import {
 import {
   countQualifiedReportersSince,
   findActivePairingInvolving,
+  getFullPairingSharedQuestionPicks,
   getOrDefaultRating,
-  getPairingSharedQuestionPicks,
   incrementGamesCount,
   insertBlock,
   insertNeutralExitNotification,
@@ -107,7 +108,19 @@ export async function applyBlock(db: Db, blockerProfileId: string, blockedProfil
     const pairing = await findActivePairingInvolving(tx, blockedProfileId);
     if (!pairing) return;
 
-    const sharedQuestions = await getPairingSharedQuestionPicks(tx, pairing.id, pairing.profileAId, pairing.profileBId);
+    // The FULL shared set — the week's derived dailies UNION the pairing's bonus questions —
+    // matching `nemesis:conclude` and the worker's `pairing-lifecycle.ts` exactly. The original
+    // bonus-only `getPairingSharedQuestionPicks` silently missed the dailies (7 vs 0–3 bonus in
+    // a real week), so a block could cancel a pairing the blocker was already losing on daily
+    // questions — the precise "erase a losing week" hole §5.7/§14.3 exist to close (flagged as a
+    // fast-follow in WS5-T1's PR when the corrected function landed).
+    const weekEnd = addDaysToDateString(pairing.weekStart, 6);
+    const sharedQuestions = await getFullPairingSharedQuestionPicks(
+      tx,
+      { id: pairing.id, weekStart: pairing.weekStart, weekEnd },
+      pairing.profileAId,
+      pairing.profileBId,
+    );
     const anyGraded = sharedQuestions.some((q) => q.isSettled && !q.isVoid);
 
     if (!anyGraded) {
