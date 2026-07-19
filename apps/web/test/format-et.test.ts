@@ -33,8 +33,18 @@ describe('formatShortDate', () => {
   });
 
   it('is immune to local timezone — never rolls the calendar date via Date parsing', () => {
-    // A naive `new Date('2026-07-08')` interpretation could roll to Jul 07 in a negative-offset
-    // timezone; this formatter never constructs a `Date` at all.
-    expect(formatShortDate('2026-07-01')).toBe('Jul 01');
+    const original = process.env.TZ;
+    process.env.TZ = 'Pacific/Honolulu'; // UTC-10 — the negative-offset class this guards against
+    try {
+      // Proves the bug class is real under this timezone: a naive `new Date(dateOnly)` parses
+      // as UTC midnight, which displays as the PREVIOUS calendar day here.
+      expect(new Date('2026-07-01').toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu' })).toBe(
+        '6/30/2026',
+      );
+      // The real formatter never constructs a `Date`, so it stays correct under the same TZ.
+      expect(formatShortDate('2026-07-01')).toBe('Jul 01');
+    } finally {
+      process.env.TZ = original;
+    }
   });
 });
