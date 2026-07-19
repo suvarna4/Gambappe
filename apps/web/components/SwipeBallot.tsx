@@ -106,6 +106,16 @@ export function SwipeBallot({
     setPickCount(readCount(GUARDRAIL_KEYS.picks));
   }, []);
 
+  // SW7-T2: strip `?arm` from the URL after mount so a refresh or a re-share of this URL doesn't
+  // re-arm (the nudge/hints have already been forced this mount). History-only — no navigation.
+  useEffect(() => {
+    if (!arm || typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has('arm')) return;
+    url.searchParams.delete('arm');
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+  }, [arm]);
+
   // Drives the receipt's undo countdown while the window is open (display only — the DELETE
   // re-verifies server-side, §6.2 step 3).
   useEffect(() => {
