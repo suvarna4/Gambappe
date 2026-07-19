@@ -130,7 +130,9 @@ describe('streak_busted at the wake (SW9-T1 AC (h), obituary-handoff §3.3(4))',
     expect(rows).toHaveLength(1);
     // §3.3(4) narration-length rule: n is the DEAD run's length (3), matching the obituary card.
     expect(rows[0]!.payload).toEqual({ n: 3 });
-    expect(rows[0]!.dedupeKey).toBe(`streak_busted:2026-09-05:${participant.id}`);
+    // Death-scoped dedupe (PR #79 review finding 1): keyed on the dead run's endedOn (09-03,
+    // its last counted day), not the wake question's date — one death, one key, forever.
+    expect(rows[0]!.dedupeKey).toBe(`streak_busted:2026-09-03:${participant.id}`);
 
     // Second day back: the live run now started YESTERDAY — no second funeral.
     await revealDaily({ questionDate: '2026-09-06', participant, participates: true, at: new Date('2026-09-06T20:00:01Z') });

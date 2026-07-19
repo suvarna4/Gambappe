@@ -8,7 +8,14 @@
  *
  * `dedupeKey` follows the §5.6 outbox example (`reveal:2026-07-19:profileId`), specialized per
  * beat kind so two different beats firing off the same reveal never collide:
- * `{beat}:{questionDate}:{profileId}`.
+ * `{beat}:{questionDate}:{profileId}` — EXCEPT `streak_busted`, which is death-scoped:
+ * `{beat}:{deadRun.endedOn}:{profileId}`. A question-date scope would let one death notify
+ * twice under out-of-order late reveals (adversarial review of PR #79, finding 1): if a lagging
+ * daily reveals AFTER a later daily already hosted the wake, the backfilled history moves the
+ * live run's start to the earlier date, re-satisfying the wake condition at that question's
+ * reveal — same dead run, different question_date, so a date-scoped key would insert a second
+ * outbox row. The dead run's `endedOn` is stable across both firings (it's the death's
+ * identity), so the outbox unique constraint collapses them to one notification.
  */
 import { STREAK_MILESTONES } from '@receipts/core';
 import type { CompletedStreakRun } from '@receipts/db';
@@ -66,6 +73,9 @@ function toInstruction(
   kind: RevealBeatKind,
   narration: NarrationInput,
   payload: Record<string, unknown>,
+  /** Overrides the key's date component — used only by `streak_busted` (death-scoped, see the
+   * module doc): the dead run's `endedOn`, not the revealing question's date. */
+  dedupeDate: string = input.questionDate,
 ): RevealBeatInstruction {
   const rendered = narrate(narration);
   return {
@@ -74,7 +84,7 @@ function toInstruction(
     line: rendered.line,
     emphasis: rendered.emphasis,
     payload,
-    dedupeKey: dedupeKey(kind, input.questionDate, input.profileId),
+    dedupeKey: dedupeKey(kind, dedupeDate, input.profileId),
   };
 }
 
@@ -96,9 +106,13 @@ function toInstruction(
  *   server-side" is about the contract block, not this beat), against the DEAD RUN's length —
  *   which is also the narration's `n`, so notification and obituary card agree on both whether
  *   and what-sized a funeral happened.
- * - `streak_milestone`: `currentStreak` lands exactly on a `STREAK_MILESTONES` value. Mutually
- *   exclusive with `streak_busted` by construction (milestones start at 3; at the wake the live
- *   run started `questionDate` itself, so `currentStreak` is always 1).
+ * - `streak_milestone`: `currentStreak` lands exactly on a `STREAK_MILESTONES` value. In every
+ *   in-order flow this is mutually exclusive with `streak_busted` (milestones start at 3; at the
+ *   wake the live run started `questionDate` itself, so `currentStreak` is 1). The one exception
+ *   is the out-of-order late-reveal edge (see the module doc's dedupe note): a backfilled wake
+ *   can arrive with `currentStreak > 1`, and if that lands exactly on a milestone the else-if
+ *   lets the funeral win and skips the milestone beat — accepted: one rare missing milestone
+ *   notification beats celebrating and mourning in the same breath.
  * - `called_it`: longshot win, already detected by the caller via `isCalledIt`.
  */
 export function deriveRevealBeats(input: RevealBeatInput): RevealBeatInstruction[] {
@@ -126,6 +140,7 @@ export function deriveRevealBeats(input: RevealBeatInput): RevealBeatInstruction
         'streak_busted',
         { beat: 'streak_busted', data: { n: deadRun.length } },
         { n: deadRun.length },
+        deadRun.endedOn, // death-scoped dedupe — see module doc
       ),
     );
   } else if (MILESTONES.includes(input.currentStreak)) {

@@ -31,7 +31,7 @@ function wake(length: number, endedOn = '2026-08-10'): Pick<RevealBeatInput, 'ru
   return {
     runs: [{ length, startedOn: '2026-08-01', endedOn }],
     currentRunStartedOn: '2026-08-13',
-    currentStreak: 1, // at the wake, the live run started today — always exactly 1
+    currentStreak: 1, // in-order wake: the live run started today (the late-reveal edge can differ)
   };
 }
 
@@ -58,8 +58,30 @@ describe('deriveRevealBeats (§13.3)', () => {
     expect(beats).toHaveLength(1);
     // §3.3(4) narration-length rule: `n` is the DEAD RUN's length, matching the obituary card.
     expect(beats[0]).toMatchObject({ kind: 'streak_busted', payload: { n: 5 } });
-    expect(beats[0]!.dedupeKey).toBe(`streak_busted:2026-08-13:profile-1`);
+    // Death-scoped dedupe: the DEAD RUN's endedOn, not the revealing question's date.
+    expect(beats[0]!.dedupeKey).toBe(`streak_busted:2026-08-10:profile-1`);
     expect(beats[0]!.line).toContain('5-day streak');
+  });
+
+  it('dedupes one death across two wakes: an out-of-order backfilled reveal reuses the same key', () => {
+    // The PR #79 review's finding-1 scenario, at the pure-selection layer: the wake first fires
+    // from day D's reveal; a lagging earlier daily (D-3) then reveals late, backfilled history
+    // moves the live run's start to D-3, and THAT reveal satisfies the wake condition again for
+    // the SAME dead run. The two firings must share a dedupe key so the outbox unique
+    // constraint collapses them into one notification.
+    const atD = deriveRevealBeats({ ...base, ...wake(5), questionDate: '2026-08-13', currentRunStartedOn: '2026-08-13' });
+    const backfilled = deriveRevealBeats({
+      ...base,
+      ...wake(5),
+      questionDate: '2026-08-11',
+      currentRunStartedOn: '2026-08-11',
+      currentStreak: 3,
+    });
+    expect(atD).toHaveLength(1);
+    expect(backfilled).toHaveLength(1);
+    expect(backfilled[0]!.dedupeKey).toBe(atD[0]!.dedupeKey);
+    // ...and the backfilled wake wins over a same-day milestone (documented else-if behavior).
+    expect(backfilled[0]!.kind).toBe('streak_busted');
   });
 
   it('does NOT fire streak_busted for a dead run < 3 (never had a real streak to bust)', () => {

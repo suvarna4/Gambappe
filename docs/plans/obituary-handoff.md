@@ -175,7 +175,11 @@ omitted, and the facts list simply runs short (the card already renders 0–3 fa
    AND `runs.at(-1).length >= 3` (`OBITUARY_MIN_STREAK`'s value; §3.2's "no threshold
    server-side" is about the *contract block*, not this beat) — and its narration `n`
    becomes the dead run's length, so notification and obituary card agree on both
-   whether and what-sized a funeral happened.
+   whether and what-sized a funeral happened. The beat's outbox dedupe key is
+   **death-scoped** (`streak_busted:{deadRun.endedOn}:{profileId}`), not question-date
+   scoped: under out-of-order late reveals a backfilled history can move the wake to an
+   earlier question's reveal (the funeral "migrates" pages — accepted), and only a
+   run-identity key collapses the two firings into one notification.
 
 **"Bury it" needs no backend.** The graveyard derives from history, so every dead run is
 "archived to the shelf" automatically; burying is acknowledging the funeral, not filing
