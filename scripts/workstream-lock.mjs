@@ -17,14 +17,21 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const LOCKS_BRANCH = 'workstream-locks';
 const LOCKS_FILE = 'workstream-locks.json';
 const MAX_RETRIES = 8;
 const VALID_STATUSES = ['available', 'claimed', 'in_review', 'done'];
+/** §19 WBS ids (WS3-T2) plus later plans' ids (SW1-T2, docs/swipe-ux-plan.md §3). */
+const TASK_ID_RE = /^(?:WS|SW)\d+-T\d+$/;
 
 class UsageError extends Error {}
 class ConflictError extends Error {}
+/** Thrown inside a `transact` mutate to abort with success semantics BEFORE anything is
+ * written or pushed — the "re-running add-tasks is a no-op" guarantee without minting
+ * empty timestamp-only commits on the locks branch. */
+class NoopSignal extends Error {}
 
 function git(args, opts = {}) {
   try {
@@ -114,7 +121,7 @@ function readOnly(fn) {
 }
 
 function isWorkstreamToken(token) {
-  return /^WS\d+$/.test(token);
+  return /^(?:WS|SW)\d+$/.test(token);
 }
 
 function depsReady(data, dependsOn) {
@@ -336,8 +343,8 @@ function cmdAddTask({ positional, flags }) {
       'Usage: add-task <taskId> --title <text> [--phase P0] [--depends a,b,c] [--mock-start-ok] [--note <text>]',
     );
   }
-  if (!/^WS\d+-T\d+$/.test(taskId)) {
-    throw new UsageError(`"${taskId}" doesn't look like a task id (expected e.g. WS15-T1).`);
+  if (!TASK_ID_RE.test(taskId)) {
+    throw new UsageError(`"${taskId}" doesn't look like a task id (expected e.g. WS15-T1 or SW1-T2).`);
   }
   const dependsOn = flags.depends
     ? String(flags.depends)
@@ -367,6 +374,103 @@ function cmdAddTask({ positional, flags }) {
   }, `chore(locks): add ${taskId}`);
   console.log(`Added ${taskId}.`);
   console.log(JSON.stringify(result, null, 2));
+}
+
+/**
+ * Pure merge of a seed's tasks into registry `data` (mutates `data.tasks`; SW0-T1).
+ * Existing IDs are NEVER overwritten — they come back as `skipped`, which is what makes
+ * `add-tasks` safe to re-run after a partial failure or when two agents race it.
+ * Dependencies must resolve inside the merged view (registry ∪ this seed) — either a
+ * task id or a whole-workstream token (`WS0`/`SW1`) with at least one member. Seed
+ * entries are always born `status: available` with no owner — a seed file cannot
+ * smuggle in claims or completed states.
+ * Exported for unit tests (`scripts/workstream-lock.test.mjs`).
+ */
+function mergeSeedTasks(data, seedTasks, now) {
+  const ids = Object.keys(seedTasks ?? {});
+  if (ids.length === 0) throw new UsageError('Seed contains no tasks.');
+  for (const id of ids) {
+    if (!TASK_ID_RE.test(id)) {
+      throw new UsageError(`Seed task id "${id}" is invalid (expected e.g. WS15-T1 or SW1-T2).`);
+    }
+  }
+  const merged = { ...data.tasks };
+  const skipped = [];
+  for (const id of ids) {
+    if (data.tasks[id]) skipped.push(id);
+    else merged[id] = seedTasks[id]; // provisional — lets seed-internal deps resolve below
+  }
+  const added = [];
+  for (const id of ids) {
+    if (data.tasks[id]) continue;
+    const seed = seedTasks[id];
+    if (typeof seed?.title !== 'string' || seed.title.trim() === '') {
+      throw new UsageError(`Seed task ${id} needs a non-empty "title".`);
+    }
+    const dependsOn = seed.depends_on ?? [];
+    if (!Array.isArray(dependsOn) || dependsOn.some((d) => typeof d !== 'string')) {
+      throw new UsageError(`Seed task ${id} has a malformed "depends_on" (want an array of id strings).`);
+    }
+    for (const dep of dependsOn) {
+      const resolvable = isWorkstreamToken(dep)
+        ? Object.keys(merged).some((t) => t.startsWith(`${dep}-`))
+        : Boolean(merged[dep]);
+      if (!resolvable) {
+        throw new UsageError(
+          `Seed task ${id} depends on unknown "${dep}" (not in the registry or this seed).`,
+        );
+      }
+    }
+    data.tasks[id] = {
+      title: seed.title,
+      phase: seed.phase ?? 'P1',
+      depends_on: dependsOn,
+      mock_start_ok: Boolean(seed.mock_start_ok),
+      note: seed.note ?? null,
+      status: 'available',
+      owner: null,
+      branch: null,
+      pr: null,
+      claimed_at: null,
+      updated_at: now,
+    };
+    added.push(id);
+  }
+  return { added, skipped };
+}
+
+function cmdAddTasks({ flags }) {
+  if (!flags.seed || flags.seed === true) {
+    throw new UsageError(
+      'Usage: add-tasks --seed <file.json> — shape {"tasks": {"SW0-T1": {"title": "...", "phase": "SP1", "depends_on": [], "mock_start_ok"?: true, "note"?: "..."}}}',
+    );
+  }
+  const seeded = JSON.parse(readFileSync(String(flags.seed), 'utf8'));
+  const seedTasks = seeded.tasks ?? seeded;
+  let outcome;
+  try {
+    outcome = transact((data) => {
+      const result = mergeSeedTasks(data, seedTasks, new Date().toISOString());
+      if (result.added.length === 0) {
+        throw new NoopSignal(
+          `All ${result.skipped.length} seed task(s) are already registered — nothing to do.`,
+        );
+      }
+      return result;
+    }, `chore(locks): add-tasks from ${path.basename(String(flags.seed))}`);
+  } catch (err) {
+    if (err instanceof NoopSignal) {
+      console.log(err.message);
+      return;
+    }
+    throw err;
+  }
+  console.log(`Added ${outcome.added.length} task(s): ${outcome.added.join(', ')}`);
+  if (outcome.skipped.length > 0) {
+    console.log(
+      `Skipped ${outcome.skipped.length} already-registered (left untouched): ${outcome.skipped.join(', ')}`,
+    );
+  }
 }
 
 function cmdRemoveTask({ positional }) {
@@ -404,6 +508,8 @@ Commands:
   release <taskId> [--note <text>]       Return a task to available (abandon / unstick)
   add-task <taskId> --title <text> [--phase P0] [--depends a,b,c] [--mock-start-ok]
                                           Register a new task (e.g. a WS15 added later)
+  add-tasks --seed <file.json>           Register a whole plan's tasks at once (skips
+                                          existing ids; re-run is a no-op)
   remove-task <taskId>                   Delete a task (must be available, no dependents)
 `);
 }
@@ -436,6 +542,7 @@ async function main() {
     update: cmdUpdate,
     release: cmdRelease,
     'add-task': cmdAddTask,
+    'add-tasks': cmdAddTasks,
     'remove-task': cmdRemoveTask,
     help: printHelp,
   };
@@ -456,4 +563,10 @@ async function main() {
   }
 }
 
-main();
+export { mergeSeedTasks, NoopSignal, UsageError };
+
+// Run the CLI only when executed directly (`node scripts/workstream-lock.mjs …`) —
+// importing this module (the unit tests do) must not trigger git side effects.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

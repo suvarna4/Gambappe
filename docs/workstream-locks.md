@@ -61,7 +61,7 @@ inside a checkout of this repo with `origin` reachable.
 ## How the concurrency guarantee actually works
 
 There's no server, database, or file lock here — just git. Every mutating command
-(`claim`, `update`, `release`, `add-task`, `remove-task`):
+(`claim`, `update`, `release`, `add-task`, `add-tasks`, `remove-task`):
 
 1. Fetches `origin/workstream-locks` fresh.
 2. Reads the registry, applies your change to an in-memory copy, and checks business
@@ -169,6 +169,24 @@ remove-task <taskId>
 For when the design doc grows a new workstream or task after this registry was seeded.
 `remove-task` refuses if the task isn't `available` or if another task still lists it in
 `depends_on` — release/re-point dependents first.
+
+```
+add-tasks --seed <file.json>
+```
+Batch form of `add-task` for registering a whole plan at once. This is how the swipe-UX
+plan's SW tasks (`docs/swipe-ux-plan.md` §3) were registered:
+
+```bash
+node scripts/workstream-lock.mjs add-tasks --seed docs/swipe-ux-tasks.seed.json
+```
+
+Existing IDs are never overwritten (reported as skipped) and re-running the command is a
+no-op, so it's safe after partial failures or racing agents. Seed entries always enter
+as `status: available` with no owner regardless of what the file says; a dependency that
+resolves to nothing in the merged view (registry ∪ seed) rejects the whole batch. Task
+IDs may be `WS<n>-T<n>` (§19) or `SW<n>-T<n>` (swipe-UX plan); dependency tokens may
+likewise name a whole workstream (`WS0`, `SW1`). Merge logic is unit-tested:
+`node --test scripts/workstream-lock.test.mjs`.
 
 ## Handling a stale claim
 
