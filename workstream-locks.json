@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T22:57:23.798Z",
+  "updated_at": "2026-07-19T23:19:53.265Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1678,13 +1678,13 @@
         "SW9-T3"
       ],
       "mock_start_ok": false,
-      "note": "Spec: docs/plans/obituary-handoff.md §2, §3.3(1), §4. Re-lands the wiring PR #75 reverted, keyed off broken_run; Bury it = client dismiss; share targets last_pick.pick_id (T3 must land first so the shared card is the tombstone, not a plain receipt); fix ObituaryCard stamp to -7deg.",
-      "status": "claimed",
+      "note": "Implemented: RevealSequence wired to ObituaryCard on broken_run>=OBITUARY_MIN_STREAK; obituaryCopy survived-fact templates; ObituaryCard sideLabel/entryCents optional + -rotate-[7deg] fix. Real-HTTP e2e (obituary-wake.spec.ts) + mocked-payload UI branch tests + unit tests all green; lint/typecheck/build clean. Not pushed — awaiting review.",
+      "status": "in_review",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/sw9-t2-obituary-wake",
       "pr": null,
       "claimed_at": "2026-07-19T22:57:23.797Z",
-      "updated_at": "2026-07-19T22:57:23.797Z"
+      "updated_at": "2026-07-19T23:19:53.265Z"
     },
     "SW9-T3": {
       "title": "Honest busted-streak card binding + graveyard data [contract-change]",
