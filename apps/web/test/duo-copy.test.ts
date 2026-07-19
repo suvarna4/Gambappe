@@ -45,7 +45,7 @@ describe('§8.9 duo chemistry line', () => {
 
 describe('duo copy: no money words (§10.6/INV-8 review rule: bet|stake|wager|$)', () => {
   it('scans every string literal in duoCopy', () => {
-    const strings = Object.values(duoCopy).filter((v): v is string => typeof v === 'string');
+    const strings = Object.values(duoCopy).filter((v) => typeof v === 'string');
     const joined = strings.join(' ');
     expect(joined).not.toMatch(/\bbet\b|\bstake\b|\bwager\b|\$/i);
   });
