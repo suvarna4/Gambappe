@@ -1,7 +1,7 @@
 /**
  * WS7-T4 integration: the public-profile repository helpers (§9.2 `GET /profiles/:slug(/picks)`)
  * against a real Postgres — `listPublicPicksForProfile` cursor pagination and `is_public`
- * filtering, `hasCalledItPick`'s publication-rule respect (§6.5: a longshot win on a
+ * filtering, `countCalledItPicks`'s publication-rule respect (§6.5: a longshot win on a
  * graded-but-unrevealed daily must NOT count until revealed), and the nemesis lifetime summary.
  */
 import { fileURLToPath } from 'node:url';
@@ -17,7 +17,7 @@ import { insertPick } from '../../src/repositories/picks.js';
 import { insertProfile } from '../../src/repositories/profiles.js';
 import {
   getNemesisSummaryForProfile,
-  hasCalledItPick,
+  countCalledItPicks,
   listPublicPicksForProfile,
 } from '../../src/repositories/profile-page.js';
 import { nemesisPairings, seasons } from '../../src/schema/index.js';
@@ -80,10 +80,10 @@ describe('listPublicPicksForProfile (§9.2)', () => {
   });
 });
 
-describe('hasCalledItPick (§6.7, §6.5 publication rule)', () => {
+describe('countCalledItPicks (§6.7, §6.5 publication rule)', () => {
   const threshold = 0.2;
 
-  it('true for a public win at/under the threshold on a REVEALED daily', async () => {
+  it('counts a public win at/under the threshold on a REVEALED daily', async () => {
     const profile = await insertProfile(db, buildProfile());
     const market = await insertMarket(db, buildMarket());
     const question = await insertQuestion(
@@ -94,10 +94,10 @@ describe('hasCalledItPick (§6.7, §6.5 publication rule)', () => {
       db,
       buildPick(question.id, profile.id, { side: 'yes', yesPriceAtEntry: 0.15, result: 'win' }),
     );
-    expect(await hasCalledItPick(db, profile.id, threshold)).toBe(true);
+    expect(await countCalledItPicks(db, profile.id, threshold)).toBe(1);
   });
 
-  it('false for the same win while the daily is only LOCKED (not yet revealed) — no pre-reveal leak', async () => {
+  it('does not count the same win while the daily is only LOCKED (not yet revealed) — no pre-reveal leak', async () => {
     const profile = await insertProfile(db, buildProfile());
     const market = await insertMarket(db, buildMarket());
     const question = await insertQuestion(db, buildQuestion(market.id, { status: 'locked' }));
@@ -105,10 +105,10 @@ describe('hasCalledItPick (§6.7, §6.5 publication rule)', () => {
       db,
       buildPick(question.id, profile.id, { side: 'yes', yesPriceAtEntry: 0.1, result: 'win' }),
     );
-    expect(await hasCalledItPick(db, profile.id, threshold)).toBe(false);
+    expect(await countCalledItPicks(db, profile.id, threshold)).toBe(0);
   });
 
-  it('true immediately for a bonus question win regardless of reveal state (§8.8.1 — no held reveal)', async () => {
+  it('counts a bonus question win immediately regardless of reveal state (§8.8.1 — no held reveal)', async () => {
     const profile = await insertProfile(db, buildProfile());
     const market = await insertMarket(db, buildMarket());
     const question = await insertQuestion(
@@ -119,10 +119,10 @@ describe('hasCalledItPick (§6.7, §6.5 publication rule)', () => {
       db,
       buildPick(question.id, profile.id, { side: 'no', yesPriceAtEntry: 0.85, result: 'win' }),
     );
-    expect(await hasCalledItPick(db, profile.id, threshold)).toBe(true);
+    expect(await countCalledItPicks(db, profile.id, threshold)).toBe(1);
   });
 
-  it('false above the threshold, and false when the pick was undone/hidden (is_public=false)', async () => {
+  it('zero above the threshold, and zero when the pick was undone/hidden (is_public=false)', async () => {
     const profile = await insertProfile(db, buildProfile());
     const market = await insertMarket(db, buildMarket());
     const chalky = await insertQuestion(
@@ -137,7 +137,7 @@ describe('hasCalledItPick (§6.7, §6.5 publication rule)', () => {
       db,
       buildPick(chalky.id, profile.id, { side: 'yes', yesPriceAtEntry: 0.6, result: 'win' }),
     );
-    expect(await hasCalledItPick(db, profile.id, threshold)).toBe(false);
+    expect(await countCalledItPicks(db, profile.id, threshold)).toBe(0);
 
     const hidden = await insertQuestion(
       db,
@@ -156,7 +156,7 @@ describe('hasCalledItPick (§6.7, §6.5 publication rule)', () => {
         isPublic: false,
       }),
     );
-    expect(await hasCalledItPick(db, profile.id, threshold)).toBe(false);
+    expect(await countCalledItPicks(db, profile.id, threshold)).toBe(0);
   });
 });
 

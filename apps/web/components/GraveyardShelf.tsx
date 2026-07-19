@@ -13,12 +13,12 @@ export interface GraveyardShelfProps {
  * as headstones sitting beside the "Called it" trophies — the losses and the wins on one shelf,
  * on purpose. Presentational.
  *
- * SPEC-GAP(SW4-T3): `ProfilePublic` (packages/core §9.2) exposes `streak.{current,best}` but no
- * broken-streak history, so there is no data source for `ripDays` yet. The DB-equipped session
- * wires this once a streak-history read exists (a small additive endpoint over the pick log);
- * until then the profile page renders it only when history is supplied, and the empty state is
- * the honest default. This component takes the data as a prop so it's ready the moment that read
- * lands — same build-then-wire split as the SP2 cards.
+ * Data source (SW9-T3, resolving the original SW4-T3 SPEC-GAP): the lengths-only
+ * `ProfilePublic.graveyard` block (§9.2 — `{ rip, called_it_count }`, replay-derived). `ripDays`
+ * carries bare run lengths by design — the privacy pin retires the old "chips link to the day's
+ * question page" AC, so chips are static text, never links. `/p/[slug]` mounts this only when
+ * the block is non-null (empty history renders nothing at all, per the SW4-T3 empty-state AC);
+ * the internal empty state below remains for the `/dev/ui` gallery.
  */
 export function GraveyardShelf({ ripDays, calledItCount, className = '' }: GraveyardShelfProps) {
   const empty = ripDays.length === 0 && calledItCount === 0;

@@ -22,6 +22,7 @@ import { PRODUCT_NAME } from '@receipts/core';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Barcode, PriceTag, Stamp, StreakFlame, TicketCard } from '@receipts/ui';
+import { GraveyardShelf } from '@/components/GraveyardShelf';
 import { getDb } from '@/lib/stores';
 import { getProfilePageModel, getProfilePublicView, toPickPublic } from '@/lib/profile-page';
 import type { ProfilePublic } from '@/lib/profile-page';
@@ -164,6 +165,17 @@ export default async function ProfilePage({ params, searchParams }: PageProps) {
           </div>
         )}
       </TicketCard>
+
+      {/* SW9-T3: the graveyard shelf (swipe-ux-plan §2.7 P3), fed by the lengths-only
+          `ProfilePublic.graveyard` block. Rendered ONLY when the block exists — an empty
+          history renders nothing at all, not an empty box (SW4-T3 AC). Profile-own data, so
+          the page stays viewer-free/ISR-cacheable (INV-10). */}
+      {stats.graveyard && (
+        <GraveyardShelf
+          ripDays={stats.graveyard.rip}
+          calledItCount={stats.graveyard.called_it_count}
+        />
+      )}
 
       <section aria-labelledby="pick-log-heading" className="space-y-4">
         <h2 id="pick-log-heading" className="text-lg font-semibold">

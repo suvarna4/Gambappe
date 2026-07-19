@@ -12,6 +12,7 @@
  */
 import type { ReactElement } from 'react';
 import { impliedCents, sideAxisPair } from '@receipts/ui';
+import { obituaryCopy } from '@/lib/copy';
 import { printShop } from './print-shop';
 import type { DuoWithProfiles, PairingWithProfiles } from '@receipts/db';
 import {
@@ -132,9 +133,11 @@ const RECEIPT_STAMP: Record<ReceiptOgData['variant'], OgStampVariant> = {
 
 /** `receipt`: a user's pick — side, entry price, result, streak, handle (§10.5). Loss +
  * busted-streak variants get equal visual treatment (P3, §10.5 — WS8-T2 AC: both variants ship
- * as real card renders too, not just OG, see `test/integration/share-cards.test.ts`). */
+ * as real card renders too, not just OG, see `test/integration/share-cards.test.ts`). The
+ * busted-streak variant is the obituary artifact (SW9-T3): its headline line and b./d. dates
+ * come from `bustedRun` — the replay-proven dead run — never from live profile fields. */
 export function renderReceiptTemplate(
-  { pick, question, profile, variant }: ReceiptOgData,
+  { pick, question, profile, variant, bustedRun }: ReceiptOgData,
   cardOptions?: CardRenderOptions,
 ): ReactElement {
   const cents = impliedCents(pick.side, pick.yesPriceAtEntry);
@@ -146,10 +149,15 @@ export function renderReceiptTemplate(
           <OgPriceTag side={pick.side} cents={cents} />
           <OgStamp variant={RECEIPT_STAMP[variant]} />
         </OgRow>
-        {variant === 'busted_streak' && (
-          <div style={{ display: 'flex', fontSize: 22, color: printShop.loss }}>
-            RIP {profile.bestStreak}-day streak
-          </div>
+        {variant === 'busted_streak' && bustedRun && (
+          <OgRow style={{ flexDirection: 'column', gap: 4 }}>
+            <div style={{ display: 'flex', fontSize: 22, color: printShop.loss }}>
+              {obituaryCopy.title(bustedRun.length)}
+            </div>
+            <div style={{ display: 'flex', fontSize: 18, color: printShop.muted }}>
+              {obituaryCopy.dates(bustedRun.startedOn, bustedRun.endedOn)}
+            </div>
+          </OgRow>
         )}
         <OgRow style={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <OgHandleRow handle={profile.handle} />

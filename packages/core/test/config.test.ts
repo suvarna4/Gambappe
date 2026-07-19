@@ -32,6 +32,7 @@ describe('Appendix D constants', () => {
         "FREEZE_EARN_WINDOW_DAYS": 7,
         "GHOST_MINT_PER_IP_PER_DAY": 10,
         "GLICKO_TAU": 0.5,
+        "GRAVEYARD_RIP_CAP": 12,
         "HANDLE_CHANGE_COOLDOWN_DAYS": 30,
         "HOUSE_MIN_PROFILES": 500,
         "ISR_REVALIDATE_ARCHIVE_S": 86400,

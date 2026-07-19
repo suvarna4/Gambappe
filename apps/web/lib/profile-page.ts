@@ -11,6 +11,7 @@
  */
 import type { z } from 'zod';
 import {
+  GRAVEYARD_RIP_CAP,
   LONGSHOT_THRESHOLD,
   type MarketCategory,
   type PickResult,
@@ -20,13 +21,18 @@ import {
   type profilePublicSchema,
 } from '@receipts/core';
 import {
+  countCalledItPicks,
   getActiveWalletLinkByProfileId,
   getFingerprintRow,
+  getFreezeUsesForProfile,
   getNemesisSummaryForProfile,
+  getPicksForProfile,
   getProfileBySlug,
   getRatingByProfileId,
-  hasCalledItPick,
+  listAllRevealedOrVoidedDaily,
   listPublicPicksForProfile,
+  replayStreak,
+  type CompletedStreakRun,
   type Db,
   type FingerprintRow,
   type NemesisSummary,
@@ -35,6 +41,9 @@ import {
   type ProfileRow,
   type RatingRow,
 } from '@receipts/db';
+// The obituary threshold is a swipe-UX presentation constant (SW4-T1) — the graveyard reuses it
+// so the shelf and the obituary card agree on what counts as a tombstone-worthy run.
+import { OBITUARY_MIN_STREAK } from '@receipts/ui';
 // WS12's exhaustive wallet public-display allowlist (§12.4/§12.5) — its own doc comment asks
 // GET /profiles/:slug to call this rather than hand-rolling a second wallet projection.
 import { toWalletBadge, type WalletBadge } from '@/lib/serialize-wallet';
@@ -183,14 +192,33 @@ async function buildWalletBadge(db: Db, profile: ProfileRow): Promise<WalletBadg
 }
 
 /**
- * SPEC-GAP(ws7-t4): §9.2 lists "badges" on `GET /profiles/:slug` without enumerating a badge
- * catalog beyond the "called it" longshot badge (§6.7 — `result='win'` at an implied entry
- * probability ≤ `LONGSHOT_THRESHOLD`). This derives only `called_it`; a fuller badge system is
- * unspecified product mechanics and intentionally not invented here.
+ * SW9-T3 (obituary-handoff §4): the lengths-only `rip` list for `ProfilePublic.graveyard` from
+ * the replay's completed runs — tombstone-worthy runs (≥ `OBITUARY_MIN_STREAK`) as bare
+ * lengths, newest-first, capped at `GRAVEYARD_RIP_CAP`. Pure and exported for unit tests
+ * (threshold / ordering / cap without a 50-day Postgres seed). The privacy pin — no dates, no
+ * slugs — is structural here: run lengths are the ONLY field this ever reads out of a run.
  */
-async function buildBadges(db: Db, profileId: string): Promise<string[]> {
-  const calledIt = await hasCalledItPick(db, profileId, LONGSHOT_THRESHOLD);
-  return calledIt ? ['called_it'] : [];
+export function graveyardRipLengths(runs: readonly CompletedStreakRun[]): number[] {
+  return runs
+    .filter((run) => run.length >= OBITUARY_MIN_STREAK)
+    .map((run) => run.length)
+    .reverse()
+    .slice(0, GRAVEYARD_RIP_CAP);
+}
+
+/**
+ * Completed-run lengths from the §6.6 full-history replay (SW9-T3 — the same
+ * `replayStreak.runs` primitive the reveal's `broken_run` block is built on, obituary-handoff
+ * §3.1/§3.3(3); never a live-profile-field heuristic). Profile-own history only — nothing
+ * viewer-specific, so the page stays ISR-cacheable (INV-10).
+ */
+async function loadRipLengths(db: Db, profileId: string): Promise<number[]> {
+  const [history, profilePicks, freezeUses] = await Promise.all([
+    listAllRevealedOrVoidedDaily(db),
+    getPicksForProfile(db, profileId),
+    getFreezeUsesForProfile(db, profileId),
+  ]);
+  return graveyardRipLengths(replayStreak(history, profilePicks, freezeUses).runs);
 }
 
 interface ProfileStats {
@@ -199,22 +227,34 @@ interface ProfileStats {
   nemesisSummary: NemesisSummary;
   wallet: WalletBadge | null;
   badges: string[];
+  graveyard: ProfilePublic['graveyard'];
 }
 
 async function loadProfileStats(db: Db, profile: ProfileRow): Promise<ProfileStats> {
-  const [fingerprintRow, ratingRow, nemesisSummary, wallet, badges] = await Promise.all([
-    getFingerprintRow(db, profile.id),
-    getRatingByProfileId(db, profile.id),
-    getNemesisSummaryForProfile(db, profile.id),
-    buildWalletBadge(db, profile),
-    buildBadges(db, profile.id),
-  ]);
+  const [fingerprintRow, ratingRow, nemesisSummary, wallet, calledItCount, ripLengths] =
+    await Promise.all([
+      getFingerprintRow(db, profile.id),
+      getRatingByProfileId(db, profile.id),
+      getNemesisSummaryForProfile(db, profile.id),
+      buildWalletBadge(db, profile),
+      countCalledItPicks(db, profile.id, LONGSHOT_THRESHOLD),
+      loadRipLengths(db, profile.id),
+    ]);
   return {
     fingerprint: buildFingerprintSummary(fingerprintRow),
     rating: buildRatingBlock(ratingRow),
     nemesisSummary,
     wallet,
-    badges,
+    // SPEC-GAP(ws7-t4): §9.2 lists "badges" without enumerating a catalog beyond the "called
+    // it" longshot badge (§6.7). Only `called_it` is derived (from the same count the graveyard
+    // trophy uses); a fuller badge system is unspecified product mechanics, not invented here.
+    badges: calledItCount > 0 ? ['called_it'] : [],
+    // Null when there is nothing to shelve — the page renders no shelf at all, per the SW4-T3
+    // empty-state AC ("renders nothing, not an empty box").
+    graveyard:
+      ripLengths.length === 0 && calledItCount === 0
+        ? null
+        : { rip: ripLengths, called_it_count: calledItCount },
   };
 }
 
@@ -250,6 +290,7 @@ export async function getProfilePublicView(db: Db, slug: string): Promise<Profil
     badges: stats.badges,
     wallet: stats.wallet,
     nemesis_summary: stats.nemesisSummary,
+    graveyard: stats.graveyard,
     recent_picks: { data: picksPage.data, meta: picksPage.meta },
   };
 }

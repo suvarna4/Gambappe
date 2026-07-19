@@ -948,7 +948,7 @@ Served by `GET /leaderboards/weekly` (owner: WS3-T7). Window = ISO week Mon–Su
 | `GET /questions/:slug/thread` | none | Posts + reaction counts, paginated. Same shape at `GET /pairings/:id/thread` and `GET /duo-matches/:id/thread` |
 | `POST /questions/:id/posts` | claimed | Body `{body}`; also `POST /pairings/:id/posts`, `POST /duo-matches/:id/posts` |
 | `POST /reactions` | ghost+ | `{context_kind, context_id, emoji}` toggle semantics (2nd call removes) |
-| `GET /profiles/:slug` | none | Public profile (addressed by URL slug, §6.1.2): handle, streaks, records, rating + percentile, fingerprint style summary, badges, recent picks (paginated, `is_public` only), nemesis history summary, verified-wallet badge. Picks on graded-but-unrevealed dailies present as `pending` (§6.5 publication rule) |
+| `GET /profiles/:slug` | none | Public profile (addressed by URL slug, §6.1.2): handle, streaks, records, rating + percentile, fingerprint style summary, badges, recent picks (paginated, `is_public` only), nemesis history summary, verified-wallet badge, and a `graveyard` block (SW9-T3 contract-change, `docs/plans/obituary-handoff.md` §4): completed participation runs ≥ `OBITUARY_MIN_STREAK` as bare run **lengths only** — newest-first, capped at `GRAVEYARD_RIP_CAP` — plus the lifetime public called-it count; null when empty. Privacy pin: the block never carries per-run dates or question slugs (either would make participation on specific dates publicly inferable even for `is_public = false` picks). Picks on graded-but-unrevealed dailies present as `pending` (§6.5 publication rule) |
 | `GET /profiles/:slug/picks` | none | Full public pick log (receipts culture, INV-6). Public `picked_at` timestamps are truncated to **minute precision** (full precision visible only to the owner — limits sleep/location profiling from the public log; the receipt artifact stays verifiable to the minute) |
 | `GET /me` | ghost+ | Own profile incl. settings, eligibility progress (picks toward 5/10), claim state |
 | `PATCH /me/settings` | claimed | zod `ProfileSettings` partial (§9.4); the request may also carry `timezone`, which the handler maps to the `profiles.timezone` **column** (it is not a settings key) |
@@ -1634,6 +1634,7 @@ The P0 (48-hour) cut is the subset tagged P0 below, in the same wave order — s
 | `ISR_REVALIDATE_PROFILE_S` | 60 | §10.1 (`/p/[handle]`) |
 | `ISR_REVALIDATE_PAIRING_S` | 30 | §10.1 (`/vs/[pairingId]`) |
 | `ISR_REVALIDATE_DUO_S` | 60 | §10.1 (`/duos/[id]`, `/ladder`) |
+| `GRAVEYARD_RIP_CAP` | 12 — added SW9-T3, not in the original table | §9.2 (`ProfilePublic.graveyard`, lengths-only privacy pin) |
 
 ## Appendix E — Red-team resolution log
 

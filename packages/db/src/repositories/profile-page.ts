@@ -62,20 +62,24 @@ export async function getNemesisSummaryForProfile(
 }
 
 /**
- * Whether the profile has ever landed the "called it" badge (§6.7: a public, publicly-resolved
- * win at an implied entry probability ≤ the longshot threshold). `longshotThreshold` is passed
- * in by the caller (`LONGSHOT_THRESHOLD`, `@receipts/core`) rather than hardcoded here.
+ * Lifetime count of the profile's "called it" picks (§6.7: a public, publicly-resolved win at
+ * an implied entry probability ≤ the longshot threshold). `longshotThreshold` is passed in by
+ * the caller (`LONGSHOT_THRESHOLD`, `@receipts/core`) rather than hardcoded here.
  * "Publicly resolved" mirrors the §6.5 publication rule: bonus questions (`kind != 'daily'`)
  * publish immediately; a `daily` question only counts once `revealed` or `voided` — never leak
- * a pre-reveal win through the badge list.
+ * a pre-reveal win through the badge list or the graveyard trophy count.
+ *
+ * One query serves both §9.2 consumers: the `called_it` badge (`count > 0`, WS7-T4) and the
+ * `ProfilePublic.graveyard.called_it_count` trophy (SW9-T3) — a separate boolean probe would
+ * just duplicate this predicate.
  */
-export async function hasCalledItPick(
+export async function countCalledItPicks(
   db: Db,
   profileId: string,
   longshotThreshold: number,
-): Promise<boolean> {
+): Promise<number> {
   const [row] = await db
-    .select({ id: picks.id })
+    .select({ count: sql<number>`count(*)::int` })
     .from(picks)
     .innerJoin(questions, eq(picks.questionId, questions.id))
     .where(
@@ -86,9 +90,8 @@ export async function hasCalledItPick(
         sql`(${questions.kind} <> 'daily' OR ${questions.status} IN ('revealed', 'voided'))`,
         sql`(CASE WHEN ${picks.side} = 'yes' THEN ${picks.yesPriceAtEntry} ELSE 1 - ${picks.yesPriceAtEntry} END) <= ${longshotThreshold}`,
       ),
-    )
-    .limit(1);
-  return row !== undefined;
+    );
+  return row?.count ?? 0;
 }
 
 /** Opaque cursor: the last row's (picked_at, id) — the log's own sort key, newest first. */

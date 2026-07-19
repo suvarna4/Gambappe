@@ -11,14 +11,19 @@
 import {
   type Db,
   getDuoWithProfiles,
+  getFreezeUsesForProfile,
   getMarketById,
   getPairingWithProfiles,
   getPickById,
+  getPicksForProfile,
   getProfileById,
   getProfileBySlug,
   getProfilePickRecord,
   getQuestionById,
   getQuestionBySlug,
+  listAllRevealedOrVoidedDaily,
+  replayStreak,
+  type CompletedStreakRun,
   type DuoWithProfiles,
   type PairingWithProfiles,
   type PickRow,
@@ -26,6 +31,7 @@ import {
   type ProfilePickRecord,
   type QuestionRow,
 } from '@receipts/db';
+import { OBITUARY_MIN_STREAK } from '@receipts/ui';
 import { ogStateHash } from './hash';
 
 export interface QuestionOgData {
@@ -76,8 +82,64 @@ export interface ReceiptOgData {
   pick: PickRow;
   question: QuestionRow;
   profile: ProfileRow;
-  /** Best-effort — see SPEC-GAP note at the call site (route handler). */
   variant: 'win' | 'loss' | 'void' | 'busted_streak';
+  /**
+   * Non-null iff `variant === 'busted_streak'`: the completed run this pick was the final
+   * answered pick of (SW9-T3) — feeds the obituary layout its REAL length and b./d. dates,
+   * never a live-profile-field guess.
+   */
+  bustedRun: CompletedStreakRun | null;
+}
+
+/**
+ * SW9-T3 (obituary-handoff §3.3(2)): the honest busted-streak binding. This pick mints the
+ * tombstone iff it is the FINAL ANSWERED pick of a COMPLETED (broken) participation run of
+ * length ≥ `OBITUARY_MIN_STREAK` — derived from the §6.6 full-history replay's `runs`, the
+ * same primitive the reveal's `broken_run` block uses, so card and wake can never disagree.
+ * Because the replay recomputes from current history on every load, the binding is permanent
+ * AND regrade-consistent: voiding/regrading the killer gap day resurrects the run and the
+ * card silently reverts to a plain win/loss receipt (§2 "regrade can resurrect the dead").
+ *
+ * Per §3.1, a run's `endedOn` can be a voided or freeze-covered date the profile never picked,
+ * so "final answered pick" means the latest ANSWERED daily ≤ `endedOn` within the run
+ * (mirroring `computeBrokenRunBlock`'s resolution in `reveal-payload.ts`, including its
+ * `answered` predicate: a pick exists and its result isn't `void`) — never "the pick on
+ * `endedOn`". Note this deliberately includes WIN picks: death is by absence, and "Died
+ * holding {SIDE} @ {c}¢" is the run's final position, not a loss (§2).
+ */
+async function resolveBustedRun(
+  db: Db,
+  pick: PickRow,
+  question: QuestionRow,
+): Promise<CompletedStreakRun | null> {
+  // Only an answered pick on a settled (revealed) daily can sit inside a participation run —
+  // bonus questions and voided picks never count toward streaks (§6.6).
+  if (question.kind !== 'daily' || question.questionDate === null) return null;
+  if (question.status !== 'revealed' || pick.result === 'void') return null;
+
+  const [history, profilePicks, freezeUses] = await Promise.all([
+    listAllRevealedOrVoidedDaily(db),
+    getPicksForProfile(db, pick.profileId),
+    getFreezeUsesForProfile(db, pick.profileId),
+  ]);
+  const { runs } = replayStreak(history, profilePicks, freezeUses);
+  const questionDate = question.questionDate;
+  const run = runs.find((r) => r.startedOn <= questionDate && questionDate <= r.endedOn);
+  if (!run || run.length < OBITUARY_MIN_STREAK) return null;
+
+  const pickByQuestionId = new Map(profilePicks.map((p) => [p.questionId, p] as const));
+  const finalAnswered = history
+    .filter(
+      (q) =>
+        q.status === 'revealed' && q.questionDate >= run.startedOn && q.questionDate <= run.endedOn,
+    )
+    .sort((a, b) => a.questionDate.localeCompare(b.questionDate))
+    .filter((q) => {
+      const p = pickByQuestionId.get(q.id);
+      return p !== undefined && p.result !== 'void';
+    })
+    .at(-1);
+  return finalAnswered?.id === pick.questionId ? run : null;
 }
 
 export async function loadReceiptOg(
@@ -92,19 +154,21 @@ export async function loadReceiptOg(
   ]);
   if (!question || !profile) return null;
 
-  // SPEC-GAP(WS8-T1): "busted-streak" is a best-effort read of *current* streak state, not a
-  // proven binding of "this pick broke it" (that needs the §6.6 replay's date-ordered walk,
-  // WS3-T3 scope). Shown only when the pick lost AND the profile's streak is presently zero
-  // despite having had one — close enough for a shareable loss card, not exact provenance.
-  const variant: ReceiptOgData['variant'] =
-    pick.result === 'win'
+  // The replay binding outranks the raw result on purpose (SW9-T3 "say it out loud"): a WIN
+  // pick that ended a run gets the tombstone as its canonical share card, permanently —
+  // including already-circulating links, which the `?v=` guard 302s onto the new render.
+  const bustedRun = await resolveBustedRun(db, pick, question);
+  const variant: ReceiptOgData['variant'] = bustedRun
+    ? 'busted_streak'
+    : pick.result === 'win'
       ? 'win'
       : pick.result === 'void'
         ? 'void'
-        : pick.result === 'loss' && profile.currentStreak === 0 && profile.bestStreak >= 1
-          ? 'busted_streak'
-          : 'loss';
+        : 'loss';
 
+  // §10.5 content-addressing: the busted-run binding (and the run fields the obituary layout
+  // renders) are hash inputs, so a regrade/void that resurrects or re-kills the run mints a
+  // new canonical `?v=` and stale cached tombstones/receipts can never be served as current.
   const hash = ogStateHash([
     pick.id,
     pick.result,
@@ -114,9 +178,13 @@ export async function loadReceiptOg(
     profile.currentStreak,
     profile.bestStreak,
     question.outcome,
+    variant,
+    bustedRun?.length ?? null,
+    bustedRun?.startedOn ?? null,
+    bustedRun?.endedOn ?? null,
   ]);
 
-  return { data: { pick, question, profile, variant }, hash };
+  return { data: { pick, question, profile, variant, bustedRun }, hash };
 }
 
 export async function loadMatchupOg(

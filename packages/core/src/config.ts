@@ -327,6 +327,16 @@ export const CARD_SQUARE_HEIGHT = 1080;
  */
 export const RL_SHARE_TOKEN_IP_H = 60;
 
+// --- SW9-T3: the profile graveyard block (§9.2 contract-change; obituary-handoff §4) ---------
+
+/**
+ * Max completed-run lengths carried in `ProfilePublic.graveyard.rip` (newest-first). The block
+ * is pinned to bare LENGTHS ONLY — no per-run dates or question slugs (privacy pin,
+ * `docs/plans/obituary-handoff.md` §4 SW9-T3): per-run dates would make participation on
+ * specific dates publicly inferable even where the picks themselves are `is_public = false`.
+ */
+export const GRAVEYARD_RIP_CAP = 12;
+
 // --- Data lifecycle (§11.5 table; centralized here per §0.1 rule 4) --------------------------
 
 /** Ghost profiles unseen this long are pruned/anonymized by `maintenance:prune`. */
@@ -439,6 +449,7 @@ export const CONFIG = {
   CARD_SQUARE_WIDTH,
   CARD_SQUARE_HEIGHT,
   RL_SHARE_TOKEN_IP_H,
+  GRAVEYARD_RIP_CAP,
   RETENTION_GHOST_UNSEEN_MONTHS,
   RETENTION_PRICE_SNAPSHOTS_DAYS,
   RETENTION_ANALYTICS_MONTHS,

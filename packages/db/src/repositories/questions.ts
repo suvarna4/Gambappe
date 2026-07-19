@@ -264,6 +264,15 @@ export async function listRevealedOrVoidedDailyThrough(
   return listRevealedOrVoidedDailyBetween(db, '0001-01-01', throughDate);
 }
 
+/** EVERY settled (revealed/voided) daily, unbounded on both ends — the full-history replay
+ * input for consumers that want all COMPLETED runs regardless of a through-date (SW9-T3:
+ * the `ProfilePublic.graveyard` block and `loadReceiptOg`'s busted-streak run binding). */
+export async function listAllRevealedOrVoidedDaily(
+  db: Db,
+): Promise<Array<{ id: string; questionDate: string; status: 'revealed' | 'voided' }>> {
+  return listRevealedOrVoidedDailyBetween(db, '0001-01-01', '9999-12-31');
+}
+
 /** The daily question for the calendar day immediately before `questionDate`, if one exists —
  * used to assert the §6.6 structural reveal-ordering guarantee before `reveal:fire` proceeds. */
 export async function getPriorDayDailyQuestion(
