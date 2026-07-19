@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T14:35:11.546Z",
+  "updated_at": "2026-07-19T14:35:13.279Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1635,12 +1635,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-session-35b05898-7175",
+      "branch": "claude/daily-question-swipe-ux-f0p4wq",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-19T08:18:25.516Z"
+      "claimed_at": "2026-07-19T14:35:13.278Z",
+      "updated_at": "2026-07-19T14:35:13.278Z"
     },
     "SW8-T3": {
       "title": "Pick-source analytics property (swipe|well|key|push|widget)",
