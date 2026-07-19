@@ -71,6 +71,25 @@ export const profilePublicSchema = z.object({
     })
     .nullable(),
   /**
+   * The graveyard shelf (SW9-T3 contract-change; `docs/plans/obituary-handoff.md` §4):
+   * completed (broken) participation runs with length ≥ `OBITUARY_MIN_STREAK`, as bare run
+   * LENGTHS only — newest-first, capped at `GRAVEYARD_RIP_CAP` — plus the lifetime public
+   * "called it" count shown beside the graves.
+   *
+   * Privacy pin (do NOT extend): no per-run dates and no question slugs, ever — either would
+   * make participation on specific dates publicly inferable even where the picks themselves
+   * are `is_public = false` (§9.2 exposes only public picks); bare lengths leak nothing beyond
+   * the already-public streak numbers. Null when there is nothing to shelve (no qualifying
+   * dead runs and no called-it wins) — the profile page then renders no shelf at all
+   * (SW4-T3 empty-state AC).
+   */
+  graveyard: z
+    .object({
+      rip: z.array(z.number().int().positive()),
+      called_it_count: z.number().int().nonnegative(),
+    })
+    .nullable(),
+  /**
    * Recent picks (paginated, `is_public` only). Picks on graded-but-unrevealed dailies present
    * as `pending` (§6.5 publication rule); public `picked_at` is minute-truncated (§9.2).
    */

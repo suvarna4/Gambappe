@@ -16,12 +16,20 @@ import {
   connect,
   duos,
   insertPick,
+  markets,
   nemesisPairings,
   profiles,
+  questions,
   seasons,
   type Db,
 } from '@receipts/db';
-import { buildPick, buildProfile, insertGradedQuestionScenario } from '@receipts/db/testing';
+import {
+  buildMarket,
+  buildPick,
+  buildProfile,
+  buildQuestion,
+  insertGradedQuestionScenario,
+} from '@receipts/db/testing';
 
 const dbUrl =
   process.env.TEST_DATABASE_URL ?? 'postgres://receipts:receipts@localhost:5432/receipts_test';
@@ -168,20 +176,42 @@ describe('GET /api/og/receipt/:pickId (§10.5 — loss/void/busted-streak get eq
     expect(res.headers.get('content-type')).toBe('image/png');
   });
 
-  it('renders a busted-streak receipt when the profile lost with a currently-zero streak', async () => {
-    const { question } = await insertGradedQuestionScenario(db);
-    const profile = buildProfile({ currentStreak: 0, bestStreak: 5 });
+  it('renders a busted-streak receipt for the final answered pick of a dead >=3 run (SW9-T3 replay binding)', async () => {
+    // SW9-T3 re-keyed the variant from the live-profile-field heuristic to the §6.6 replay:
+    // seed a REAL 3-day run killed by an uncovered miss (dates far past every other fixture in
+    // this file, so no foreign daily can interfere with the replay). Binding-detail cases live
+    // in `busted-streak-binding.test.ts`; here we assert the route ships a real PNG for it.
+    const profile = buildProfile({ currentStreak: 0, bestStreak: 3 });
     await db.insert(profiles).values(profile);
-    const pick = buildPick(question.id as string, profile.id as string, {
-      result: 'loss',
-      side: 'no',
-      yesPriceAtEntry: 0.66,
-    });
-    await insertPick(db, pick);
+    let finalPick: ReturnType<typeof buildPick> | null = null;
+    for (const [i, date] of ['2027-06-01', '2027-06-02', '2027-06-03', '2027-06-04'].entries()) {
+      const market = buildMarket({ status: 'resolved', outcome: 'yes' });
+      await db.insert(markets).values(market);
+      const question = buildQuestion(market.id as string, {
+        questionDate: date,
+        slug: `${date}-og-busted-day`,
+        status: 'revealed',
+        outcome: 'yes',
+        revealedAt: new Date(`${date}T20:00:00Z`),
+        crowdYesAtLock: 1,
+        crowdNoAtLock: 1,
+      });
+      await db.insert(questions).values(question);
+      if (i < 3) {
+        // Answered days 1–3; day 4 revealed with NO pick — the uncovered miss that kills the run.
+        finalPick = buildPick(question.id as string, profile.id as string, {
+          result: 'win',
+          side: 'yes',
+          yesPriceAtEntry: 0.66,
+          gradedAt: new Date(`${date}T17:00:00Z`),
+        });
+        await insertPick(db, finalPick);
+      }
+    }
 
-    const redirect = await ogGet(`/api/og/receipt/${pick.id}`);
+    const redirect = await ogGet(`/api/og/receipt/${finalPick!.id}`);
     const v = canonicalVersion(redirect);
-    const res = await ogGet(`/api/og/receipt/${pick.id}?v=${v}`);
+    const res = await ogGet(`/api/og/receipt/${finalPick!.id}?v=${v}`);
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toBe('image/png');
   });
