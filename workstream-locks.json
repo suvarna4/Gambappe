@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T02:45:47.762Z",
+  "updated_at": "2026-07-19T02:53:04.400Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -880,13 +880,13 @@
         "WS8-T4"
       ],
       "mock_start_ok": false,
-      "note": null,
-      "status": "claimed",
+      "note": "PR #67 open, pnpm verify green (unit + integration + e2e, 5 new e2e tests). /q archive (force-dynamic, same DATABASE_URL-at-build-time constraint as sitemap.ts), Article/ItemList JSON-LD, canonical tag added to /q/[slug], robots.txt. Awaiting CI + fable review.",
+      "status": "in_review",
       "owner": "claude-code-web-session-35b05898",
-      "branch": null,
-      "pr": null,
+      "branch": "feat/ws8-t5-seo-archive-pass",
+      "pr": "https://github.com/suvarna4/Gambappe/pull/67",
       "claimed_at": "2026-07-19T00:17:31.843Z",
-      "updated_at": "2026-07-19T00:17:31.843Z"
+      "updated_at": "2026-07-19T02:53:04.400Z"
     },
     "WS9-T1": {
       "title": "Outbox + email channel",
