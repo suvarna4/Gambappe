@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T09:09:27.984Z",
+  "updated_at": "2026-07-19T09:11:02.048Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1364,13 +1364,13 @@
         "SW0-T3"
       ],
       "mock_start_ok": true,
-      "note": null,
-      "status": "available",
+      "note": "building deck shell on integration branch claude/daily-question-swipe-ux-f0p4wq with the SW1 ballot chain",
+      "status": "in_review",
       "owner": null,
       "branch": null,
       "pr": null,
       "claimed_at": null,
-      "updated_at": "2026-07-19T08:18:25.516Z"
+      "updated_at": "2026-07-19T09:11:02.045Z"
     },
     "SW2-T2": {
       "title": "Deck states (scheduled/locked/revealed/voided in the stage)",
