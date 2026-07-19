@@ -262,8 +262,11 @@ Keeps `RevealSequence`'s beats, order, and constants (stamp-slam 450ms → crowd
   (`crowd-fill` keyframe gains a right-anchored variant).
 - Result stamps: `WIN`/`LOSS` rubber inks; `CALLED IT` uses the gold-foil stamp
   (§2.7) — the only gold motion in the product.
-- Obituary handoff: when `viewer.streak` broke this reveal (previous streak ≥ 3), the
-  sequence's final beat swaps the share affordance for the obituary card (§2.7).
+- Obituary handoff: the sequence's final beat swaps the share affordance for the
+  obituary card (§2.7) when a dead run is being mourned. **AMENDED** — the original
+  trigger phrasing here ("when `viewer.streak` broke this reveal") is unimplementable:
+  the §6.6 participation streak breaks by absence, never at a participated reveal.
+  Authoritative semantics + tasks: `docs/plans/obituary-handoff.md` (SW9).
 - No sound (D-SW5). Reduced motion: instant static layout, as today.
 
 ### 2.7 Stamps, gold scarcity, obituary, Print-Shop cards
@@ -616,6 +619,9 @@ obituary handoff hook (renders SW4-T1's card when streak broke, behind its
 availability — degrade to today's busted-streak share if SW4-T1 unmerged).
 AC: stamp variants in `/dev/ui` gallery; foil used nowhere except called-it (grep
 test); reveal e2e still ≤2.6s to interactive share; reduced-motion static parity.
+*(Shipped in PR #75 with the handoff descoped — its "when streak broke" trigger is
+unimplementable against §6.6 semantics. The handoff is re-scoped as SW9: see
+`docs/plans/obituary-handoff.md`.)*
 
 #### SW4 — Artifacts
 
