@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T00:17:03.837Z",
+  "updated_at": "2026-07-19T00:17:31.861Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -881,12 +881,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "available",
-      "owner": null,
+      "status": "claimed",
+      "owner": "claude-code-web-session-35b05898",
       "branch": null,
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-18T09:35:00Z"
+      "claimed_at": "2026-07-19T00:17:31.843Z",
+      "updated_at": "2026-07-19T00:17:31.843Z"
     },
     "WS9-T1": {
       "title": "Outbox + email channel",
