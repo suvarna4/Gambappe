@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T12:39:21.123Z",
+  "updated_at": "2026-07-19T12:39:22.864Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1365,12 +1365,12 @@
       ],
       "mock_start_ok": true,
       "note": "reassigned to claude-session-35b05898-7175 to take over/finish",
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/daily-question-swipe-ux-f0p4wq",
-      "pr": null,
+      "pr": "https://github.com/suvarna4/Gambappe/pull/73",
       "claimed_at": "2026-07-19T12:38:05.126Z",
-      "updated_at": "2026-07-19T12:38:05.126Z"
+      "updated_at": "2026-07-19T12:39:22.864Z"
     },
     "SW2-T2": {
       "title": "Deck states (scheduled/locked/revealed/voided in the stage)",
