@@ -7,14 +7,13 @@
  */
 import type { NextResponse } from 'next/server';
 import { ApiError, deleteMeBodySchema, now } from '@receipts/core';
-import { deleteAccount } from '@receipts/db';
 import { jsonSuccess, runRoute } from '@/lib/api-response';
 import { assertSameOrigin } from '@/lib/origin-check';
 import { resolveIdentityFromRequest } from '@/lib/identity-request';
 import { GHOST_COOKIE_NAME, clearedGhostCookieOptions } from '@/lib/ghost-cookie';
 import { buildMeResponse } from '@/lib/get-me';
 import { getDb } from '@/lib/stores';
-import { applyDuoMidWindowExit } from '@/lib/duo-match-lifecycle';
+import { deleteClaimedAccount } from '@/lib/account-deletion';
 
 export const runtime = 'nodejs';
 
@@ -51,17 +50,11 @@ export async function DELETE(request: Request): Promise<NextResponse> {
     }
 
     const deletionAt = now();
-    // §5.7 mid-window exit (WS6-T2): deletion is one of the trigger events for an active duo
-    // match, same integrity rule as nemesis (§14.3). Run BEFORE `deleteAccount` — `deleteAccount`
-    // itself can't do this (packages/db has no @receipts/engine dependency for the scoring/
-    // rating math, §4.2 — see `deleteAccount`'s own SPEC-GAP(WS2-T5) comment, written before
-    // WS6 existed, anticipating exactly this caller-side follow-up). Deliberately its own
-    // transaction, separate from `deleteAccount`'s — the duo match doesn't reference anything
-    // `deleteAccount` mutates (handle/slug rewrite, etc.), so there's no atomicity requirement
-    // tying the two together.
-    await applyDuoMidWindowExit(getDb(), identity.profile.id, deletionAt);
-
-    await deleteAccount(getDb(), identity.profile.id, identity.profile.userId, deletionAt);
+    // §11.4: an active nemesis pairing and/or duo match take the §5.7 mid-week exit (deletion
+    // is one of its named trigger events — same integrity rule as blocking, §14.3), then the
+    // deletion transaction runs — all composed atomically by `deleteClaimedAccount` (see its
+    // header for why the exits can't live inside packages/db's `deleteAccount`).
+    await deleteClaimedAccount(getDb(), identity.profile.id, identity.profile.userId, deletionAt);
 
     const response = jsonSuccess({ deleted: true as const });
     response.cookies.set(GHOST_COOKIE_NAME, '', clearedGhostCookieOptions());

@@ -86,26 +86,22 @@ function toGlickoGame(opponent: { rating: number; rd: number }, score: 0 | 0.5 |
 }
 
 /**
- * §14.3/§5.7: blocking cancels the blocked profile's active pairing outright if no shared
- * question has graded yet; otherwise the pairing concludes early, scored on graded questions
- * only via the same pure `scoreNemesisWeek`/`updateGlicko2` functions the (not-yet-built)
- * `nemesis:conclude` job will use for its normal Sunday conclusion — so a block never erases
- * a pairing a player is already losing. Both sides get the neutral exit notification either way.
- * Applies the SAME rule to the blocked profile's active DUO match, if any (§5.7: "mid-window
- * exits follow the same early-conclusion rule as pairings", WS6-T2's
- * `applyDuoMidWindowExit`) — a profile can have at most one active pairing AND one active duo
- * match at once, so both checks always run, independently, on every block.
+ * §5.7 mid-week exit for `profileId`'s ACTIVE nemesis pairing, if any — a no-op when the
+ * profile has none. If no shared question has graded yet the pairing is cancelled with no
+ * rating change; otherwise it concludes early, scored on graded questions only via the same
+ * pure `scoreNemesisWeek`/`updateGlicko2` functions the (not-yet-built) `nemesis:conclude` job
+ * will use for its normal Sunday conclusion — so an exit never erases a pairing a player is
+ * already losing (§14.3's integrity rule). Both sides get the neutral exit notification either
+ * way.
+ *
+ * Callers: `applyBlock` below (for the BLOCKED profile) and `deleteClaimedAccount`
+ * (`@/lib/account-deletion`, for the deleting profile — §5.7 names deletion as an exit
+ * trigger; the deleted side's copy of the neutral notification is subsequently cancelled by
+ * `deleteAccount`'s queued-notification cleanup, so only the survivor is actually notified).
  */
-export async function applyBlock(db: Db, blockerProfileId: string, blockedProfileId: string, at: Date): Promise<void> {
+export async function applyNemesisMidWeekExit(db: Db, profileId: string, at: Date): Promise<void> {
   await db.transaction(async (tx) => {
-    await insertBlock(tx, blockerProfileId, blockedProfileId);
-
-    // Nested transaction (Postgres SAVEPOINT, drizzle-orm) — same pattern as
-    // `packages/db/src/repositories/picks.ts`'s `placePickTx` — so the duo-match exit commits
-    // atomically with the block + pairing exit below rather than as an independent transaction.
-    await applyDuoMidWindowExit(tx, blockedProfileId, at);
-
-    const pairing = await findActivePairingInvolving(tx, blockedProfileId);
+    const pairing = await findActivePairingInvolving(tx, profileId);
     if (!pairing) return;
 
     // The FULL shared set — the week's derived dailies UNION the pairing's bonus questions —
@@ -173,5 +169,24 @@ export async function applyBlock(db: Db, blockerProfileId: string, blockedProfil
 
     await insertNeutralExitNotification(tx, pairing.profileAId, at);
     await insertNeutralExitNotification(tx, pairing.profileBId, at);
+  });
+}
+
+/**
+ * §14.3/§5.7: blocking applies the mid-week exit rule to the blocked profile's active nemesis
+ * pairing (`applyNemesisMidWeekExit` above) AND to its active DUO match (§5.7: "mid-window
+ * exits follow the same early-conclusion rule as pairings", WS6-T2's `applyDuoMidWindowExit`)
+ * — a profile can have at most one active pairing AND one active duo match at once, so both
+ * checks always run, independently, on every block.
+ */
+export async function applyBlock(db: Db, blockerProfileId: string, blockedProfileId: string, at: Date): Promise<void> {
+  await db.transaction(async (tx) => {
+    await insertBlock(tx, blockerProfileId, blockedProfileId);
+
+    // Nested transactions (Postgres SAVEPOINTs, drizzle-orm) — same pattern as
+    // `packages/db/src/repositories/picks.ts`'s `placePickTx` — so the duo-match and pairing
+    // exits commit atomically with the block rather than as independent transactions.
+    await applyDuoMidWindowExit(tx, blockedProfileId, at);
+    await applyNemesisMidWeekExit(tx, blockedProfileId, at);
   });
 }

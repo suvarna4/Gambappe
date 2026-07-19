@@ -5,18 +5,21 @@
  * hidden (rows retained — aggregates/crowd counts stay truthful), posts marked
  * `removed_by_author`, best-effort wallet/push/notification cleanup, Auth.js user hard-deleted
  * (accounts/sessions cascade via `onDelete: 'cascade'` FKs — email gone), fingerprint/rating
- * rows deleted. The async analytics/Sentry scrub is a SPEC-GAP — see comment below.
+ * rows deleted, and the profile's `analytics_events` trail scrubbed (`profile_id`/`ip_hash`/
+ * `ua_hash` nulled — §11.4's RT-B guarantee that no 13-month behavioral trail survives
+ * erasure). The Sentry half of §11.4's post-deletion scrub is still a SPEC-GAP — see below.
  *
- * Active DUO match exit (§5.7, WS6-T2) is deliberately NOT done in this function — `packages/db`
- * has no `@receipts/engine` dependency (§4.2), and the mid-window-exit rule needs
- * `scoreDuoMatch`/`updateGlicko2` from it. `DELETE /api/v1/me` (apps/web) calls
- * `applyDuoMidWindowExit` (`apps/web/lib/duo-match-lifecycle.ts`) before calling this function
- * instead. (Active NEMESIS pairing exit on deletion remains an open SPEC-GAP — WS5 doesn't
- * exist in this wave either; unlike duo, no caller-side follow-up has been wired for it yet.)
+ * Active NEMESIS pairing / DUO match mid-week exit (§5.7) is deliberately NOT done in this
+ * function — `packages/db` has no `@receipts/engine` dependency (§4.2), and the exit rule
+ * needs `scoreNemesisWeek`/`scoreDuoMatch`/`updateGlicko2` from it. The caller-side wrapper
+ * `deleteClaimedAccount` (`apps/web/lib/account-deletion.ts`) runs both exits and then this
+ * function in one transaction; `DELETE /api/v1/me` goes through that wrapper, never through
+ * this function directly.
  */
 import { and, eq } from 'drizzle-orm';
 import type { Db } from '../client.js';
 import {
+  analyticsEvents,
   fingerprints,
   notifications,
   picks,
@@ -74,10 +77,11 @@ export async function deleteAccount(
       .set({ status: 'cancelled' })
       .where(and(eq(notifications.profileId, profileId), eq(notifications.status, 'queued')));
 
-    // Duo match mid-window exit (§5.7) is handled by the CALLER, before this function runs —
-    // see this file's header. SPEC-GAP(WS2-T5, still open): active nemesis pairing exit on
-    // deletion — WS5 doesn't exist in this wave, so there is nothing to exit yet, and (unlike
-    // duo) no caller-side follow-up exists for it either.
+    // Nemesis pairing + duo match mid-week exits (§5.7) are handled by the CALLER, before this
+    // function runs (same transaction, via `deleteClaimedAccount` — see this file's header).
+    // Ordering matters: the exits queue §14.3's neutral "ended early" notification for BOTH
+    // sides of any concluded pairing/match, and the queued-notification cancellation above then
+    // suppresses the deleted profile's copy while the surviving opponent keeps theirs.
 
     await tx.delete(fingerprints).where(eq(fingerprints.profileId, profileId));
     await tx.delete(ratings).where(eq(ratings.profileId, profileId));
@@ -94,9 +98,17 @@ export async function deleteAccount(
     // Auth.js hard delete — accounts/sessions cascade via onDelete:'cascade' FKs (email gone).
     await tx.delete(users).where(eq(users.id, userId));
 
-    // SPEC-GAP(WS2-T5): async analytics_events scrub (profile_id/ip_hash/ua_hash nulled) + a
-    // Sentry deletion request (§11.4) are deferred — no background job/Sentry integration
-    // exists yet in this wave (WS13/§16 scope).
+    // §11.4 analytics scrub (an explicit RT-B red-team remediation): null the erased profile's
+    // behavioral trail — rows are RETAINED for aggregate metrics, only the identifying columns
+    // go. §11.4 permits doing this asynchronously; running it inside the deletion transaction
+    // is strictly stronger and cheap (`analytics_events_profile_ts_idx` serves the WHERE).
+    await tx
+      .update(analyticsEvents)
+      .set({ profileId: null, ipHash: null, uaHash: null })
+      .where(eq(analyticsEvents.profileId, profileId));
+
+    // SPEC-GAP(WS2-T5): the Sentry deletion request half of §11.4's scrub (events tagged with
+    // the profile id) stays deferred — no Sentry integration exists yet (§16.2 scope).
 
     return { profileId };
   });
