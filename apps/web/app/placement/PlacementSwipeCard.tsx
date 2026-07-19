@@ -96,7 +96,7 @@ export function PlacementSwipeCard({
       data-testid="placement-pick-no"
       disabled={disabled}
       onClick={() => commit('no')}
-      className="border-side-b min-h-12 flex-1 rounded-lg border-2 font-display text-sm font-bold tracking-wide text-[#b34d0a] uppercase disabled:opacity-50"
+      className="border-side-b text-side-b min-h-12 flex-1 rounded-lg border-2 font-display text-sm font-bold tracking-wide uppercase disabled:opacity-50"
     >
       {ballotCopy.wellAgainstGlyph} {noLabel}
     </button>,
@@ -106,7 +106,7 @@ export function PlacementSwipeCard({
       data-testid="placement-pick-yes"
       disabled={disabled}
       onClick={() => commit('yes')}
-      className="border-side-a min-h-12 flex-1 rounded-lg border-2 font-display text-sm font-bold tracking-wide text-[#1d4fa8] uppercase disabled:opacity-50"
+      className="border-side-a text-side-a min-h-12 flex-1 rounded-lg border-2 font-display text-sm font-bold tracking-wide uppercase disabled:opacity-50"
     >
       {yesLabel} {ballotCopy.wellForGlyph}
     </button>,
