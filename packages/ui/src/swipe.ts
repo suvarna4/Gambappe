@@ -1,0 +1,53 @@
+/**
+ * SW0-T2 · Swipe-ballot interaction constants (swipe-ux-plan §2.3, §2.7, §2.8).
+ *
+ * Presentation constants only — deliberately in `packages/ui`, NOT `packages/core`, so tuning
+ * the feel never needs a contract-change PR. `SwipeBallot` (SW1-T2), the deck shell (SW2-T1),
+ * the receipt slip (SW1-T3), and the obituary card (SW4-T1) all read these so the numbers in
+ * the plan live in exactly one place.
+ */
+
+/** Commit fires once horizontal drag passes this fraction of the card's width. */
+export const COMMIT_THRESHOLD_RATIO = 0.36;
+/** Rotation is clamped to ±this many degrees while dragging. */
+export const MAX_TILT_DEG = 12;
+/** Rotation applied per pixel of horizontal drag, before the ±`MAX_TILT_DEG` clamp. */
+export const TILT_DEG_PER_PX = 0.09;
+/** Vertical follow is damped by this factor (the card mostly tracks x, barely y). */
+export const DRAG_Y_FACTOR = 0.25;
+/** Stamp-preview scale at zero progress; eases to 1.0 as progress → 1 (1.4 → 1.0). */
+export const STAMP_SCALE_FROM = 1.4;
+
+/** Early-release spring-back (progress < 1): duration + easing. */
+export const SNAP_MS = 400;
+export const SNAP_EASE = 'cubic-bezier(.28,1.6,.5,1)';
+/** Commit exit fling: duration + easing. */
+export const FLING_MS = 300;
+export const FLING_EASE = 'cubic-bezier(.3,.6,.4,1)';
+/** Receipt slip print/retract: duration + easing. */
+export const PRINT_MS = 420;
+export const PRINT_EASE = 'cubic-bezier(.22,1,.36,1)';
+
+/**
+ * `navigator.vibrate` argument for each moment (ms, or a pattern array). A no-op where the
+ * API is absent — never gate behavior on it. Arm = one light tick as the card crosses the
+ * threshold; commit = a firmer three-pulse thunk; undo = a soft tick.
+ */
+export const HAPTIC_ARM = 8;
+export const HAPTIC_COMMIT = [12, 40, 18] as const;
+export const HAPTIC_UNDO = 6;
+
+/** Idle-nudge (D-SW7): delay before the discoverability sway plays, and its CSS animation. */
+export const NUDGE_IDLE_MS = 3800;
+export const NUDGE_ANIM = '2.6s ease-in-out';
+
+/**
+ * Guardrail fade thresholds (D-SW7). After this many successful throws the side rails drop to
+ * 40% opacity and the hint arrows unmount — a learned hand doesn't need the signage. Tap wells
+ * are NEVER hidden or faded (a11y is permanent, not a tutorial).
+ */
+export const LEARNED_PICKS = 5;
+
+/** A busted streak mints an obituary artifact (SW4-T1) only if the broken run was at least
+ * this long — a one- or two-day run isn't a story worth a tombstone. */
+export const OBITUARY_MIN_STREAK = 3;

@@ -23,6 +23,23 @@ export default function UiGalleryPage() {
     <main className="mx-auto max-w-2xl space-y-12 px-6 py-10">
       <h1 className="text-2xl font-bold">Design system gallery</h1>
 
+      {/* SW0-T2: the display face (Barlow Condensed via next/font) + the gold ritual accent.
+          The headline should render condensed; the numerals stay mono; gold-on-ink passes AA. */}
+      <section data-testid="gallery-display-type" className="space-y-3">
+        <h2 className="text-muted text-sm font-semibold uppercase">
+          Display type &amp; gold accent
+        </h2>
+        <div className="bg-bg space-y-2 rounded-md p-4">
+          <p className="font-display text-4xl font-bold uppercase leading-none">
+            Does the Fed cut rates in September?
+          </p>
+          <p className="font-mono text-gold text-sm">CUTS @ 71¢ · LOCKS 12:00 ET</p>
+          <span className="border-gold text-gold inline-block -rotate-6 rounded border-2 px-3 py-1 font-display text-lg font-bold uppercase">
+            Called it
+          </span>
+        </div>
+      </section>
+
       <section data-testid="gallery-ticketcard" className="space-y-3">
         <h2 className="text-muted text-sm font-semibold uppercase">TicketCard</h2>
         <TicketCard>
