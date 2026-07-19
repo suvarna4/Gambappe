@@ -7,6 +7,7 @@ import type { NextResponse } from 'next/server';
 import { ApiError, getNemesisHistoryRequestSchema, isFlagEnabled } from '@receipts/core';
 import { jsonSuccess, runRoute } from '@/lib/api-response';
 import { resolveIdentityFromRequest } from '@/lib/identity-request';
+import { enforceGetBackstop } from '@/lib/rate-limit';
 import { getDb } from '@/lib/stores';
 import { getNemesisHistoryPage } from '@/lib/nemesis/service';
 
@@ -14,6 +15,9 @@ export const runtime = 'nodejs';
 
 export async function GET(request: Request): Promise<NextResponse> {
   return runRoute(async () => {
+    const limited = await enforceGetBackstop(request);
+    if (limited) return limited;
+
     if (!isFlagEnabled('nemesis')) {
       throw new ApiError('NOT_FOUND', 'nemesis is not available');
     }

@@ -11,16 +11,20 @@
 import type { NextResponse } from 'next/server';
 import { ApiError, getPairingRequestSchema, isFlagEnabled, now } from '@receipts/core';
 import { jsonSuccess, runRoute } from '@/lib/api-response';
+import { enforceGetBackstop } from '@/lib/rate-limit';
 import { getDb } from '@/lib/stores';
 import { getPairingPublicById } from '@/lib/nemesis/service';
 
 export const runtime = 'nodejs';
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   return runRoute(async () => {
+    const limited = await enforceGetBackstop(request);
+    if (limited) return limited;
+
     if (!isFlagEnabled('nemesis')) {
       throw new ApiError('NOT_FOUND', 'nemesis is not available');
     }

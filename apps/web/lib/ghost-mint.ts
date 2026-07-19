@@ -29,8 +29,19 @@ export interface MintGhostDeps {
 }
 
 /**
+ * Seconds from `at` until the next UTC midnight — when the per-IP-per-day mint bucket
+ * (keyed by `ghostMintDayKey`, a UTC calendar date) rolls over. Never less than 1.
+ */
+export function ghostMintRetryAfterSeconds(at: Date): number {
+  const nextUtcMidnightMs = Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate() + 1);
+  return Math.max(1, Math.ceil((nextUtcMidnightMs - at.getTime()) / 1000));
+}
+
+/**
  * Mints a ghost profile for `ip`, enforcing `GHOST_MINT_PER_IP_PER_DAY` via `limiter`.
- * Over limit → `ApiError('RATE_LIMITED', ...)` (§6.1.1: "over limit → still allow the pick? No").
+ * Over limit → `ApiError('RATE_LIMITED', ...)` (§6.1.1: "over limit → still allow the pick? No")
+ * carrying `retry_after_seconds` in details so `jsonError` can set the `Retry-After` header the
+ * §14.1 contract requires on every 429 (audit 2.5).
  */
 export async function mintGhost(
   deps: MintGhostDeps,
@@ -40,7 +51,9 @@ export async function mintGhost(
 ): Promise<MintGhostResult> {
   const count = await limiter.increment(ip, ghostMintDayKey(at));
   if (count > GHOST_MINT_PER_IP_PER_DAY) {
-    throw new ApiError('RATE_LIMITED', 'ghost mint limit exceeded for this IP today');
+    throw new ApiError('RATE_LIMITED', 'ghost mint limit exceeded for this IP today', {
+      retry_after_seconds: ghostMintRetryAfterSeconds(at),
+    });
   }
 
   const { handle, slug } = await generateHandle({ handleExists: deps.handleExists });

@@ -7,6 +7,7 @@ import type { NextResponse } from 'next/server';
 import { ApiError, isFlagEnabled } from '@receipts/core';
 import { jsonSuccess, runRoute } from '@/lib/api-response';
 import { resolveIdentityFromRequest } from '@/lib/identity-request';
+import { enforceGetBackstop } from '@/lib/rate-limit';
 import { getDb } from '@/lib/stores';
 import { getCurrentDuoAndMatch } from '@/lib/duo-queue';
 import { toDuoMatchPublic, toDuoPublic } from '@/lib/serialize-duo';
@@ -15,6 +16,9 @@ export const runtime = 'nodejs';
 
 export async function GET(request: Request): Promise<NextResponse> {
   return runRoute(async () => {
+    const limited = await enforceGetBackstop(request);
+    if (limited) return limited;
+
     if (!isFlagEnabled('duo_queue')) {
       throw new ApiError('NOT_FOUND', 'duo queue is not available');
     }

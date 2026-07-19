@@ -16,12 +16,16 @@ import { ApiError } from '@receipts/core';
 import { jsonSuccess, runRoute } from '@/lib/api-response';
 import { resolveIdentityFromRequest } from '@/lib/identity-request';
 import { getActivePlacementItems, samplePlacementItems, toPublicPlacementItem } from '@/lib/placement-service';
+import { enforceGetBackstop } from '@/lib/rate-limit';
 import { getDb } from '@/lib/stores';
 
 export const runtime = 'nodejs';
 
 export async function GET(request: Request): Promise<NextResponse> {
   return runRoute(async () => {
+    const limited = await enforceGetBackstop(request);
+    if (limited) return limited;
+
     const { identity } = await resolveIdentityFromRequest(request);
     if (identity.kind === 'anonymous') {
       throw new ApiError('UNAUTHENTICATED', 'a ghost or claimed profile is required');

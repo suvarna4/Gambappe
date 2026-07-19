@@ -15,8 +15,7 @@
 import { NextResponse } from 'next/server';
 import { ApiError, errorEnvelope, nowMs, shareTokenBodySchema } from '@receipts/core';
 import { assertSameOrigin } from '@/lib/origin-check';
-import { enforceRateLimit } from '@/lib/rate-limit';
-import { extractClientIp } from '@/lib/analytics';
+import { clientIpKey, enforceRateLimit } from '@/lib/rate-limit';
 import { mintShareToken } from '@/lib/share-token';
 
 export const dynamic = 'force-dynamic';
@@ -36,7 +35,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     return rejected(err as ApiError);
   }
 
-  const rateLimited = await enforceRateLimit('share_token', extractClientIp(request.headers) ?? 'unknown');
+  const rateLimited = await enforceRateLimit('share_token', clientIpKey(request.headers));
   if (rateLimited) return rateLimited;
 
   let json: unknown;

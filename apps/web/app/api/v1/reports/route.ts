@@ -12,6 +12,7 @@ import { jsonSuccess, runRoute } from '@/lib/api-response';
 import { assertSameOrigin } from '@/lib/origin-check';
 import { resolveIdentityFromRequest } from '@/lib/identity-request';
 import { submitReport } from '@/lib/moderation';
+import { enforceRateLimit } from '@/lib/rate-limit';
 import { getDb } from '@/lib/stores';
 
 export const runtime = 'nodejs';
@@ -24,6 +25,11 @@ export async function POST(request: Request): Promise<NextResponse> {
     if (identity.kind === 'anonymous') {
       throw new ApiError('UNAUTHENTICATED', 'a ghost or claimed profile is required');
     }
+
+    // §14.1: "Reports | profile | 10/day" (audit 2.1) — after identity (the key is the
+    // profile), before any parse/DB work.
+    const limited = await enforceRateLimit('reports', identity.profile.id);
+    if (limited) return limited;
 
     const body = createReportBodySchema.parse(await request.json());
 

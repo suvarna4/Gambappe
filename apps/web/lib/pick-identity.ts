@@ -10,7 +10,7 @@ import { getDb, getRedis } from './stores';
 import { GHOST_COOKIE_NAME, clearedGhostCookieOptions, ghostCookieOptions } from './ghost-cookie';
 import { RedisGhostMintLimiter } from './ghost-mint-limiter';
 import { mintGhostWithDb } from './ghost-mint';
-import { extractClientIp } from './http';
+import { clientIpKey } from './rate-limit';
 import { resolveIdentityFromRequest } from './identity-request';
 
 export interface ResolvedOrMintedIdentity {
@@ -29,7 +29,8 @@ export async function resolveOrMintIdentity(request: Request): Promise<ResolvedO
   }
 
   const limiter = new RedisGhostMintLimiter(getRedis());
-  const ip = extractClientIp(request.headers) ?? 'unknown';
+  // Missing-IP policy: one shared fail-closed bucket — see `clientIpKey` (audit 2.6).
+  const ip = clientIpKey(request.headers);
   const { profile, cookieValue } = await mintGhostWithDb(getDb(), ip, limiter, now());
   return { profile, minted: true, cookieValue, clearGhostCookie };
 }

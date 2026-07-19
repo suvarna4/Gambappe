@@ -7,9 +7,8 @@
  * (only a stale/forged `v` does).
  */
 import type { ReactElement } from 'react';
-import { extractClientIp } from '@/lib/analytics';
 import { ApiError, errorEnvelope, nowMs } from '@receipts/core';
-import { enforceRateLimit } from '@/lib/rate-limit';
+import { clientIpKey, enforceRateLimit } from '@/lib/rate-limit';
 import { ogVersionGuard } from './guard';
 import { renderOgImage } from './render';
 
@@ -26,7 +25,7 @@ export async function handleOgRequest<T>(
   load: () => Promise<{ data: T; hash: string } | null>,
   render: (data: T) => ReactElement,
 ): Promise<Response> {
-  const rateLimited = await enforceRateLimit('images', extractClientIp(request.headers) ?? 'unknown');
+  const rateLimited = await enforceRateLimit('images', clientIpKey(request.headers));
   if (rateLimited) return rateLimited;
 
   const loaded = await load();

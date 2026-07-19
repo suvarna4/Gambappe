@@ -28,6 +28,7 @@ import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 import { MAGIC_LINK_TTL_MIN } from '@receipts/core';
 import { accounts, sessions, users, verificationTokens } from '@receipts/db';
 import { getDb } from './lib/stores';
+import { enforceAuthEmailSendLimit } from './lib/auth-email-limit';
 import { sessionCookieConfig, SESSION_MAX_AGE_S } from './lib/auth-cookies';
 import { recordMagicLink } from './lib/magic-link-mailbox';
 
@@ -76,7 +77,15 @@ function buildProviders(): NextAuthConfig['providers'] {
       server: { host: 'localhost', port: 25, auth: { user: '', pass: '' } },
       from: process.env.EMAIL_FROM ?? 'noreply@receipts.example',
       maxAge: MAGIC_LINK_TTL_MIN * 60,
-      async sendVerificationRequest({ identifier, url }) {
+      async sendVerificationRequest({ identifier, url, request }) {
+        // §14.1 "Auth email sends | email+IP | 5/hour" (audit 2.4), enforced BEFORE any
+        // dispatch (including the non-production mailbox stub, so the limit is exercisable
+        // end-to-end today). Runs strictly at send time inside this handler — nothing here
+        // executes during `next build`'s module evaluation (see the lazy-init note in this
+        // file's header), and an over-limit throw surfaces as Auth.js's normal EmailSignin
+        // error redirect, never a 500 from `auth()` itself.
+        await enforceAuthEmailSendLimit(identifier, request.headers);
+
         // WS2-T2 stub: real Resend sending is WS9 scope (§13.2). Outside production, store the
         // link in the in-memory mailbox so test harnesses and local dev can read it back
         // without a mail provider — never logged (§16.2 forbids logging emails unconditionally,

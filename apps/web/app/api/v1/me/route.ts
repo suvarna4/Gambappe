@@ -13,6 +13,7 @@ import { assertSameOrigin } from '@/lib/origin-check';
 import { resolveIdentityFromRequest } from '@/lib/identity-request';
 import { GHOST_COOKIE_NAME, clearedGhostCookieOptions } from '@/lib/ghost-cookie';
 import { buildMeResponse } from '@/lib/get-me';
+import { enforceGetBackstop } from '@/lib/rate-limit';
 import { getDb } from '@/lib/stores';
 import { applyDuoMidWindowExit } from '@/lib/duo-match-lifecycle';
 
@@ -20,6 +21,9 @@ export const runtime = 'nodejs';
 
 export async function GET(request: Request): Promise<NextResponse> {
   return runRoute(async () => {
+    const limited = await enforceGetBackstop(request);
+    if (limited) return limited;
+
     const { identity, clearGhostCookie } = await resolveIdentityFromRequest(request);
     const data = await buildMeResponse(getDb(), identity);
     const response = jsonSuccess(data);

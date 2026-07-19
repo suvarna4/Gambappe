@@ -19,6 +19,7 @@ import type { NextResponse } from 'next/server';
 import { ApiError } from '@receipts/core';
 import { jsonSuccess, runRoute } from '@/lib/api-response';
 import { runUnsubscribe } from '@/lib/notifications/unsubscribe';
+import { enforceGetBackstop } from '@/lib/rate-limit';
 import { getDb } from '@/lib/stores';
 
 async function handle(request: Request): Promise<NextResponse> {
@@ -43,6 +44,10 @@ async function handle(request: Request): Promise<NextResponse> {
 export const runtime = 'nodejs';
 
 export async function GET(request: Request): Promise<NextResponse> {
+  // §14.1 "Any /api/v1 GET" backstop (audit 2.3) — GET only; the RFC 8058 one-click POST
+  // below stays outside it (see the SPEC-GAP note above on this route's own limit).
+  const limited = await enforceGetBackstop(request);
+  if (limited) return limited;
   return handle(request);
 }
 

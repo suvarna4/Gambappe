@@ -9,6 +9,7 @@ import { MARKET_CATEGORY, addDaysToDateString, etDateString, getWeeklyLeaderboar
 import { getLeaderboardPicksForWeek, type LeaderboardPickRow } from '@receipts/db';
 import { jsonSuccess, runRoute } from '@/lib/api-response';
 import { rankLeaderboard } from '@/lib/leaderboards';
+import { enforceGetBackstop } from '@/lib/rate-limit';
 import { getDb, getRedis } from '@/lib/stores';
 
 export const runtime = 'nodejs';
@@ -21,6 +22,9 @@ function cacheKey(weekStart: string): string {
 
 export async function GET(request: Request): Promise<NextResponse> {
   return runRoute(async () => {
+    const limited = await enforceGetBackstop(request);
+    if (limited) return limited;
+
     const url = new URL(request.url);
     const parsed = getWeeklyLeaderboardsRequestSchema.parse({
       query: {

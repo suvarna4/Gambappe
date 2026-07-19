@@ -8,6 +8,7 @@ import { ApiError, claimBodySchema } from '@receipts/core';
 import { auth } from '../../../../auth';
 import { jsonSuccess, runRoute } from '@/lib/api-response';
 import { assertSameOrigin } from '@/lib/origin-check';
+import { clientIpKey, enforceRateLimit } from '@/lib/rate-limit';
 import { runClaim } from '@/lib/claim-flow';
 import { GHOST_COOKIE_NAME, clearedGhostCookieOptions } from '@/lib/ghost-cookie';
 import { toMeProfile } from '@/lib/serialize-profile';
@@ -37,6 +38,12 @@ function readGhostCookie(request: Request): string | null {
 export async function POST(request: Request): Promise<NextResponse> {
   return runRoute(async () => {
     assertSameOrigin(request);
+
+    // §14.1: "Claim attempts | IP | 10/hour" (audit 2.2). IP-keyed, so checked before the
+    // session lookup — the point is throttling the case-A–D DB work, and `auth()` itself
+    // does a database-session read (same order as the picks route's IP limit).
+    const limited = await enforceRateLimit('claim_attempts', clientIpKey(request.headers));
+    if (limited) return limited;
 
     const session = await auth();
     if (!session?.user?.id) throw new ApiError('UNAUTHENTICATED', 'sign-in required to claim');

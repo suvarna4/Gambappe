@@ -13,8 +13,7 @@
 import type { ReactElement } from 'react';
 import { CARD_SQUARE_HEIGHT, CARD_SQUARE_WIDTH, CARD_STORY_HEIGHT, CARD_STORY_WIDTH } from '@receipts/core';
 import { ApiError, errorEnvelope, nowMs, SHARE_CARD_FORMAT, type ShareCardFormat } from '@receipts/core';
-import { extractClientIp } from '@/lib/analytics';
-import { enforceRateLimit } from '@/lib/rate-limit';
+import { clientIpKey, enforceRateLimit } from '@/lib/rate-limit';
 import { ogVersionGuard } from './guard';
 import { renderCardImage } from './render';
 import { absoluteUrl } from './paths';
@@ -45,7 +44,7 @@ export async function handleCardRequest<T>(
   pagePathFor: (data: T) => string,
   render: (data: T, cardOptions: CardRenderOptions) => ReactElement,
 ): Promise<Response> {
-  const rateLimited = await enforceRateLimit('images', extractClientIp(request.headers) ?? 'unknown');
+  const rateLimited = await enforceRateLimit('images', clientIpKey(request.headers));
   if (rateLimited) return rateLimited;
 
   const format = parseFormat(request);
