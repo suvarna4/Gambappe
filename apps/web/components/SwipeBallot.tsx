@@ -25,6 +25,7 @@ import {
 import { ballotCopy, copy } from '@/lib/copy';
 import { formatEtClock } from '@/lib/format-et';
 import type { CachedPick } from '@/lib/pick-storage';
+import { ReceiptSlip } from './ReceiptSlip';
 
 export interface SwipeBallotProps {
   question: QuestionPublic;
@@ -81,6 +82,7 @@ export function SwipeBallot({
   const [flingSide, setFlingSide] = useState<MarketSide | null>(null);
   const [nudge, setNudge] = useState(false);
   const [pickCount, setPickCount] = useState(0);
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   const cardRef = useRef<HTMLDivElement>(null);
   const startX = useRef(0);
@@ -95,6 +97,14 @@ export function SwipeBallot({
   useEffect(() => {
     setPickCount(readCount(GUARDRAIL_KEYS.picks));
   }, []);
+
+  // Drives the receipt's undo countdown while the window is open (display only — the DELETE
+  // re-verifies server-side, §6.2 step 3).
+  useEffect(() => {
+    if (!pick || !undoable) return;
+    const id = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [pick, undoable]);
 
   // Idle nudge: once per session, before the first-ever throw, on an actionable open question.
   useEffect(() => {
@@ -198,35 +208,30 @@ export function SwipeBallot({
     onPick(side, true);
   }
 
-  // ---- Receipt state (SW1-T3 replaces this placeholder with the full ReceiptSlip). ----
+  // ---- Receipt state (SW1-T3). ----
   if (pick) {
     const sideLabel = pick.side === 'yes' ? yesLabel : noLabel;
-    const cents = impliedCents(pick.side, yesProbability);
+    // Receipts over claims (§2.4): print the STAMPED entry price, not the drifting live one.
+    const entryCents = impliedCents(pick.side, pick.yesPriceAtEntry ?? yesProbability);
+    const secondsLeft = undoable
+      ? Math.max(0, Math.ceil((Date.parse(pick.undoUntilIso) - nowMs) / 1000))
+      : null;
     return (
       <div className="space-y-2" data-testid="viewer-strip-pick">
-        <div
-          data-testid="receipt-slip"
-          className="bg-paper text-ink rounded-md px-4 py-3"
-          aria-live="polite"
-        >
-          <p className="font-mono text-sm" aria-label={ballotCopy.receiptPrinted(sideLabel, cents)}>
-            {copy.question.yourPickLabel}: {sideLabel} @ {cents}¢
-          </p>
-          <p className="text-muted font-mono text-xs">
-            {copy.question.comeBackAt(formatEtClock(question.reveal_at))}
-          </p>
-          {undoable ? (
-            <button
-              type="button"
-              data-testid="undo-pick"
-              onClick={handleUndo}
-              disabled={disabled}
-              className="text-loss mt-1 min-h-11 text-xs font-semibold uppercase underline disabled:opacity-50"
-            >
-              {copy.question.undoButton}
-            </button>
-          ) : null}
-        </div>
+        <ReceiptSlip
+          sideLabel={sideLabel}
+          entryCents={entryCents}
+          pickedAtLabel={`${formatEtClock(pick.pickedAtIso)} ET`}
+          serial={`№ ${question.question_date ?? question.slug.slice(0, 10)}`}
+          sealedNote={ballotCopy.crowdSealed(formatEtClock(question.lock_at))}
+          secondsLeft={secondsLeft}
+          onUndo={handleUndo}
+          disabled={disabled}
+          reducedMotion={reducedMotion}
+        />
+        <p className="text-muted px-1 font-mono text-xs">
+          {copy.question.comeBackAt(formatEtClock(question.reveal_at))}
+        </p>
       </div>
     );
   }

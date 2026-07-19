@@ -190,6 +190,10 @@ export const ballotCopy = {
   /** aria-live announcement when the receipt prints. */
   receiptPrinted: (sideLabel: string, cents: number) =>
     `Receipt printed — ${sideLabel} at ${cents} cents.`,
+  /** Static state of the printed undo link once the 60s window closes (§2.4). */
+  undoLocked: 'locked ✓',
+  /** Receipt footer-left: the crowd stays sealed until lock (§9.3). `{time}` is the lock ET. */
+  crowdSealed: (time: string) => `CROWD HIDDEN UNTIL LOCK · ${time}`,
   /** Idle-nudge sr hint (visually the card sways; SR users get the wells). */
   swipeHint: 'Swipe the card, or use the buttons below.',
 } as const;

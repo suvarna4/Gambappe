@@ -90,6 +90,9 @@ export function ViewerStrip({ question }: ViewerStripProps) {
           side: data.pick.side,
           pickedAtIso: data.pick.picked_at,
           undoUntilIso: data.undo_until,
+          // SW1-T3: keep the stamped entry price so the receipt prints the receipts-over-claims
+          // price, not the drifting live one (§2.4).
+          yesPriceAtEntry: data.pick.yes_price_at_entry,
         };
         if (typeof window !== 'undefined')
           writeCachedPick(window.localStorage, question.id, cached);
