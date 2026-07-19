@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-19T12:39:16.731Z",
+  "updated_at": "2026-07-19T12:39:19.518Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1260,12 +1260,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": "reassigned to claude-session-35b05898-7175 to take over/finish",
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/daily-question-swipe-ux-f0p4wq",
-      "pr": null,
+      "pr": "https://github.com/suvarna4/Gambappe/pull/73",
       "claimed_at": "2026-07-19T12:38:01.729Z",
-      "updated_at": "2026-07-19T12:38:01.729Z"
+      "updated_at": "2026-07-19T12:39:19.517Z"
     },
     "SW0-T3": {
       "title": "swipe_ballot feature flag (contract-change)",
