@@ -61,14 +61,17 @@ test('copy link mints a real share token, copies the page URL, and fires share_c
   });
 
   const gallery = page.getByTestId('gallery-share-sheet');
+  // ShareSheet mints the share token in a `useEffect` gated on `open` — it fires the instant
+  // the sheet mounts, not on the later "Copy link" click. The listener must be armed before the
+  // action that opens the sheet, or a fast mint can complete before `waitForResponse` attaches
+  // and the test hangs to its timeout under load.
+  const mintResponse = page.waitForResponse('**/api/share/token');
   await gallery.getByRole('button', { name: 'Open share sheet' }).click();
   const sheet = page.getByTestId('share-sheet');
-
-  const mintResponse = page.waitForResponse('**/api/share/token');
-  await sheet.getByRole('button', { name: 'Copy link' }).click();
   const mint = await mintResponse;
   expect(mint.status()).toBe(200);
 
+  await sheet.getByRole('button', { name: 'Copy link' }).click();
   await expect(sheet.getByRole('button', { name: 'Copied!' })).toBeVisible();
   await expect.poll(() => events.at(-1)?.event).toBe('share_completed');
   expect(events.at(-1)?.props).toMatchObject({ kind: 'receipt', method: 'copy_link', format: 'square' });
