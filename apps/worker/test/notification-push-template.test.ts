@@ -3,6 +3,7 @@
  * content contract (shared with `notification-email-template.ts`), and the ctaUrl → url mapping.
  */
 import { describe, expect, it } from 'vitest';
+import { PRODUCT_NAME } from '@receipts/core';
 import { renderNotificationPush } from '../src/lib/notification-push-template.js';
 
 describe('renderNotificationPush (§13.2)', () => {
@@ -23,7 +24,7 @@ describe('renderNotificationPush (§13.2)', () => {
   it('an unknown/future kind still renders (product fallback), never throws', () => {
     expect(() => renderNotificationPush('some_future_beat_nobody_has_wired_yet', {})).not.toThrow();
     const rendered = renderNotificationPush('some_future_beat_nobody_has_wired_yet', {});
-    expect(rendered.title).toBe('Receipts');
+    expect(rendered.title).toBe(PRODUCT_NAME);
   });
 
   it('an explicit payload.subject overrides the category-default title', () => {

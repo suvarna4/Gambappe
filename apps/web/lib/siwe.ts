@@ -13,9 +13,12 @@
  * keeps the dependency surface to just `viem` (§3 tech stack).
  */
 
-/** Pinned verbatim (§12.2) — never edit without updating this comment + the design doc. */
+import { PRODUCT_NAME } from '@receipts/core';
+
+/** Pinned wording (§12.2) — the product name interpolates from PRODUCT_NAME; never edit the
+ * surrounding sentence without updating this comment + the design doc. */
 export const WALLET_SIWE_STATEMENT =
-  'Link this wallet to Receipts to verify your Polymarket record. This signature is proof of ownership only — it cannot move funds or authorize anything.';
+  `Link this wallet to ${PRODUCT_NAME} to verify your Polymarket record. This signature is proof of ownership only — it cannot move funds or authorize anything.`;
 
 /** Polymarket is Polygon-mainnet only at MVP (§12.2). */
 export const WALLET_SIWE_CHAIN_ID = 137;

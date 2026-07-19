@@ -3,6 +3,7 @@
  * category-derived subjects/fallback copy, and the pre-rendered-`line` content contract.
  */
 import { describe, expect, it } from 'vitest';
+import { PRODUCT_NAME } from '@receipts/core';
 import { renderNotificationEmail } from '../src/lib/notification-email-template.js';
 
 const unsubscribeUrl = 'https://receipts.example/api/v1/notifications/unsubscribe?token=abc.def';
@@ -30,7 +31,7 @@ describe('renderNotificationEmail (§13.2 one shared receipt-styled layout)', ()
       renderNotificationEmail('some_future_beat_nobody_has_wired_yet', {}, { unsubscribeUrl }),
     ).not.toThrow();
     const rendered = renderNotificationEmail('some_future_beat_nobody_has_wired_yet', {}, { unsubscribeUrl });
-    expect(rendered.subject).toBe('Receipts update');
+    expect(rendered.subject).toBe(`${PRODUCT_NAME} update`);
   });
 
   it('sets List-Unsubscribe + List-Unsubscribe-Post (RFC 8058 one-click)', () => {

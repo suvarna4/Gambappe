@@ -29,7 +29,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { isFlagEnabled, now } from '@receipts/core';
+import { isFlagEnabled, now, PRODUCT_NAME } from '@receipts/core';
 import { getDb } from '@/lib/stores';
 import { getDuoLadderPage } from '@/lib/duo-ladder';
 import { DuoLadderTable } from '@/components/duo/DuoLadderTable';
@@ -47,7 +47,7 @@ interface PageProps {
 }
 
 export const metadata: Metadata = {
-  title: `${duoCopy.ladderHeading} — Receipts`,
+  title: `${duoCopy.ladderHeading} — ${PRODUCT_NAME}`,
   description: 'Duo tier standings.',
 };
 

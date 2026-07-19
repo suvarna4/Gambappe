@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { PRODUCT_NAME } from '@receipts/core';
 
 /**
  * WS10-T1 AC: non-admin/no-token requests 404 (not 401/403 — the existence of `/admin`
@@ -32,7 +33,7 @@ test('right token from the allowed IP → 200, renders the shell', async ({ requ
     headers: { authorization: `Bearer ${TOKEN}`, 'x-forwarded-for': ALLOWED_IP },
   });
   expect(res.status()).toBe(200);
-  expect(await res.text()).toContain('Receipts admin');
+  expect(await res.text()).toContain(`${PRODUCT_NAME} admin`);
 });
 
 test('/api/admin/* is gated the same way', async ({ request }) => {

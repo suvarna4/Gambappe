@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { PRODUCT_NAME } from '@receipts/core';
 import PlacementClient from './PlacementClient';
 
 /**
@@ -8,7 +9,7 @@ import PlacementClient from './PlacementClient';
  * `POST /placement/answers` API. All data fetching happens client-side in `PlacementClient`.
  */
 export const metadata: Metadata = {
-  title: 'Placement — Receipts',
+  title: `Placement — ${PRODUCT_NAME}`,
 };
 
 export default function PlacementPage() {

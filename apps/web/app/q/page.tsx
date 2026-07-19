@@ -17,6 +17,7 @@
  * one for pagination isn't a further tradeoff worth taking at today's archive size.
  */
 import type { Metadata } from 'next';
+import { PRODUCT_NAME } from '@receipts/core';
 import { appUrl } from '@/lib/app-url';
 import { loadArchiveListing } from '@/lib/archive';
 import { buildArchiveJsonLd } from '@/lib/structured-data';
@@ -24,7 +25,7 @@ import { getDb } from '@/lib/stores';
 
 export const dynamic = 'force-dynamic';
 
-const ARCHIVE_TITLE = 'Question archive — Receipts';
+const ARCHIVE_TITLE = `Question archive — ${PRODUCT_NAME}`;
 const ARCHIVE_DESCRIPTION = 'Past daily questions and how the crowd called them.';
 
 export async function generateMetadata(): Promise<Metadata> {

@@ -12,7 +12,7 @@
  * yet) still renders — with a generic per-category fallback line — rather than throwing and
  * failing the whole dispatch batch.
  */
-import { notificationCategoryForKind, type NotificationCategory } from '@receipts/core';
+import { notificationCategoryForKind, PRODUCT_NAME, type NotificationCategory } from '@receipts/core';
 
 export interface NotificationEmailPayload {
   /** Pre-rendered narration text (§13.3 `narrate()` output) — see file header contract. */
@@ -42,14 +42,14 @@ const CATEGORY_SUBJECTS: Record<NotificationCategory, string> = {
   reveal: "Tonight's reveal is in",
   nemesis: 'Nemesis week update',
   duo: 'Duo update',
-  product: 'Receipts update',
+  product: `${PRODUCT_NAME} update`,
 };
 
 const CATEGORY_FALLBACK_LINES: Record<NotificationCategory, string> = {
   reveal: 'The reveal is ready. Come see how it landed.',
   nemesis: 'Something moved in your nemesis week.',
   duo: 'Something moved with your duo.',
-  product: "There's an update on your Receipts activity.",
+  product: `There's an update on your ${PRODUCT_NAME} activity.`,
 };
 
 function escapeHtml(input: string): string {
@@ -68,7 +68,7 @@ export function renderNotificationEmail(
   opts: RenderNotificationEmailOptions,
 ): RenderedNotificationEmail {
   const category = notificationCategoryForKind(kind);
-  const appName = opts.appName ?? 'Receipts';
+  const appName = opts.appName ?? PRODUCT_NAME;
   const line = payload.line ?? CATEGORY_FALLBACK_LINES[category];
   const subject = payload.subject ?? CATEGORY_SUBJECTS[category];
 

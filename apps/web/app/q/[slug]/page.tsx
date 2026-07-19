@@ -14,7 +14,7 @@
  */
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { nowMs } from '@receipts/core';
+import { nowMs, PRODUCT_NAME } from '@receipts/core';
 import { QuestionStateView } from '@/components/QuestionStateView';
 import { ViewerStrip } from '@/components/ViewerStrip';
 import { appUrl } from '@/lib/app-url';
@@ -41,7 +41,7 @@ export async function generateMetadata({ params }: QuestionPageProps): Promise<M
   const pageUrl = `${appUrl()}/q/${question.slug}`;
 
   return {
-    title: `${question.headline} — Receipts`,
+    title: `${question.headline} — ${PRODUCT_NAME}`,
     description,
     openGraph: {
       title: question.headline,

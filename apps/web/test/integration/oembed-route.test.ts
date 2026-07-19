@@ -8,6 +8,7 @@
  * touches the DB for a request it's already rejected on host/scheme/path grounds).
  */
 import { fileURLToPath } from 'node:url';
+import { PRODUCT_NAME } from '@receipts/core';
 import { dirname, join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { sql } from 'drizzle-orm';
@@ -77,7 +78,7 @@ describe('GET /api/oembed — question', () => {
     expect(body.type).toBe('rich');
     expect(body.version).toBe('1.0');
     expect(body.title).toBe(question.headline);
-    expect(body.provider_name).toBe('Receipts');
+    expect(body.provider_name).toBe(PRODUCT_NAME);
     expect(body.width).toBe(1200);
     expect(body.height).toBe(630);
     expect(typeof body.thumbnail_url).toBe('string');

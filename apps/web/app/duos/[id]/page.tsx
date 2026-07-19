@@ -14,7 +14,7 @@
  */
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { isFlagEnabled } from '@receipts/core';
+import { isFlagEnabled, PRODUCT_NAME } from '@receipts/core';
 import { Barcode } from '@receipts/ui';
 import { getDb } from '@/lib/stores';
 import { DUO_MATCH_HISTORY_LIMIT, getDuoPublicPage } from '@/lib/serialize-duo';
@@ -37,10 +37,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const { id } = await params;
   const page = await getDuoPublicPage(getDb(), id, DUO_MATCH_HISTORY_LIMIT);
-  if (!page) return { title: 'Duo not found — Receipts' };
+  if (!page) return { title: `Duo not found — ${PRODUCT_NAME}` };
 
   const [a, b] = page.duo.partners;
-  const title = `${a.handle} & ${b.handle} — Receipts`;
+  const title = `${a.handle} & ${b.handle} — ${PRODUCT_NAME}`;
   const description = `Duo record: ${a.handle} & ${b.handle}, ${page.duo.matches_played} matches played.`;
   const pageUrl = `${appUrl()}/duos/${page.duo.id}`;
   // §10.5: `/api/og/duo/:duoId` already exists (`apps/web/app/api/og/duo/[duoId]/route.ts`).

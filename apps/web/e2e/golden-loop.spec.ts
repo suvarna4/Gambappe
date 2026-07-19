@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { PRODUCT_NAME } from '@receipts/core';
 import { expect, test } from '@playwright/test';
 import { eq } from 'drizzle-orm';
 import { Redis } from 'ioredis';
@@ -339,7 +340,7 @@ test.describe('WS14-T1 golden loop (§17.1)', () => {
     // proves `/` renders the state-machine UI or the documented empty state, never a 500.
     const res = await page.goto('/');
     expect(res?.status()).toBe(200);
-    await expect(page.locator('h1')).toContainText('Receipts');
+    await expect(page.locator('h1')).toContainText(PRODUCT_NAME);
     // Either a real "today" daily is showing (some state) or the documented empty state —
     // never neither (that would mean the server component threw and rendered nothing usable).
     const anyState = page.locator(

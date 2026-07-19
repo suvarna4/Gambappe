@@ -7,12 +7,13 @@
  * route), and the thumbnail's `?v=` hash is always the same canonical value the OG route itself
  * would redirect a caller to.
  */
+import { PRODUCT_NAME } from '@receipts/core';
 import type { Db } from '@receipts/db';
 import { loadDuoOg, loadMatchupOg, loadProfileOg, loadQuestionOg } from '@/lib/og/entities';
 import { OG_HEIGHT, OG_WIDTH } from '@/lib/og/components';
 import type { OembedRouteMatch } from './route-matcher';
 
-const PROVIDER_NAME = 'Receipts';
+const PROVIDER_NAME = PRODUCT_NAME;
 
 export interface OembedResponseBody {
   type: 'rich';

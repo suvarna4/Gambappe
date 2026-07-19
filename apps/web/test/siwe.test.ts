@@ -3,6 +3,7 @@
  * back `/wallet/verify`'s domain/nonce/expiry/address re-checks (§12.2 step 3).
  */
 import { describe, expect, it } from 'vitest';
+import { PRODUCT_NAME } from '@receipts/core';
 import {
   WALLET_SIWE_CHAIN_ID,
   WALLET_SIWE_STATEMENT,
@@ -33,7 +34,7 @@ describe('buildSiweMessage / parseSiweMessage — round trip (§12.2)', () => {
     expect(parsed).not.toBeNull();
     expect(parsed).toEqual(f);
     expect(parsed!.statement).toBe(
-      "Link this wallet to Receipts to verify your Polymarket record. This signature is proof of ownership only — it cannot move funds or authorize anything.",
+      `Link this wallet to ${PRODUCT_NAME} to verify your Polymarket record. This signature is proof of ownership only — it cannot move funds or authorize anything.`,
     );
   });
 

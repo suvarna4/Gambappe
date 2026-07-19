@@ -15,6 +15,7 @@
  *  - The two claim-nudge strings and the publicness sentence below are PINNED VERBATIM —
  *    do not paraphrase them (§11.3, §13.3 both point back at this file for the rendered text).
  */
+import { PRODUCT_NAME } from '@receipts/core';
 
 /** INV-6, pinned verbatim (§10.6): shown on the claim/signup screen. */
 export const CLAIM_PUBLICNESS_STATEMENT =
@@ -67,7 +68,7 @@ export const CLAIM_SIGNIN_EMAIL_SENT =
 export const CLAIM_AGE_ATTEST_HEADING = 'One more thing';
 export const CLAIM_AGE_ATTEST_LABEL = "I'm 18 or older";
 export const CLAIM_AGE_ATTEST_SUBMIT_LABEL = 'Confirm & claim';
-export const CLAIM_AGE_ATTEST_FOOTNOTE = 'Receipts never holds money — picks are for competition, not wagers.';
+export const CLAIM_AGE_ATTEST_FOOTNOTE = `${PRODUCT_NAME} never holds money — picks are for competition, not wagers.`;
 
 export const CLAIM_SUCCESS_HEADING = "You're claimed";
 export const CLAIM_SUCCESS_CASE_B_CTA = 'Answer a few quick questions to get placed';
@@ -75,7 +76,7 @@ export const CLAIM_ALREADY_CLAIMED = 'This account is already claimed. Nothing t
 export const CLAIM_GENERIC_ERROR = 'Something went wrong claiming your account. Try again.';
 
 export const EIGHTEEN_PLUS_FOOTER_NOTICE =
-  '18+ only. Receipts never holds money — picks are for competition, not wagers.';
+  `18+ only. ${PRODUCT_NAME} never holds money — picks are for competition, not wagers.`;
 
 /** WS7-T2 (home + question page) section. */
 export const copy = {

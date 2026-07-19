@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { now } from '@receipts/core';
+import { now, PRODUCT_NAME } from '@receipts/core';
 import { NemesisMatchupCard } from '@/components/nemesis/NemesisMatchupCard';
 import { appUrl } from '@/lib/app-url';
 import { getPairingPublicById, getPairingSideRef } from '@/lib/nemesis/service';
@@ -43,10 +43,10 @@ function fallbackSide(profileId: string, handle: string, slug: string): PairingS
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { pairingId } = await params;
   const pairing = await getPairingPublicById(getDb(), pairingId, now());
-  if (!pairing) return { title: 'Matchup not found — Receipts' };
+  if (!pairing) return { title: `Matchup not found — ${PRODUCT_NAME}` };
   const pageUrl = `${appUrl()}/vs/${pairingId}`;
   return {
-    title: `${pairing.a.handle} vs ${pairing.b.handle} — Receipts`,
+    title: `${pairing.a.handle} vs ${pairing.b.handle} — ${PRODUCT_NAME}`,
     description: `Nemesis matchup: ${pairing.a.handle} vs ${pairing.b.handle}, week of ${pairing.week_start}.`,
     alternates: {
       types: {

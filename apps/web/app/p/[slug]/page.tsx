@@ -18,6 +18,7 @@
  * public-profile-of-anyone case only.
  */
 import type { Metadata } from 'next';
+import { PRODUCT_NAME } from '@receipts/core';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Barcode, PriceTag, Stamp, StreakFlame, TicketCard } from '@receipts/ui';
@@ -68,7 +69,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   // §10.5 pinned convention: og:title = headline or "{handle}'s receipt".
   const title = `${profile.handle}'s receipt`;
-  const description = `${recordSummary(profile)} on Receipts.`;
+  const description = `${recordSummary(profile)} on ${PRODUCT_NAME}.`;
   const pageUrl = `${appUrl()}/p/${profile.slug}`;
   // SPEC-GAP(ws7-t4): WS8 owns the real /api/og/* renderer (§10.5: six templates incl.
   // `profile`, 1200×630, satori). It doesn't exist yet, so this points at the documented

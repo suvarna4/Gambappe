@@ -5,6 +5,18 @@
  * Code must import these; never hardcode a value that appears in this file.
  */
 
+// --- Branding --------------------------------------------------------------------------------
+
+/**
+ * The user-facing product name — THE single place to change when the name is finalized.
+ * Every displayed occurrence (page titles, the home wordmark, email/push templates, the
+ * oEmbed provider, the SIWE signature message, the money-language copy strings) imports this
+ * constant; nothing user-visible hardcodes the name. Internal identifiers (`@receipts/*`
+ * package names, DB names, design-doc references) intentionally do NOT follow this constant —
+ * they're code plumbing, not product surface, and renaming them buys nothing user-visible.
+ */
+export const PRODUCT_NAME = 'Gambappe';
+
 // --- Daily schedule (DD-1: single global schedule in America/New_York) -----------------------
 
 /** IANA zone anchoring all ET-scheduled instants (§4.3 — never hardcode UTC offsets). */

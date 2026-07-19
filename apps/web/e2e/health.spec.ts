@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { PRODUCT_NAME } from '@receipts/core';
 
 test('GET /api/health reports pg + redis ok', async ({ request }) => {
   const res = await request.get('/api/health');
@@ -12,6 +13,6 @@ test('GET /api/health reports pg + redis ok', async ({ request }) => {
 
 test('home page renders with the 18+ footer (INV-9)', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Receipts' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: PRODUCT_NAME })).toBeVisible();
   await expect(page.locator('footer')).toContainText('18+');
 });

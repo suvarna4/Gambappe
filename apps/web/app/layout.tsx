@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
+import { PRODUCT_NAME } from '@receipts/core';
 
 import './globals.css';
 import { EIGHTEEN_PLUS_FOOTER_NOTICE } from '@/lib/copy';
 
 export const metadata: Metadata = {
-  title: 'Receipts',
+  title: PRODUCT_NAME,
   description: 'Timestamped, price-stamped positions on real prediction-market questions.',
 };
 

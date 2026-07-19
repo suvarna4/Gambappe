@@ -3,21 +3,21 @@
  * Same content contract as `notification-email-template.ts`: `payload.line` is the already-
  * narrated text (§13.3 `narrate()` output) — this file only wraps it, never derives it.
  */
-import { notificationCategoryForKind, type NotificationCategory } from '@receipts/core';
+import { notificationCategoryForKind, PRODUCT_NAME, type NotificationCategory } from '@receipts/core';
 import type { NotificationEmailPayload } from './notification-email-template.js';
 
 const CATEGORY_TITLES: Record<NotificationCategory, string> = {
   reveal: "Tonight's reveal is in",
   nemesis: 'Nemesis week update',
   duo: 'Duo update',
-  product: 'Receipts',
+  product: PRODUCT_NAME,
 };
 
 const CATEGORY_FALLBACK_BODIES: Record<NotificationCategory, string> = {
   reveal: 'The reveal is ready. Come see how it landed.',
   nemesis: 'Something moved in your nemesis week.',
   duo: 'Something moved with your duo.',
-  product: "There's an update on your Receipts activity.",
+  product: `There's an update on your ${PRODUCT_NAME} activity.`,
 };
 
 export interface RenderedPush {
