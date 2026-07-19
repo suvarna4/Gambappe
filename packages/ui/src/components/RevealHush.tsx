@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { HUSH_WINDOW_MS, isHushWindow } from '../format.js';
 import { prefersReducedMotion } from '../reduced-motion.js';
+import { colors } from '../tokens.js';
 
 export interface RevealHushProps {
   /** ISO `reveal_at` — the hush activates `HUSH_WINDOW_MS` before this and holds until it. */
@@ -22,9 +23,7 @@ export interface RevealHushProps {
   className?: string;
 }
 
-// TODO(SW0-T2): swap to `colors.gold` from tokens.ts once that token lands — same value
-// (#FFC53D), hardcoded here only because this task started before SW0-T2 merged (mock-start-ok).
-const HUSH_GOLD = '#FFC53D';
+const HUSH_GOLD = colors.gold;
 
 /**
  * §2.6 F1 hush (docs/swipe-ux-plan.md, SW3-T1): starting `HUSH_WINDOW_MS` before reveal, dims the
