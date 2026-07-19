@@ -16,6 +16,24 @@ process.env.ADMIN_STOPGAP_IP_ALLOWLIST ??= '127.0.0.1';
 // until one internal ladder window completes cleanly"). Same inherit-into-webServer mechanism
 // as `ADMIN_STOPGAP_TOKEN` above.
 process.env.FLAG_DUO_QUEUE ??= 'true';
+// WS14-T1 golden-loop.spec.ts calls the real `POST /internal/revalidate` (§9.2) to force fresh
+// ISR after directly advancing question state (lock/reveal) via repository calls instead of the
+// real worker cron — same "harmless test-only default" rationale as the stopgap token above.
+process.env.INTERNAL_API_SECRET ??= 'e2e-test-internal-secret';
+// `apps/web/lib/venues.ts`'s `defaultVenueAdapters()` constructs a real `KalshiAdapter`/
+// `PolymarketAdapter` eagerly (§6.2 step 4's synchronous price-fetch fallback) — construction
+// itself throws when these base-URL env vars are unset, regardless of whether the fetch is ever
+// reached. `golden-loop.spec.ts` primes the real Redis price cache before placing its pick
+// (staying off the venue-adapter path entirely, both for realism — production keeps this cache
+// warm via `venue:price-tick` — and to avoid a live-network-call's timing variance counting
+// against §19.3's <1% flake-rate AC), but these still guard the OTHER rungs of the ladder any
+// future real (non-`page.route`-mocked) pick placement would fall through to on a cache miss:
+// without dummy values, construction itself 500s before ever reaching the DB-fallback rung.
+// Port 1 is always closed — a fetch that does reach it fails fast (ECONNREFUSED) rather than
+// hanging for the venue-fetch's 2s timeout.
+process.env.KALSHI_API_BASE ??= 'http://127.0.0.1:1';
+process.env.POLYMARKET_GAMMA_BASE ??= 'http://127.0.0.1:1';
+process.env.POLYMARKET_CLOB_BASE ??= 'http://127.0.0.1:1';
 
 export default defineConfig({
   testDir: './e2e',
