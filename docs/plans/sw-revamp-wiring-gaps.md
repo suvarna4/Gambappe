@@ -9,7 +9,7 @@ repo-wide pattern: several SW5/SW8 tasks are marked `done` in the workstream-loc
 their components were never actually mounted on the real pages a user visits.
 
 This doc records the audit (§2), which components are genuinely live vs. gallery-only (§3), and
-five remediation tasks (§4, to be registered as **SW10** in the workstream-lock registry once a fable review round returns clean) that close
+five remediation tasks (§4, registered as **SW10** in the workstream-lock registry after review round 8 returned clean — §14) that close
 each gap. §5 corrects the record on the five original tasks.
 
 ## 2. How the gap was found, and how every other SW task was checked
@@ -95,7 +95,7 @@ gallery page" that "gate CI." `e2e/dev-ui.spec.ts` only makes content assertions
 the e2e suite. There is no visual regression gate today, so a future styling regression on any
 of these components would ship silently.
 
-## 4. Tasks (to be registered as SW10 in the workstream-lock registry after a clean review round)
+## 4. Tasks (registered as SW10 in the workstream-lock registry — see §14)
 
 **SW10-T1 · Nemesis daily flip: reveal-payload data + real wiring · Depends: —**
 `[contract-change]`
@@ -139,8 +139,9 @@ via the EXISTING catalog beats only, with these mechanical triggers and slot der
   status is at hand, NOT via `isPubliclyResolved`, which would wrongly exclude an unsettled
   nemesis-bonus row).
 - `nemesis_comeback`: this beat is about the VIEWER coming back — all values viewer-relative,
-  pinned (fable round 7): the running deficit is `opponent_wins − you_wins` over the
-  date-ordered resolved DAILY rows (see the null-date rule below); emit iff the after-tally is
+  pinned (fable round 7): the viewer's side of the scoreboard's `a`/`b` pair is the one whose
+  `profile_id` equals `viewerProfileId`; the running deficit is `opponent_wins − you_wins` over
+  the date-ordered resolved DAILY rows (see the null-date rule below); emit iff the after-tally is
   LEVEL and that deficit peaked at ≥ 2 (the design doc's own "≥2 down" condition, §13.3 — a
   1-point deficit never fires; `numberWord` has no entry for 1). An OPPONENT's comeback to
   level emits nothing. Slots: `handle` = the VIEWER's own handle (the leveling player the
@@ -544,3 +545,13 @@ blocking item plus three nits, all in the same narration bullet — fixed above:
    `getUTCDay()` or pure arithmetic".
 4. **NIT — `questionsLeft` named a top-level `result` field the row doesn't have.** Fixed:
    any non-null side with `result === 'pending'`; both-null rows don't count.
+
+## 14. Fable adversarial review — round 8: clean
+
+Round 8 (micro-scoped to the round-7 amendments) verified the comeback beat's pins map 1:1
+onto the catalog entry, the degrade rule is concretely computable (full after-tally vs
+daily-only trace, compared at the level check), and the §13 log matches the text. Verdict:
+**no blocking issues — ready to register.** Its one optional nit (state the viewer→`a`/`b`
+`profile_id` equality explicitly) is applied above. Review loop closed after 8 rounds
+(7, 6, 4, 5, 3, 3, 4→1-blocking, 0 findings); the SW10 tasks are registered in the
+workstream-lock registry as of this revision.
