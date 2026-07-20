@@ -15,8 +15,8 @@
  * (zero-distance) drag on the ancestor first, and `setPointerCapture` there intercepts it.
  */
 import { useState } from 'react';
-import { prefersReducedMotion, tiltDeg, tintOpacity } from '@receipts/ui';
-import { useDragCommit } from '@/lib/use-drag-commit';
+import { HAPTIC_COMMIT, prefersReducedMotion, tiltDeg, tintOpacity } from '@receipts/ui';
+import { haptic, useDragCommit } from '@/lib/use-drag-commit';
 import { VerdictCard, type VerdictCardProps } from './VerdictCard';
 
 export interface VerdictSwipeCardProps extends Omit<VerdictCardProps, 'onRunItBack' | 'onNewFate'> {
@@ -38,6 +38,11 @@ export function VerdictSwipeCard({
   const drag = useDragCommit({
     disabled,
     onCommit: (direction) => {
+      // `SwipeBallot` fires `HAPTIC_COMMIT` on its own commit path (fable review of PR #84,
+      // round 2) — the shared `useDragCommit` engine only fires the arm buzz, so this surface
+      // needs its own commit haptic to match, or a verdict swipe would arm-buzz but never
+      // commit-buzz while the pick ballot's does both.
+      haptic(HAPTIC_COMMIT);
       if (direction === 'right') onRunItBack();
       else onNewFate();
     },

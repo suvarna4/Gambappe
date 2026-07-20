@@ -37,7 +37,7 @@
  */
 import { randomUUID } from 'node:crypto';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import {
   connect,
   nemesisPairings,
@@ -113,25 +113,39 @@ const WIDE_SEASON_ENDS_ON = '2035-12-31';
  * two calls unlikely, but does nothing to guarantee any ONE call's row is the specific one
  * `ORDER BY starts_on ASC LIMIT 1` returns among several). Find-or-create removes the ambiguity
  * at the root — there is only ever one row to find.
+ *
+ * Fable review round 2 of PR #84: find-or-create alone isn't enough — `playwright.config.ts` sets
+ * `fullyParallel: true` with no worker cap, all four tests in this file call `seedWideSeason` at
+ * suite start, and `seasons` has no unique index on `(kind, starts_on, ends_on)`, so two workers
+ * can both SELECT-miss in the same window and both INSERT — recreating the exact duplicate-season
+ * bug this helper exists to prevent. `pg_advisory_xact_lock` serializes callers on a fixed key,
+ * scoped to the transaction so it auto-releases at commit/rollback and stays correct under
+ * connection pooling (unlike a session-level `pg_advisory_lock`, which needs the same connection
+ * for lock and unlock — not guaranteed across a pool).
  */
+const WIDE_SEASON_LOCK_KEY = 727_002_026; // arbitrary, stable — only needs to be unique among this repo's advisory-lock keys (there are none others yet).
+
 async function seedWideSeason(): Promise<string> {
-  const [existing] = await db
-    .select()
-    .from(seasons)
-    .where(
-      and(
-        eq(seasons.kind, 'nemesis'),
-        eq(seasons.startsOn, WIDE_SEASON_STARTS_ON),
-        eq(seasons.endsOn, WIDE_SEASON_ENDS_ON),
-      ),
-    )
-    .limit(1);
-  if (existing) return existing.id as string;
-  const [season] = await db
-    .insert(seasons)
-    .values(buildSeason({ startsOn: WIDE_SEASON_STARTS_ON, endsOn: WIDE_SEASON_ENDS_ON }))
-    .returning();
-  return season!.id;
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${WIDE_SEASON_LOCK_KEY})`);
+    const [existing] = await tx
+      .select()
+      .from(seasons)
+      .where(
+        and(
+          eq(seasons.kind, 'nemesis'),
+          eq(seasons.startsOn, WIDE_SEASON_STARTS_ON),
+          eq(seasons.endsOn, WIDE_SEASON_ENDS_ON),
+        ),
+      )
+      .limit(1);
+    if (existing) return existing.id as string;
+    const [season] = await tx
+      .insert(seasons)
+      .values(buildSeason({ startsOn: WIDE_SEASON_STARTS_ON, endsOn: WIDE_SEASON_ENDS_ON }))
+      .returning();
+    return season!.id as string;
+  });
 }
 
 /** An already-`claimed` profile with a real backing `users` row and a real, directly-seeded

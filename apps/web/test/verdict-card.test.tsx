@@ -46,6 +46,18 @@ describe('VerdictCard', () => {
     expect(html).not.toContain('closed it out');
   });
 
+  it('a tiebreak win/loss (tied score, decided on edge) never prints the same false "0 clear" boast (fable review of PR #84, round 2)', () => {
+    const won = renderToStaticMarkup(<VerdictCard {...base} outcome="won" scoreMargin={0} />);
+    const lost = renderToStaticMarkup(<VerdictCard {...base} outcome="lost" scoreMargin={0} />);
+    expect(won).toContain('tiebreak');
+    expect(lost).toContain('tiebreak');
+    expect(won).not.toContain('0 clear');
+    expect(lost).not.toContain('0 clear');
+    // And it's still framed as a real win/loss, not folded into the draw heading.
+    expect(won).toContain('You took the week');
+    expect(lost).toContain('Taken down');
+  });
+
   it('orders rematch-by-swipe new-fate-left / run-it-back-right (affirmative right, D-SW9)', () => {
     const html = renderToStaticMarkup(
       <VerdictCard {...base} outcome="lost" onNewFate={() => {}} onRunItBack={() => {}} />,
