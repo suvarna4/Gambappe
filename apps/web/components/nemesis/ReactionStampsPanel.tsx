@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { PairingReactionEmoji } from '@receipts/core';
 import { ApiClientError, fetchMe } from '@/lib/pick-client';
 import { submitPairingReaction } from '@/lib/nemesis/reactions-client';
@@ -46,6 +47,17 @@ type MeState =
  * UX only, matching this codebase's established client-vs-server enforcement split.
  */
 export function ReactionStampsPanel({ pairingId, stamps, sideProfileIds, className }: ReactionStampsPanelProps) {
+  // `useRouter()` throws ("expected app router to be mounted") outside a real Next.js App
+  // Router request — this repo's presentational unit tests render components with plain
+  // `renderToStaticMarkup` (§10.4: no DOM/router test harness), including `NemesisMatchupCard`,
+  // which mounts this panel. Called unconditionally every render either way (no hook-order
+  // change), just tolerant of the one environment that doesn't provide the context.
+  let router: ReturnType<typeof useRouter> | null;
+  try {
+    router = useRouter();
+  } catch {
+    router = null;
+  }
   const [me, setMe] = useState<MeState>({ status: 'loading' });
   const [localStamps, setLocalStamps] = useState(stamps ?? { a: null, b: null });
   const [busy, setBusy] = useState(false);
@@ -86,6 +98,12 @@ export function ReactionStampsPanel({ pairingId, stamps, sideProfileIds, classNa
       setLocalStamps({ ...localStamps, [viewerSide]: stamp });
       try {
         await submitPairingReaction(pairingId, stamp);
+        // Fable review of PR #91: `NemesisMatchupCard`'s `SideBlock` renders the viewer's own
+        // side's read-only stamp straight off the server-provided `stamps` prop — without this,
+        // that badge would keep showing the pre-post value (or nothing) until the next real
+        // navigation, visibly disagreeing with this panel's own optimistic `localStamps`.
+        // `router.refresh()` re-fetches the server payload so `SideBlock`'s copy catches up too.
+        router?.refresh();
       } catch (err) {
         setLocalStamps(previous);
         setError(err instanceof ApiClientError ? apiErrorCopy(err) : 'Could not send that reaction — try again.');
@@ -93,7 +111,7 @@ export function ReactionStampsPanel({ pairingId, stamps, sideProfileIds, classNa
         setBusy(false);
       }
     },
-    [viewerSide, localStamps, pairingId],
+    [viewerSide, localStamps, pairingId, router],
   );
 
   if (!canReact) return null;

@@ -41,6 +41,14 @@ export interface SubmitPairingReactionInput {
  * One stamp per player per ET calendar day (`etDateString`, DD-1): a same-day repost REPLACES
  * the day's stamp (`upsertPairingReaction`'s documented choice over a 409 — see that function's
  * comment in `packages/db/src/repositories/pairings.ts`).
+ *
+ * Judgment call (fable review of PR #91): no `pairing.status` gate — a participant can stamp a
+ * `completed` or `cancelled` (non-block) pairing too, so `/vs/[pairingId]`'s permanent public
+ * page stays reactable forever. The spec is silent on this; left open deliberately (trash talk
+ * after the week concludes is in-genre, matching how `ReactionStamps`' own copy — "Sweating?",
+ * "Called it" — reads equally well post-verdict) rather than gating to `status: 'active'` only.
+ * The existing participant-only, block-severed, and rate-limited (§14.1) guards keep the abuse
+ * ceiling on a stale pairing the same as on a live one.
  */
 export async function submitPairingReaction(
   db: Db,

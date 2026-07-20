@@ -13,11 +13,14 @@ import type { PairingSide } from '@/lib/nemesis/types';
  * pages (§10.1: "`/vs/[pairingId]` | ISR 30s | public matchup").
  *
  * INV-10 compliance: this server render is viewer-free by construction —
- * `NemesisMatchupCard` is called with `viewerProfileId={null}` here, always. There is no
- * client "viewer island" on this page (unlike `/q/[slug]`'s §10.2 pattern): the
+ * `NemesisMatchupCard` is called with `viewerProfileId={null}` here, always. The
  * rematch-request flow needs `claimed` auth and a real identity check, so it lives entirely
  * on the private `/nemesis` hub page instead of being bolted onto this public, cache-shared
- * route.
+ * route. SW10-T4 (wiring-gaps doc §4) DOES mount one client viewer island here —
+ * `ReactionStampsPanel` (inside `NemesisMatchupCard`) — but it self-fetches identity
+ * post-hydration the same way `ViewerStrip`/`QuestionThread` do on ISR'd pages elsewhere, so
+ * this page's SERVER render stays exactly as viewer-free as before; see that component's own
+ * header for why its first paint can never carry real viewer state.
  *
  * WS5-T4: now backed by real Postgres reads (`@/lib/nemesis/service`, §9.2 `GET /pairings/:id`
  * + a `GET /profiles/:slug`-equivalent rating composition), replacing WS7-T6's original mock.

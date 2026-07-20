@@ -556,7 +556,11 @@ Partial unique: a profile may have at most one `active` duo.
 
 #### `reactions`
 
-`id`, `context_kind` (same values), `context_id`, `profile_id`, `emoji text` (must be in `REACTION_SET`), unique `(context_kind, context_id, profile_id, emoji)`. Ghosts allowed.
+`id`, `context_kind` (same values), `context_id`, `profile_id`, `emoji text` (must be in `REACTION_SET`), unique `(context_kind, context_id, profile_id, emoji)`. Ghosts allowed. Only for `context_kind` in `{question, duo_match}` — `pairing` reactions (§9.2 SW10-T4) use the separate `pairing_reactions` table below, since their semantics differ (claimed-only, one-per-day-replace, not toggle).
+
+#### `pairing_reactions`
+
+(SW10-T4, wiring-gaps doc §4 SW10-T4) `id`, `pairing_id FK`, `profile_id FK`, `emoji text` (must be in `PAIRING_REACTION_SET`, NOT `REACTION_SET` — a separate preset vocabulary, deliberately never merged into the shared enum so it can't leak into `QuestionThread`'s picker), `reaction_date date` (ET calendar day), unique `(pairing_id, profile_id, reaction_date)`. Claimed-participants-only, block-severed (§14.3), enforced server-side (§9.2's `POST /reactions` `pairing` branch) since no other layer covers reactions. A same-day repost REPLACES the row rather than toggling it.
 
 #### `blocks`
 
@@ -947,7 +951,7 @@ Served by `GET /leaderboards/weekly` (owner: WS3-T7). Window = ISO week Mon–Su
 | `DELETE /picks/:id` | ghost+ | Undo, §6.2 |
 | `GET /questions/:slug/thread` | none | Posts + reaction counts, paginated. Same shape at `GET /pairings/:id/thread` and `GET /duo-matches/:id/thread` |
 | `POST /questions/:id/posts` | claimed | Body `{body}`; also `POST /pairings/:id/posts`, `POST /duo-matches/:id/posts` |
-| `POST /reactions` | ghost+ | `{context_kind, context_id, emoji}` toggle semantics (2nd call removes) |
+| `POST /reactions` | ghost+ for `question`/`duo_match`; claimed-participant-only for `pairing` | `{context_kind, context_id, emoji}`. `question`/`duo_match`: `REACTION_SET`, toggle semantics (2nd call removes). `pairing` (SW10-T4): `PAIRING_REACTION_SET` (a separate preset vocabulary, §5.6), one stamp per player per ET calendar day, a same-day repost REPLACES it (`state: 'replaced'`); rejects a non-claimed caller, a non-participant, or a blocked pair, all server-side |
 | `GET /profiles/:slug` | none | Public profile (addressed by URL slug, §6.1.2): handle, streaks, records, rating + percentile, fingerprint style summary, badges, recent picks (paginated, `is_public` only), nemesis history summary, verified-wallet badge, and a `graveyard` block (SW9-T3 contract-change, `docs/plans/obituary-handoff.md` §4): completed participation runs ≥ `OBITUARY_MIN_STREAK` as bare run **lengths only** — newest-first, capped at `GRAVEYARD_RIP_CAP` — plus the lifetime public called-it count; null when empty. Privacy pin: the block never carries per-run dates or question slugs (either would make participation on specific dates publicly inferable even for `is_public = false` picks). Picks on graded-but-unrevealed dailies present as `pending` (§6.5 publication rule) |
 | `GET /profiles/:slug/picks` | none | Full public pick log (receipts culture, INV-6). Public `picked_at` timestamps are truncated to **minute precision** (full precision visible only to the owner — limits sleep/location profiling from the public log; the receipt artifact stays verifiable to the minute) |
 | `GET /me` | ghost+ | Own profile incl. settings, eligibility progress (picks toward 5/10), claim state |
@@ -958,7 +962,7 @@ Served by `GET /leaderboards/weekly` (owner: WS3-T7). Window = ISO week Mon–Su
 | `GET /placement` | ghost+ | 5 items (no outcomes) |
 | `POST /placement/answers` | ghost+ | `{item_id, side}` → per-item result revealed in response |
 | `GET /pairings/current` | claimed | My active pairing + scoreboard |
-| `GET /pairings/:id` | none | Public matchup page data (both handles, daily-by-daily scoreboard, narration line). Pre-reveal daily results masked per §9.3 |
+| `GET /pairings/:id` | none | Public matchup page data (both handles, daily-by-daily scoreboard, narration line). Pre-reveal daily results masked per §9.3. Also carries `today_reactions: {a, b} \| null \| undefined` (SW10-T4, `.nullish()` contract-change) — each side's own preset stamp for today, viewer-free and safe on this ISR page; both forced `null` when the pair is blocked (§14.3, enforced in the payload build) |
 | `GET /me/nemesis-history` | claimed | Lifetime records vs past nemeses. Each entry also carries `rematch_request: {id, direction: 'outgoing'\|'incoming', status: rematch_status} \| null` — the viewer's most relevant rematch request with that entry's opponent, if any (WS5-T5 contract-change: there's no dedicated discovery endpoint for a rematch request's id, §9.2 previously had none documented — this folds discovery into the endpoint that already renders the per-opponent rematch affordance, rather than minting a new undocumented route) |
 | `POST /rematch-requests` | claimed | `{target_profile_id}`; target must be a past nemesis this season (a terminal — `completed`/`cancelled` — pairing this season). Idempotent: a repeat call while an identical request is already `open` returns that same row |
 | `POST /rematch-requests/:id/accept` \| `/decline` | claimed | Target-only (the requester already consented by creating the request). Accepting does not pair immediately — the next `nemesis:assign` run (Monday 09:00 ET) does, per §8.4 step 0 |
@@ -1611,6 +1615,7 @@ The P0 (48-hour) cut is the subset tagged P0 below, in the same wave order — s
 | `NEMESIS_SEASON_WEEKS` / `DUO_SEASON_WEEKS` | 12 / 4 | §5.4/8.10 |
 | `POST_MAX_CHARS` | 500 | §5.6 |
 | `REACTION_SET` | 🔥 💀 🧾 🫡 | §5.6 |
+| `PAIRING_REACTION_SET` | "Sweating?" "Lucky" "Called it" "Respect" | §5.6, SW10-T4 |
 | `HANDLE_CHANGE_COOLDOWN_DAYS` | 30 | §6.1.2 |
 | `GHOST_MINT_PER_IP_PER_DAY` | 10 | §6.1.1 |
 | `BOT_EXCLUDE_THRESHOLD` | 0.8 | §14.2 |
