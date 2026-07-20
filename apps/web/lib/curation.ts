@@ -88,7 +88,7 @@ export interface DefaultQuestionTimes {
   revealAt: Date;
 }
 
-/** Defaults per §15.2: open 09:00 / lock 12:00 / reveal 20:00 ET, read from Appendix D. */
+/** Defaults per §15.2, read from Appendix D: open 03:00 (midnight PT, WS15-T7) / lock 12:00 / reveal 20:00 ET. */
 export function computeDefaultQuestionTimes(questionDate: string): DefaultQuestionTimes {
   return {
     openAt: zonedTimeToUtc(questionDate, DAILY_OPEN_LOCAL, SCHEDULE_TZ),
@@ -112,7 +112,7 @@ export interface ComposerTimesInput {
   eventStartAt: Date | null;
 }
 
-/** Explicit times win; otherwise fall back to the §15.2 09:00/12:00/20:00 ET defaults. */
+/** Explicit times win; otherwise fall back to the §15.2 03:00/12:00/20:00 ET defaults (open = midnight PT, WS15-T7). */
 export function resolveComposerTimes(body: ComposerBody): ComposerTimesInput {
   const defaults = computeDefaultQuestionTimes(body.question_date);
   return {

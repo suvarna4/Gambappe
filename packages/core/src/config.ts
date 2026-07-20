@@ -21,8 +21,11 @@ export const PRODUCT_NAME = 'Gambappe';
 
 /** IANA zone anchoring all ET-scheduled instants (§4.3 — never hardcode UTC offsets). */
 export const SCHEDULE_TZ = 'America/New_York';
-/** Daily question opens (local ET, HH:mm). */
-export const DAILY_OPEN_LOCAL = '09:00';
+/** Daily question opens (local ET, HH:mm). 03:00 ET == midnight Pacific — product decision
+ * (WS15-T7, deviates from the design doc's original 09:00): the day's question is live from
+ * the start of the West-coast calendar day. ET and PT shift DST together, so this is
+ * midnight PT year-round; the scheduler stays entirely ET-anchored (§4.3). */
+export const DAILY_OPEN_LOCAL = '03:00';
 /** Daily question locks (local ET, HH:mm). */
 export const DAILY_LOCK_LOCAL = '12:00';
 /** Daily reveal target (local ET, HH:mm). */
@@ -234,7 +237,7 @@ export const MARKETING_EMAIL_DAILY_CAP = 1;
  * for streak holders who haven't picked yet (§13.2/§19.3 WS9-T4: "pre-lock reminder for streak
  * holders"). Not pinned by the design doc — SPEC-GAP(WS9-T4): the doc names the feature but not
  * an exact lead time; 60 minutes lands comfortably inside the default
- * DAILY_OPEN_LOCAL(09:00)-DAILY_LOCK_LOCAL(12:00) window with enough runway to act, without
+ * DAILY_OPEN_LOCAL(03:00)-DAILY_LOCK_LOCAL(12:00) window with enough runway to act, without
  * firing so early it reads as noise. `notify:pre-lock-reminder` runs every 5 minutes and
  * dedupe_key makes re-evaluating the same still-open window on every tick safe (§5.6) — this
  * constant only controls how early the reminder CAN land, never whether it double-sends.

@@ -26,9 +26,9 @@ describe('zonedTimeToUtc', () => {
 });
 
 describe('computeDefaultQuestionTimes', () => {
-  it('produces open 09:00 / lock 12:00 / reveal 20:00 ET as UTC instants', () => {
+  it('produces open 03:00 (midnight PT) / lock 12:00 / reveal 20:00 ET as UTC instants', () => {
     const times = computeDefaultQuestionTimes('2026-07-19');
-    expect(times.openAt.toISOString()).toBe('2026-07-19T13:00:00.000Z');
+    expect(times.openAt.toISOString()).toBe('2026-07-19T07:00:00.000Z'); // 03:00 EDT == 00:00 PDT
     expect(times.lockAt.toISOString()).toBe('2026-07-19T16:00:00.000Z');
     expect(times.revealAt.toISOString()).toBe('2026-07-20T00:00:00.000Z'); // 20:00 ET = next-day UTC
   });
