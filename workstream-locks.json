@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-20T01:18:17.644Z",
+  "updated_at": "2026-07-20T01:18:19.045Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1546,13 +1546,13 @@
         "SW5-T1"
       ],
       "mock_start_ok": false,
-      "note": "Merged to main via PR #73 (commit b486590)",
+      "note": "ReactionStamps shipped gallery-only; no reaction affordance on /vs/[pairingId] and no API wiring (audit: docs/plans/sw-revamp-wiring-gaps.md §3). Completion work re-scoped as SW10-T4.",
       "status": "done",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/daily-question-swipe-ux-f0p4wq",
       "pr": "https://github.com/suvarna4/Gambappe/pull/73",
       "claimed_at": "2026-07-19T14:34:57.614Z",
-      "updated_at": "2026-07-19T14:34:59.070Z"
+      "updated_at": "2026-07-20T01:18:19.045Z"
     },
     "SW6-T1": {
       "title": "Placement as a swipe deck (5 archival cards, progress, teaser bars)",
