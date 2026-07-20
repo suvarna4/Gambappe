@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { MARKET_CATEGORY, VENUE } from '@receipts/core';
 
 interface MarketRow {
   id: string;
@@ -57,16 +58,56 @@ export default function CurationClient() {
   const [form, setForm] = useState(emptyForm);
   const [preview, setPreview] = useState<PreviewResponse['data'] | null>(null);
   const [submitResult, setSubmitResult] = useState<string | null>(null);
+  // '' = all. The list is soonest-closing-first, so without a venue filter a big same-day
+  // batch from one venue (hourly Kalshi sync) fills page after page — filters + cursor
+  // pagination are what make the rest of the pool reachable (WS15-T4).
+  const [venueFilter, setVenueFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const fetchMarkets = useCallback(
+    (cursor: string | null) => {
+      const params = new URLSearchParams();
+      if (venueFilter) params.set('venue', venueFilter);
+      if (categoryFilter) params.set('category', categoryFilter);
+      if (cursor) params.set('cursor', cursor);
+      setLoadingMore(true);
+      return authedFetch(`/api/admin/markets${params.size ? `?${params.toString()}` : ''}`)
+        .then((res) => res.json())
+        .then(
+          (body: {
+            data?: MarketRow[];
+            meta?: { next_cursor: string | null };
+            error?: { message: string };
+          }) => {
+            if (body.data) {
+              const page = body.data;
+              // Append on a cursor fetch, replace on a fresh (filter-change) fetch. The id
+              // dedupe is defensive: a duplicated row would collide React keys and leave
+              // zombie rows behind on the next re-render.
+              setMarkets((prev) =>
+                cursor
+                  ? [...prev, ...page.filter((m) => !prev.some((p) => p.id === m.id))]
+                  : page,
+              );
+              setNextCursor(body.meta?.next_cursor ?? null);
+              setMarketsError(null);
+            } else {
+              setMarketsError(body.error?.message ?? 'Failed to load markets');
+            }
+          },
+        )
+        .catch((err: Error) => setMarketsError(err.message))
+        .finally(() => setLoadingMore(false));
+    },
+    [authedFetch, venueFilter, categoryFilter],
+  );
 
   useEffect(() => {
-    authedFetch('/api/admin/markets')
-      .then((res) => res.json())
-      .then((body: { data?: MarketRow[]; error?: { message: string } }) => {
-        if (body.data) setMarkets(body.data);
-        else setMarketsError(body.error?.message ?? 'Failed to load markets');
-      })
-      .catch((err: Error) => setMarketsError(err.message));
-  }, [authedFetch]);
+    // Initial load and every filter change start over from page one.
+    void fetchMarkets(null);
+  }, [fetchMarkets]);
 
   const previewParams = useMemo(() => {
     if (!selectedMarketId) return null;
@@ -128,6 +169,34 @@ export default function CurationClient() {
 
       <section className="space-y-2">
         <h2 className="text-muted text-sm font-semibold uppercase">Market browser</h2>
+        <div className="flex gap-2">
+          <select
+            aria-label="Venue filter"
+            className="bg-surface rounded px-3 py-2 text-sm"
+            value={venueFilter}
+            onChange={(e) => setVenueFilter(e.target.value)}
+          >
+            <option value="">All venues</option>
+            {VENUE.map((v) => (
+              <option key={v} value={v}>
+                {v}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="Category filter"
+            className="bg-surface rounded px-3 py-2 text-sm"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+          >
+            <option value="">All categories</option>
+            {MARKET_CATEGORY.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
         {marketsError && <p className="text-loss text-sm">{marketsError}</p>}
         <div className="max-h-64 space-y-1 overflow-y-auto">
           {markets.map((market) => (
@@ -143,7 +212,20 @@ export default function CurationClient() {
               <span className="text-muted">({market.category}, closes {market.closeTime})</span>
             </button>
           ))}
+          {markets.length === 0 && !marketsError && !loadingMore && (
+            <p className="text-muted text-sm">No markets match these filters.</p>
+          )}
         </div>
+        {nextCursor && (
+          <button
+            type="button"
+            onClick={() => void fetchMarkets(nextCursor)}
+            disabled={loadingMore}
+            className="bg-surface rounded px-4 py-2 text-sm disabled:opacity-40"
+          >
+            {loadingMore ? 'Loading…' : 'Load more'}
+          </button>
+        )}
       </section>
 
       {selectedMarketId && (
