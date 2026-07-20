@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-20T01:18:20.508Z",
+  "updated_at": "2026-07-20T01:24:54.698Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1707,12 +1707,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": "Spec: docs/plans/sw-revamp-wiring-gaps.md §4 SW10-T1 (authoritative — supersedes swipe-ux-plan SW5-T1's pick-time trigger). Fires AT REVEAL like SW9's broken_run; nemesis_flip block .nullish() in a core-first PR; tallies replay the scoreboard, NEVER pairing.score (0 until conclude); narration via existing catalog beats only, all slots pinned in the doc; single mount in RevealSequence.",
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-session-35b05898-7175",
+      "branch": "claude/sw10-t1-nemesis-flip",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-20T01:18:01.583Z"
+      "claimed_at": "2026-07-20T01:24:54.698Z",
+      "updated_at": "2026-07-20T01:24:54.698Z"
     },
     "SW10-T2": {
       "title": "Wire VerdictCard + rematch-by-swipe into the real rematch flow",
