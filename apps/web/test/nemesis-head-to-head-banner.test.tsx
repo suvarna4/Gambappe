@@ -50,7 +50,7 @@ describe('NemesisHeadToHeadBanner', () => {
     expect(html.match(/width:50%/g)?.length).toBe(2);
   });
 
-  it('colors the viewer/opponent bar segments off the authoritative outcome, not the raw scores — a tiebreak win keeps a real win/loss split even at an even score', () => {
+  it('colors the winner\'s side "shine" and the loser\'s "fade" off the authoritative outcome, not the raw scores — a tiebreak win keeps a real shine/fade split even at an even score', () => {
     const html = renderToStaticMarkup(
       <NemesisHeadToHeadBanner
         viewerHandle="You"
@@ -60,11 +60,16 @@ describe('NemesisHeadToHeadBanner', () => {
         outcome="won"
       />,
     );
-    expect(html).toContain('bg-win');
-    expect(html).toContain('bg-loss');
+    // Winner ("shine"): win-colored gradient, name, and bar segment.
+    expect(html).toContain('from-win/35');
+    expect(html).toContain('text-win');
+    // Loser ("fade"): loss-colored gradient dialed down via opacity, not switched to a
+    // different, unrelated color family.
+    expect(html).toContain('from-loss/20');
+    expect(html).toContain('opacity-60');
   });
 
-  it('draws both segments muted for an actual draw', () => {
+  it('draws both sides neutral for an actual draw — no shine, no fade, no win/loss color', () => {
     const html = renderToStaticMarkup(
       <NemesisHeadToHeadBanner
         viewerHandle="You"
@@ -74,10 +79,10 @@ describe('NemesisHeadToHeadBanner', () => {
         outcome="drew"
       />,
     );
-    expect(html).not.toContain('bg-win');
-    expect(html).not.toContain('bg-loss');
-    // Muted renders on both the two half-card backgrounds ("bg-muted/15") and the two bar
-    // segments ("bg-muted") — 4 occurrences of the class name total, none of them win/loss.
+    expect(html).not.toContain('win');
+    expect(html).not.toContain('loss');
+    // Muted renders on both the two half-card backgrounds ("bg-muted/10") and the two bar
+    // segments ("bg-muted") — 4 occurrences of the class name total.
     expect(html.match(/bg-muted/g)?.length).toBe(4);
   });
 
@@ -93,8 +98,7 @@ describe('NemesisHeadToHeadBanner', () => {
     );
     // The score lives in its own centered badge element (`aria-hidden`, no `truncate` class),
     // never inside either handle's own `truncate` span — so a long handle clipping itself can
-    // never clip the score along with it (the redesign's structural fix for the original
-    // truncation-asymmetry bug: score and handle no longer share one flex row at all).
+    // never clip the score along with it.
     const badge = html.match(/<div aria-hidden="true"[^>]*>4–1<\/div>/);
     expect(badge).not.toBeNull();
     expect(badge?.[0]).not.toContain('truncate');
