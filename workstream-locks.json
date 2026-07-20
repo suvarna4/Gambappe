@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-20T07:20:53.131Z",
+  "updated_at": "2026-07-20T10:22:39.813Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1758,13 +1758,13 @@
       "phase": "SPQ",
       "depends_on": [],
       "mock_start_ok": false,
-      "note": "Spec: docs/plans/sw-revamp-wiring-gaps.md §4 SW10-T5 (completes SW8-T2's unmet snapshot AC). toHaveScreenshot over every gallery tile, baselines committed, CI-gating; deliberate-pixel-change demo in the PR; extend the existing playwright-report artifact upload.",
-      "status": "in_review",
+      "note": "Merged. Visual regression gate for /dev/ui gallery: 27 toHaveScreenshot tests over all 19 gallery sections, CI-gating via existing e2e job. Deliberate-break demo independently reproduced by both implementer and 2 fable reviewers (crashed/retried once on fable rate limit, redispatched clean). Known disclosed risk: baselines generated on sandbox's cached Chromium (rev 1194), not CI's freshly-installed matching version (rev 1228) — proxy blocks cdn.playwright.dev for both sessions; documented in playwright.config.ts with regen guidance if CI's first run shows drift.",
+      "status": "done",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/sw10-t5-visual-regression",
       "pr": "https://github.com/Gambappe/Gambappe/pull/95",
       "claimed_at": "2026-07-20T06:16:29.195Z",
-      "updated_at": "2026-07-20T06:52:16.103Z"
+      "updated_at": "2026-07-20T10:22:39.813Z"
     },
     "WS15-T1": {
       "title": "Kalshi adapter: current API schema (*_dollars fields) + listing strategy",
