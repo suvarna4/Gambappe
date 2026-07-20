@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { nemesisCopy } from '@/lib/copy';
 import type { RematchStatus } from '@/lib/nemesis/types';
+import type { DayResult, VerdictOutcome } from './VerdictCard';
+import { VerdictSwipeCard } from './VerdictSwipeCard';
 
 /** The reduced rematch state `GET /me/nemesis-history` now folds into each history entry
  * (`nemesisRematchStateSchema`, `@receipts/core`, WS5-T5 contract-change) — the viewer's most
@@ -13,12 +15,25 @@ export interface RematchState {
   status: RematchStatus;
 }
 
+/** SW10-T2: the verdict-card data for this history row, derived server-side (`app/nemesis/page.tsx`
+ * + `lib/nemesis/verdict.ts`) from the entry's own `my_score`/`their_score` plus the pairing's
+ * `GET /pairings/:id` scoreboard. `null` for a `cancelled` week — `VerdictOutcome` has no
+ * cancelled member, so that row keeps the pre-SW10 plain "Request rematch" button below. */
+export interface RematchVerdict {
+  outcome: VerdictOutcome;
+  youWins: number;
+  opponentWins: number;
+  scoreMargin: number;
+  dayResults: ReadonlyArray<DayResult>;
+}
+
 export interface RematchPanelProps {
   viewerProfileId: string;
   opponent: { profile_id: string; handle: string };
   /** Initial state from the page's own `GET /me/nemesis-history` load (server-rendered) —
    * `null` when no rematch request exists yet between the viewer and this opponent. */
   rematchRequest: RematchState | null;
+  verdict: RematchVerdict | null;
   className?: string;
 }
 
@@ -52,11 +67,18 @@ interface RematchRequestWire {
  * (only the target may accept/decline, enforced server-side). Acceptance does not create a
  * pairing on the spot — the real `nemesis:assign` batch (Monday 09:00 ET) does that — so this
  * panel's copy says "you'll be paired starting next week," never "paired now."
+ *
+ * SW10-T2: once there's no actionable existing request (the terminal "ask for a rematch" state),
+ * the affordance is `VerdictSwipeCard` — right-swipe (or tap "Run it back") fires the same
+ * `handleRequest` this component always called; left-swipe/"New fate" declines to ask, no call.
+ * A cancelled-outcome week (`verdict === null`) keeps the original plain button + confirm dialog,
+ * since `VerdictOutcome` has no cancelled member.
  */
-export function RematchPanel({ viewerProfileId, opponent, rematchRequest, className = '' }: RematchPanelProps) {
+export function RematchPanel({ viewerProfileId, opponent, rematchRequest, verdict, className = '' }: RematchPanelProps) {
   const [error, setError] = useState<string | null>(null);
   const [confirmPhase, setConfirmPhase] = useState<ConfirmPhase>('idle');
   const [state, setState] = useState<RematchState | null>(rematchRequest);
+  const [busy, setBusy] = useState(false);
 
   function toState(wire: RematchRequestWire): RematchState {
     return {
@@ -67,6 +89,8 @@ export function RematchPanel({ viewerProfileId, opponent, rematchRequest, classN
   }
 
   async function handleRequest() {
+    if (busy) return; // guards the verdict-card swipe/tap against a double-fire (fable review of PR #84)
+    setBusy(true);
     setError(null);
     try {
       const res = await fetch(BASE, {
@@ -79,6 +103,8 @@ export function RematchPanel({ viewerProfileId, opponent, rematchRequest, classN
       setConfirmPhase('idle');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -145,6 +171,35 @@ export function RematchPanel({ viewerProfileId, opponent, rematchRequest, classN
       <p className={`text-muted text-sm ${className}`} data-testid="rematch-pending">
         {nemesisCopy.rematchPendingLabel(opponent.handle)}
       </p>
+    );
+  }
+
+  // SW10-T2: no actionable existing request — the terminal "ask for a rematch" state.
+  // Non-cancelled outcomes (`verdict` non-null) get the swipeable verdict close (right = "Run it
+  // back" = this same `handleRequest`, left = "New fate" = decline to ask, no call); the swipe
+  // and the tap wells commit immediately, so there's no separate confirm step here the way the
+  // old plain-button flow needed one. A cancelled week (`verdict === null` — `VerdictOutcome` has
+  // no cancelled member) falls through to that original plain button + confirm dialog.
+  if (verdict) {
+    return (
+      <div className={className}>
+        <VerdictSwipeCard
+          outcome={verdict.outcome}
+          opponentHandle={opponent.handle}
+          youWins={verdict.youWins}
+          opponentWins={verdict.opponentWins}
+          scoreMargin={verdict.scoreMargin}
+          dayResults={verdict.dayResults}
+          onRunItBack={() => void handleRequest()}
+          onNewFate={() => {}}
+          disabled={busy}
+        />
+        {error ? (
+          <p className="text-loss mt-1 text-xs" data-testid="rematch-error">
+            {error}
+          </p>
+        ) : null}
+      </div>
     );
   }
 

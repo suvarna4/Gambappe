@@ -1,28 +1,57 @@
+import type { CSSProperties, PointerEvent as ReactPointerEvent, Ref } from 'react';
 import { sideAxisPair } from '@receipts/ui';
 import { nemesisCopy } from '@/lib/copy';
 
 export type VerdictOutcome = 'won' | 'lost' | 'drew';
+
+/** One scoreboard row's dot, viewer-relative (SW10-T2, `lib/nemesis/verdict.ts`'s
+ * `deriveDayResults`): `win`/`loss` iff the viewer picked and was graded that way, `pending`
+ * while the row is unsettled, and `neutral` (renamed from the original "split" — this is never a
+ * head-to-head "who took the day" comparison, just the viewer's own row) for a void row or a row
+ * the viewer didn't pick at all. */
+export type DayResult = 'win' | 'loss' | 'neutral' | 'pending';
 
 export interface VerdictCardProps {
   outcome: VerdictOutcome;
   opponentHandle: string;
   youWins: number;
   opponentWins: number;
-  /** Points of edge the winner led by — powers the loser card's richer line (P3). */
-  edgeGap: number;
+  /** `|youWins - opponentWins|` — how many points the week was decided by (SW10-T2: the prior
+   * "edge" framing implied data — an edge/points-of-edge figure — that doesn't exist on the
+   * nemesis history entry; this is plain score margin, which does). Powers the loser card's
+   * richer line (P3). */
+  scoreMargin: number;
   /** Per-day results, viewer-relative, for the week strip. */
-  dayResults: ReadonlyArray<'win' | 'loss' | 'split' | 'pending'>;
+  dayResults: ReadonlyArray<DayResult>;
   /** The week's closing swipe (rematch-by-swipe): right = run it back, left = new fate. Omit for
    * a static/spectator card. */
   onRunItBack?: () => void;
   onNewFate?: () => void;
   className?: string;
+  /**
+   * SW10-T2: optional drag-surface plumbing for the wrapping `VerdictSwipeCard` — applied ONLY
+   * to the paper/score card below, never the button row. Mirrors `SwipeBallot`'s own split
+   * between its draggable card (`cardRef`/pointer handlers) and its separate, always-clickable
+   * tap wells: if the drag surface swallowed the whole card (buttons included), a real click on
+   * "Run it back"/"New fate" would start a zero-distance drag on the wrapper first (pointer
+   * capture rides on top of the button), which is exactly the bug this split avoids. Omitted for
+   * the static/spectator and tap-only (non-swipe) renders.
+   */
+  dragSurfaceRef?: Ref<HTMLDivElement>;
+  dragSurfaceStyle?: CSSProperties;
+  dragSurfaceHandlers?: {
+    onPointerDown?: (e: ReactPointerEvent<HTMLDivElement>) => void;
+    onPointerMove?: (e: ReactPointerEvent<HTMLDivElement>) => void;
+    onPointerUp?: () => void;
+    onPointerCancel?: () => void;
+  };
+  dragSurfaceArmed?: boolean;
 }
 
 const DOT: Record<string, string> = {
   win: 'bg-win border-win',
   loss: 'bg-loss border-loss',
-  split: 'bg-muted border-muted',
+  neutral: 'bg-muted border-muted',
   pending: 'border-muted',
 };
 
@@ -40,11 +69,15 @@ export function VerdictCard({
   opponentHandle,
   youWins,
   opponentWins,
-  edgeGap,
+  scoreMargin,
   dayResults,
   onRunItBack,
   onNewFate,
   className = '',
+  dragSurfaceRef,
+  dragSurfaceStyle,
+  dragSurfaceHandlers,
+  dragSurfaceArmed = false,
 }: VerdictCardProps) {
   const heading =
     outcome === 'won'
@@ -54,8 +87,10 @@ export function VerdictCard({
         : nemesisCopy.verdictDrew;
   const line =
     outcome === 'lost'
-      ? nemesisCopy.verdictLoserLine(opponentHandle, edgeGap)
-      : nemesisCopy.verdictWinnerLine(opponentHandle);
+      ? nemesisCopy.verdictLoserLine(opponentHandle, scoreMargin)
+      : outcome === 'drew'
+        ? nemesisCopy.verdictDrawLine(opponentHandle)
+        : nemesisCopy.verdictWinnerLine(opponentHandle, scoreMargin);
   const interactive = Boolean(onRunItBack || onNewFate);
 
   const [leftAction, rightAction] = sideAxisPair(
@@ -85,7 +120,14 @@ export function VerdictCard({
 
   return (
     <div data-testid="verdict-card" data-outcome={outcome} className={`space-y-3 ${className}`}>
-      <div className="bg-paper text-ink relative flex flex-col gap-2 rounded-lg px-4 py-4 shadow-[0_14px_34px_rgba(0,0,0,0.5)]">
+      <div
+        ref={dragSurfaceRef}
+        data-testid="verdict-card-face"
+        data-armed={dragSurfaceArmed ? 'true' : 'false'}
+        className={`bg-paper text-ink relative flex flex-col gap-2 rounded-lg px-4 py-4 shadow-[0_14px_34px_rgba(0,0,0,0.5)] ${dragSurfaceHandlers ? 'touch-none select-none' : ''}`}
+        style={dragSurfaceStyle}
+        {...dragSurfaceHandlers}
+      >
         <div className="flex items-baseline justify-between">
           <h2 className="font-display text-2xl leading-none font-bold uppercase">{heading}</h2>
           <span className="font-mono text-lg font-semibold">

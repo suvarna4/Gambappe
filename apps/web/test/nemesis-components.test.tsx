@@ -14,8 +14,19 @@ const VIEWER_ID = '018f1e2b-0000-7000-8000-0000000000v1';
 const OPPONENT = { profile_id: '018f1e2b-0000-7000-8000-0000000000o1', handle: 'Otter #9001' };
 
 function renderPanel(rematchRequest: RematchState | null): string {
+  // `verdict: null` (as if this were a cancelled-outcome week) keeps these cases on the original
+  // plain button/confirm-dialog flow — the SW10-T2 swipeable verdict-card branch's actual
+  // drag→action mapping (right → "Run it back", left → "New fate") is proven against the real
+  // API in `e2e/nemesis-rematch.spec.ts` (this repo has no DOM-interaction unit-testing library,
+  // per this file's own header comment — gesture-driven behavior is e2e-only, matching
+  // `swipe-ballot.spec.ts`'s precedent), not a unit test in this file.
   return renderToStaticMarkup(
-    <RematchPanel viewerProfileId={VIEWER_ID} opponent={OPPONENT} rematchRequest={rematchRequest} />,
+    <RematchPanel
+      viewerProfileId={VIEWER_ID}
+      opponent={OPPONENT}
+      rematchRequest={rematchRequest}
+      verdict={null}
+    />,
   );
 }
 
