@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-20T02:04:26.619Z",
+  "updated_at": "2026-07-20T02:18:22.281Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1772,12 +1772,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": "Live-verified 2026-07-20: trade-api/v2 now returns dollars-string fields (liquidity_dollars, yes_bid_dollars, last_price_dollars); legacy cents-int fields gone. Unfiltered /markets dominated by zero-interest KXMVE combos. Staging synced 0 kalshi markets.",
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-code-web-session-54bb90dd",
       "branch": "claude/ws15-t1-kalshi-api-schema",
-      "pr": null,
+      "pr": "https://github.com/Gambappe/Gambappe/pull/86",
       "claimed_at": "2026-07-20T02:04:25.177Z",
-      "updated_at": "2026-07-20T02:04:25.177Z"
+      "updated_at": "2026-07-20T02:18:22.281Z"
     },
     "WS15-T2": {
       "title": "Voiding a daily frees its date slot for a replacement",
