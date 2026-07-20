@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-20T06:33:46.179Z",
+  "updated_at": "2026-07-20T06:33:47.803Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1850,12 +1850,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": "Product decision (owner request): question should be open from midnight Pacific. ET-anchored scheduler unchanged; DAILY_OPEN_LOCAL constant moves 09:00 -> 03:00 ET (PT and ET shift DST together, so 03:00 ET is always midnight PT).",
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-code-web-session-54bb90dd",
+      "branch": "claude/ws15-t7-open-midnight-pt",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-20T06:33:46.178Z"
+      "claimed_at": "2026-07-20T06:33:47.803Z",
+      "updated_at": "2026-07-20T06:33:47.803Z"
     }
   }
 }
