@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { MARKET_CATEGORY, VENUE } from '@receipts/core';
+import { MARKET_CATEGORY, VENUE, etDateString } from '@receipts/core';
 
 interface MarketRow {
   id: string;
@@ -29,15 +29,18 @@ interface PreviewResponse {
   data: { question: PreviewQuestion | null; errors: string[] };
 }
 
-const emptyForm = {
+// WS15-T6: default the date to the CURRENT ET PRODUCT DAY, not the curator's local date —
+// a curator west of ET composing late-evening otherwise schedules "yesterday" and gets a
+// stillborn question the ET-keyed today lookup never shows.
+const makeEmptyForm = () => ({
   headline: '',
   blurb: '',
   yes_label: '',
   no_label: '',
-  question_date: '',
+  question_date: etDateString(new Date()),
   is_volatile: false,
   event_start_at: '',
-};
+});
 
 export default function CurationClient() {
   const searchParams = useSearchParams();
@@ -55,7 +58,7 @@ export default function CurationClient() {
   const [markets, setMarkets] = useState<MarketRow[]>([]);
   const [marketsError, setMarketsError] = useState<string | null>(null);
   const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(makeEmptyForm);
   const [preview, setPreview] = useState<PreviewResponse['data'] | null>(null);
   const [submitResult, setSubmitResult] = useState<string | null>(null);
   // '' = all. The list is soonest-closing-first, so without a venue filter a big same-day
@@ -156,7 +159,7 @@ export default function CurationClient() {
     const json = (await res.json()) as { data?: { slug: string }; error?: { message: string } };
     if (res.ok && json.data) {
       setSubmitResult(`Scheduled: ${json.data.slug}`);
-      setForm(emptyForm);
+      setForm(makeEmptyForm());
       setSelectedMarketId(null);
     } else {
       setSubmitResult(`Error: ${json.error?.message ?? 'unknown'}`);
@@ -253,10 +256,18 @@ export default function CurationClient() {
           </div>
           <input
             type="date"
+            aria-label="Question date"
             className="bg-surface w-full rounded px-3 py-2 text-sm"
             value={form.question_date}
             onChange={(e) => setForm((f) => ({ ...f, question_date: e.target.value }))}
           />
+          {form.question_date !== etDateString(new Date()) && (
+            <p className="text-sm text-amber-500">
+              Heads up: the product day runs on US Eastern Time — today is {etDateString(new Date())} there.
+              A question dated {form.question_date || '(unset)'} won&apos;t appear as &ldquo;today&apos;s
+              question&rdquo; until that ET date.
+            </p>
+          )}
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
