@@ -60,8 +60,12 @@ export async function listMarkets(
     conditions.push(gte(markets.liquidityUsd, filters.minLiquidityUsd));
   }
   if (cursor) {
+    // date_trunc to ms (WS15-T4): the cursor's closeTime round-trips through a JS Date
+    // (millisecond precision), while close_time stores microseconds — a raw comparison
+    // re-includes the boundary row on the next page whenever its microseconds are non-zero.
+    // Truncating both sides keeps the keyset exact; id tiebreaks equal-ms rows.
     conditions.push(
-      sql`(${markets.closeTime}, ${markets.id}) > (${cursor.closeTime}::timestamptz, ${cursor.id}::uuid)`,
+      sql`(date_trunc('milliseconds', ${markets.closeTime}), ${markets.id}) > (${cursor.closeTime}::timestamptz, ${cursor.id}::uuid)`,
     );
   }
   return db
