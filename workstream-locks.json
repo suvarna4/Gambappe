@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-20T07:13:17.147Z",
+  "updated_at": "2026-07-20T07:17:23.028Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1876,12 +1876,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": "WS15-T8 left mixed zones: static copy says 12:00 AM PT while formatEtClock renders lock/open/reveal in ET. One display TZ (America/Los_Angeles) via core DISPLAY_TZ + one formatter; scheduler stays ET-anchored.",
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-code-web-session-54bb90dd",
       "branch": "claude/ws15-t9-display-tz",
-      "pr": null,
+      "pr": "https://github.com/Gambappe/Gambappe/pull/97",
       "claimed_at": "2026-07-20T07:13:17.147Z",
-      "updated_at": "2026-07-20T07:13:17.147Z"
+      "updated_at": "2026-07-20T07:17:23.026Z"
     }
   }
 }
