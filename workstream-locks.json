@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-20T05:25:07.460Z",
+  "updated_at": "2026-07-20T05:36:57.681Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1749,9 +1749,9 @@
       "status": "in_review",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/sw10-t4-reaction-stamps",
-      "pr": null,
+      "pr": "https://github.com/Gambappe/Gambappe/pull/91",
       "claimed_at": "2026-07-20T04:43:57.027Z",
-      "updated_at": "2026-07-20T05:24:24.732Z"
+      "updated_at": "2026-07-20T05:36:57.681Z"
     },
     "SW10-T5": {
       "title": "Visual regression gate for the /dev/ui gallery",
