@@ -60,10 +60,14 @@ export default function UiGalleryPage() {
             {/* Design-diff audit fix: `UnderCard` no longer carries a hardcoded `relative` (see
                 its own doc comment), so this wrapper — its actual positioning containing block —
                 needs one explicitly, or the `absolute` peek escapes to the outer full-width tile
-                instead of tracking this 260px card. */}
+                instead of tracking this 260px card. Offsets match the real call sites
+                (`DeckStage`/`SwipeBallot`'s `inset-x-3 -top-3 scale-95`) — this tile's own prior
+                `top-8` was tuned for the pre-fix world where the slip sat in normal document
+                flow above the card; inside a real containing block that offset pushes the slip
+                DOWN INTO the card instead of peeking above it, hiding it entirely. */}
             <UnderCard
               label="TOMORROW · opens 12:00 AM PT"
-              className="absolute inset-x-6 top-8 scale-95"
+              className="absolute inset-x-3 -top-3 scale-95"
             />
             <BallotCard
               eyebrow="ECON · DAILY"
