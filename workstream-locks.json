@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-20T05:44:13.369Z",
+  "updated_at": "2026-07-20T05:53:39.565Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1817,6 +1817,19 @@
       "pr": "https://github.com/Gambappe/Gambappe/pull/89",
       "claimed_at": "2026-07-20T03:36:52.660Z",
       "updated_at": "2026-07-20T03:53:59.358Z"
+    },
+    "WS15-T5": {
+      "title": "turbo.json: pass FLAG_* through to builds (Vercel bakes flag-off statics)",
+      "phase": "P0",
+      "depends_on": [],
+      "mock_start_ok": false,
+      "note": "Vercel wraps monorepo builds in turbo; globalPassThroughEnv lacks FLAG_* so FLAG_SWIPE_BALLOT was stripped and /placement prerendered swipeBallot:false despite the env var. Same trap documented in sw-revamp-wiring-gaps for local pnpm build.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-20T05:53:39.562Z"
     }
   }
 }
