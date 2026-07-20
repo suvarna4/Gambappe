@@ -128,18 +128,26 @@ rows — count `result === 'win'` per side, skipping `pending`/`void`, mirroring
 `scoreNemesisWeek`'s independent accrual — which is sound at reveal time because prior days
 are already publicly resolved and unmasked (`masking.ts`). The narration triggers need a
 BEFORE-tally too: same sum excluding this `question_id`.
-`narration` is `string | null`, pinned in fable rounds 4-5 (no daily-flip beat exists in the
+`narration` is `string | null`, pinned in fable rounds 4-6 (no daily-flip beat exists in the
 catalog, and this repo forbids freehand copy outside `copy.ts`/the `narrate()` catalog): render
-via the EXISTING catalog beats only — `nemesis_lead_taken` when this question's grading flipped
-the week-tally leader (before-tally vs after-tally, as derived above), `nemesis_comeback` when
-it leveled the tally from behind (both already in `packages/engine/src/narration.ts`, currently
-derivation-less). Their data slots are derivable from the same scoreboard replay:
-`questionsLeft` = rows not yet publicly resolved; `nemesis_comeback`'s `deficit`/`downDay`/
-`levelDay` come from the date-ordered rows via the repo's existing date formatting. Degrade
-rule: if any required slot is unresolvable (e.g. the relevant row is a nemesis-bonus question
-with `question_date: null`), `narration` is null — and the UI omits the line (make
-`NemesisFlip`'s `narration` prop optional accordingly — SW4-T1's degrade-by-omission
-precedent).
+via the EXISTING catalog beats only, with these mechanical triggers and slot derivations
+(rounds 5-6 pinned every value — do not invent semantics):
+- `nemesis_lead_taken`: emit when this question's grading flipped the week-tally leader
+  (before-tally vs after-tally, as derived above). Slot `questionsLeft` = scoreboard rows whose
+  `result` is still `pending` (count by the result field, NOT by `isPubliclyResolved` — an
+  unsettled nemesis-bonus row must still count as remaining).
+- `nemesis_comeback`: emit iff the after-tally is LEVEL and the running deficit over the
+  date-ordered resolved rows peaked at ≥ 2 (the design doc's own "≥2 down" condition,
+  §13.3 — a 1-point deficit never fires; `numberWord` has no entry for 1). Slots: `deficit` =
+  that peak; `downDay` = the date the peak was first reached; `levelDay` = today's
+  `question_date`. `downDay`/`levelDay` render as WEEKDAY NAMES ("Thursday"), matching the
+  catalog copy — no weekday formatter exists in the repo (`format-et.ts` has only clock +
+  "Jul 08" formats), so this task adds a `formatWeekdayName(dateOnly)` to `format-et.ts`,
+  same plain-text-parse, timezone-immune posture as `formatShortDate`.
+Otherwise `narration` is null. Degrade rule: if any required slot is unresolvable (e.g. the
+relevant row is a nemesis-bonus question with `question_date: null`), `narration` is null —
+and the UI omits the line (make `NemesisFlip`'s `narration` prop optional accordingly —
+SW4-T1's degrade-by-omission precedent).
 Mechanical emission condition, **stated inside the existing viewer gate (fable round 5)**:
 `buildRevealPayload` only constructs the `viewer` block at all when the viewer's own pick
 exists and is graded non-void (`reveal-payload.ts:219-221`) — this block lives inside that
@@ -487,3 +495,22 @@ data plumbing, all fixed above:
    unsatisfiable as a standalone case. Fixed: both blocks are now stated as living inside that
    existing viewer gate, with the no-pick/void case added to the unit AC as the
    impossible-state assertion.
+
+## 12. Fable adversarial review — round 6 findings (fixed in this doc)
+
+Round 6 verified the round-5 fixes hold end to end (grading precedes the status flip, so the
+scoreboard replay sees today's row unmasked at reveal time; the before-tally subtraction is
+correct; no circular import between `reveal-payload.ts` and `nemesis/service.ts`; every line
+citation in the doc re-checked exact) and found two blocking items plus a nit, all inside the
+narration paragraph — fixed above:
+
+1. **BLOCKING — the `nemesis_comeback` trigger dropped the catalog's "≥2 down" condition**
+   (a 1-point deficit would fire, and `numberWord` can't even render 1), and
+   `deficit`/`downDay` were named but never actually derived. Fixed: emit iff level after a
+   peak deficit ≥ 2; deficit = the peak; downDay = date first reached; levelDay = today.
+2. **BLOCKING — "the repo's existing date formatting" pointed at the wrong output shape.**
+   The beats render weekday names ("Thursday"); the repo has no weekday formatter. Fixed:
+   SW10-T1 adds `formatWeekdayName(dateOnly)` to `format-et.ts` (same timezone-immune
+   plain-text-parse posture as `formatShortDate`).
+3. **NIT — `questionsLeft` re-pinned to count rows with `result === 'pending'`** rather than
+   via `isPubliclyResolved`, which would wrongly exclude an unsettled nemesis-bonus row.
