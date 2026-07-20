@@ -142,6 +142,21 @@ export const nemesisFlipSchema = z.object({
   week_label: z.string(),
 });
 
+/**
+ * The duo shared-deck tandem block (SW10-T3, swipe-ux-plan §2.9; wiring-gaps doc §4 SW10-T3).
+ * Fires AT REVEAL, same corrected timing as SW10-T1's `nemesis_flip` (the original pick-time
+ * trigger for the duo tandem line has the identical no-probe-by-picking problem — see that
+ * task's note). Non-null iff the viewer has an active duo AND the partner has a pick on this
+ * exact question. Fields match `DuoTandem`'s props (`apps/web/components/duo/DuoTandem.tsx`) —
+ * the viewer's own side/label come from the payload's existing `viewer.pick` and the question's
+ * `yes_label`/`no_label`, not carried again here.
+ */
+export const duoTandemSchema = z.object({
+  partner_handle: z.string(),
+  partner_side: z.enum(MARKET_SIDE),
+  partner_side_label: z.string(),
+});
+
 export const revealViewerSchema = z.object({
   pick: pickSchema,
   result: z.enum(PICK_RESULT),
@@ -154,6 +169,9 @@ export const revealViewerSchema = z.object({
    * rule (wiring-gaps doc §4/§9 finding 1) — the emitter and this field ship together here, but
    * `.nullish()` is kept rather than tightened to `.nullable()` to match the doc's pinned shape. */
   nemesis_flip: nemesisFlipSchema.nullish(),
+  /** SW10-T3 contract-change: same `.nullish()` sequencing rule as `nemesis_flip` above — a
+   * different field on the same object, no shared line, nothing to actually coordinate. */
+  duo_tandem: duoTandemSchema.nullish(),
 });
 
 export const revealShareSchema = z.object({

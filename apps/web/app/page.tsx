@@ -31,6 +31,9 @@ export default async function HomePage({
   // SW1-T4/SW2-T1: flag read server-side (never viewer data) and threaded to both the shell and
   // the viewer island; off → today's flow renders byte-identically (INV-10).
   const swipeBallot = isFlagEnabled('swipe_ballot');
+  // SW10-T3(a): same server-side, non-viewer flag posture as `swipeBallot` above — gates whether
+  // `ViewerStrip` bothers fetching the viewer's active duo for the sealed partner chip.
+  const duoQueue = isFlagEnabled('duo_queue');
   // SW2-T4: pre-armed deep link (notification/unfurl). `arm` is not viewer data (a URL param),
   // so it doesn't affect INV-10; the client strips it after mount (SW7-T2).
   const arm = swipeBallot && (await searchParams).arm === '1';
@@ -43,7 +46,14 @@ export default async function HomePage({
           question={question}
           serverOffsetMs={serverOffsetMs}
           swipeBallot={swipeBallot}
-          viewerSlot={<ViewerStrip question={question} swipeBallot={swipeBallot} arm={arm} />}
+          viewerSlot={
+            <ViewerStrip
+              question={question}
+              swipeBallot={swipeBallot}
+              arm={arm}
+              duoQueue={duoQueue}
+            />
+          }
         />
       ) : (
         <p className="text-muted text-sm" data-testid="no-question-today">

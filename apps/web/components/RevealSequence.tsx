@@ -4,6 +4,7 @@ import { OBITUARY_MIN_STREAK, Stamp, StreakFlame, prefersReducedMotion } from '@
 import { buildObituaryFacts, copy, shareCopy } from '@/lib/copy';
 import { formatShortDate } from '@/lib/format-et';
 import { ApiClientError, fetchReveal } from '@/lib/pick-client';
+import { DuoTandem } from './duo/DuoTandem';
 import { NemesisFlip } from './nemesis/NemesisFlip';
 import { ObituaryCard } from './ObituaryCard';
 import ShareSheet from './share/ShareSheet';
@@ -244,6 +245,23 @@ export function RevealSequence({ question }: RevealSequenceProps) {
           youWins={viewer.nemesis_flip.you_wins}
           opponentWins={viewer.nemesis_flip.opponent_wins}
           weekLabel={viewer.nemesis_flip.week_label}
+        />
+      ) : null}
+      {/* SW10-T3(b) (wiring-gaps doc §4 SW10-T3): the duo tandem block — an INDEPENDENT section
+          alongside the nemesis flip above, not a branch between them (a viewer could be in both
+          a duo and a nemesis pairing simultaneously). Non-null only at reveal, when an active
+          duo exists and the partner has picked this exact question (see
+          `computeDuoTandemBlock`'s own doc comment). Single mount point, same rationale as
+          `NemesisFlip` above: this `ViewerStrip -> RevealSequence` chain is how `DeckStates`'
+          revealed branch receives viewer content too (via `viewerSlot`), so one mount here
+          serves both flag states — do NOT add a second mount in `DeckStates`. */}
+      {viewer.duo_tandem ? (
+        <DuoTandem
+          viewerSideLabel={viewer.pick.side === 'yes' ? question.yes_label : question.no_label}
+          viewerSide={viewer.pick.side}
+          partnerHandle={viewer.duo_tandem.partner_handle}
+          partnerSideLabel={viewer.duo_tandem.partner_side_label}
+          partnerSide={viewer.duo_tandem.partner_side}
         />
       ) : null}
     </div>

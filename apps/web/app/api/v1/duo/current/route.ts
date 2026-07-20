@@ -4,12 +4,12 @@
  * endpoints — see `../queue/route.ts` for the rationale.
  */
 import type { NextResponse } from 'next/server';
-import { ApiError, isFlagEnabled } from '@receipts/core';
+import { ApiError, isFlagEnabled, now } from '@receipts/core';
 import { jsonSuccess, runRoute } from '@/lib/api-response';
 import { resolveIdentityFromRequest } from '@/lib/identity-request';
 import { enforceGetBackstop } from '@/lib/rate-limit';
 import { getDb } from '@/lib/stores';
-import { getCurrentDuoAndMatch } from '@/lib/duo-queue';
+import { computePartnerPickToday, getCurrentDuoAndMatch } from '@/lib/duo-queue';
 import { toDuoMatchPublic, toDuoPublic } from '@/lib/serialize-duo';
 
 export const runtime = 'nodejs';
@@ -30,9 +30,15 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     const db = getDb();
     const { duo, match } = await getCurrentDuoAndMatch(db, identity.profile.id);
+    // SW10-T3(a) (wiring-gaps doc §4): side-free, so it's safe to compute unconditionally for
+    // any active duo — never gated on `match` (a duo can be active between match windows too).
+    const partnerPickToday = duo
+      ? await computePartnerPickToday(db, duo, identity.profile.id, now())
+      : null;
     return jsonSuccess({
       duo: duo ? await toDuoPublic(db, duo) : null,
       match: match ? toDuoMatchPublic(match) : null,
+      partner_pick_today: partnerPickToday,
     });
   });
 }

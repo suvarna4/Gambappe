@@ -17,11 +17,16 @@ function sideClasses(side: MarketSide): string {
 }
 
 /**
- * SW5-T3 · The duo shared-deck tandem line (swipe-ux-plan §2.9): once the viewer locks during a
- * duo series, the receipt gains both partners' stamps and a MATCHED / SPLIT verdict — the split
- * is the micro-drama ("one of you is wrong"). Purely presentational; `ViewerStrip`/the duo
- * surface mounts it after the viewer's pick, gated on the `duo_queue` flag, and never fetches the
- * partner's side before the viewer has one.
+ * SW5-T3 · The duo shared-deck tandem line (swipe-ux-plan §2.9): both partners' stamps and a
+ * MATCHED / SPLIT verdict — the split is the micro-drama ("one of you is wrong"). Purely
+ * presentational.
+ *
+ * **Mount point corrected by SW10-T3 (wiring-gaps doc §4 SW10-T3):** the original "mounts after
+ * the viewer's pick" trigger here was unimplementable without violating §9.3's no-probe-by-
+ * picking rule — see SW10-T1's note (same fix, same reasoning) for the full explanation. The
+ * real mount is `RevealSequence.tsx`, AT REVEAL, alongside `NemesisFlip` — `viewer.duo_tandem`
+ * (`packages/core/src/schemas/questions.ts`) is structurally unreachable pre-reveal, so this
+ * component never fetches (or receives) the partner's side before that.
  */
 export function DuoTandem({
   viewerSideLabel,

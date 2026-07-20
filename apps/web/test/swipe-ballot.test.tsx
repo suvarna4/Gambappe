@@ -134,3 +134,43 @@ describe('SwipeBallot — accessibility contract', () => {
     expect(render()).not.toMatch(/\$/);
   });
 });
+
+/** SW10-T3(a) (wiring-gaps doc §4 SW10-T3): the sealed partner chip. */
+describe('SwipeBallot — sealed partner chip (SW10-T3)', () => {
+  const partnerLocked = { handle: 'Dre P.', pickedAtIso: '2026-07-19T13:00:00Z' };
+
+  it('omits the chip by default — every existing call site (no `partnerLocked` prop) is unaffected', () => {
+    const html = render();
+    expect(html).not.toContain('data-testid="partner-locked-chip"');
+  });
+
+  it('omits the chip when `partnerLocked` is explicitly null', () => {
+    const html = render({ partnerLocked: null });
+    expect(html).not.toContain('data-testid="partner-locked-chip"');
+  });
+
+  it('renders the chip in the interactive (open) state footer when `partnerLocked` is set', () => {
+    const html = render({ partnerLocked });
+    expect(html).toContain('data-testid="swipe-ballot"');
+    expect(html).toContain('data-testid="partner-locked-chip"');
+    expect(html).toContain('Dre P.');
+    expect(html).toContain('LOCKED');
+  });
+
+  it('renders the chip in the receipt-state footer too (independent of the viewer’s own pick)', () => {
+    const pick: CachedPick = {
+      pickId: 'p1',
+      side: 'yes',
+      pickedAtIso: '2026-07-19T13:05:00Z',
+      undoUntilIso: new Date(Date.now() + 60_000).toISOString(),
+    };
+    const html = render({ pick, partnerLocked });
+    expect(html).toContain('data-testid="viewer-strip-pick"');
+    expect(html).toContain('data-testid="partner-locked-chip"');
+  });
+
+  it('never renders the partner’s side — the chip has no "unsealed" state', () => {
+    const html = render({ partnerLocked });
+    expect(html).not.toMatch(/unsealed/i);
+  });
+});

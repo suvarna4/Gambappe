@@ -1000,6 +1000,134 @@ test.describe('reveal sequence (§10.3, WS7-T3)', () => {
     await expect(flip).toBeVisible();
     await expect(flip).toContainText('Week even, 2–2');
   });
+
+  /**
+   * SW10-T3(b) (wiring-gaps doc §4 SW10-T3): mocked-payload branch-coverage for the
+   * `duo_tandem` UI branching — same rationale as the `nemesis_flip` block above. The TRIGGER
+   * itself (`computeDuoTandemBlock` off a real seeded duo + partner pick) is proven by
+   * `test/integration/duo-tandem-payload.test.ts`'s real-Postgres suite; these cases only
+   * exercise `RevealSequence`'s own branching once it already has a `duo_tandem` shape in hand.
+   */
+  test('a populated duo_tandem renders DuoTandem as its own section, alongside the result stamp AND a populated nemesis_flip', async ({
+    page,
+  }) => {
+    const { question } = await seedQuestion(
+      {},
+      {
+        status: 'revealed',
+        outcome: 'yes',
+        crowdYesAtLock: 6,
+        crowdNoAtLock: 4,
+        revealedAt: new Date(),
+        // `DuoTandem`'s `viewerSideLabel` is sourced from RevealSequence's OWN `question` prop
+        // (the real SSR-fetched row this component seeds) — NOT the mocked reveal payload's own
+        // `question.yes_label` field below (a separate fixture value). Aligning the two here
+        // avoids a false mismatch between what's asserted and what the component actually reads.
+        yesLabel: 'Yes it will',
+        noLabel: 'No it will not',
+      },
+    );
+
+    await page.route(`**/api/v1/questions/${question.slug}/reveal`, (route) =>
+      route.fulfill({
+        status: 200,
+        json: revealMockBody(question, {
+          pick: {
+            id: '018f1e2b-0000-7000-8000-0000000000fe',
+            question_id: question.id,
+            profile_id: '018f1e2b-0000-7000-8000-0000000000e6',
+            side: 'yes',
+            yes_price_at_entry: 0.63,
+            price_stamped_at: '2026-07-19T13:00:00Z',
+            picked_at: '2026-07-19T13:00:00Z',
+            source: 'spectator_page',
+            confidence: null,
+            result: 'win',
+            edge: 0.37,
+          },
+          result: 'win',
+          edge: 0.37,
+          percentile: 82,
+          streak: { current: 4, best: 4, delta: 1, freeze_used: false, broken_run: null },
+          badges: [],
+          // Deliberately populated alongside `duo_tandem` — the doc's own AC: "a viewer could
+          // theoretically be in both a duo and a nemesis pairing simultaneously; stack both
+          // blocks, don't branch between them."
+          nemesis_flip: {
+            opponent_handle: 'Maria O.',
+            opponent_side: 'no',
+            opponent_side_label: 'No it will not',
+            opponent_entry_cents: 27,
+            narration: null,
+            you_wins: 2,
+            opponent_wins: 2,
+            week_label: 'Week of Jul 13 · Day 3',
+          },
+          duo_tandem: {
+            partner_handle: 'Dre P.',
+            partner_side: 'no',
+            partner_side_label: 'No it will not',
+          },
+        }),
+      }),
+    );
+
+    await page.goto(`/q/${question.slug}`);
+    // The existing result content still renders unchanged.
+    await expect(page.getByTestId('reveal-sequence-result')).toBeVisible();
+    await expect(page.getByTestId('reveal-sequence-result')).toContainText('WIN');
+    await expect(page.getByTestId('share-receipt-button')).toBeVisible();
+    // ...alongside (never replacing, never branching against) BOTH the nemesis and duo sections.
+    await expect(page.getByTestId('nemesis-flip')).toBeVisible();
+    const tandem = page.getByTestId('duo-tandem');
+    await expect(tandem).toBeVisible();
+    await expect(tandem).toContainText('You: Yes it will');
+    await expect(tandem).toContainText('Dre P.: No it will not');
+    await expect(tandem).toContainText('Split — one of you is wrong');
+    await expect(tandem).toHaveAttribute('data-matched', 'false');
+  });
+
+  test('a null duo_tandem: DuoTandem does not render, rest of the reveal is unaffected', async ({
+    page,
+  }) => {
+    const { question } = await seedQuestion(
+      {},
+      { status: 'revealed', outcome: 'yes', crowdYesAtLock: 6, crowdNoAtLock: 4, revealedAt: new Date() },
+    );
+
+    await page.route(`**/api/v1/questions/${question.slug}/reveal`, (route) =>
+      route.fulfill({
+        status: 200,
+        json: revealMockBody(question, {
+          pick: {
+            id: '018f1e2b-0000-7000-8000-0000000000ff',
+            question_id: question.id,
+            profile_id: '018f1e2b-0000-7000-8000-0000000000e7',
+            side: 'yes',
+            yes_price_at_entry: 0.63,
+            price_stamped_at: '2026-07-19T13:00:00Z',
+            picked_at: '2026-07-19T13:00:00Z',
+            source: 'spectator_page',
+            confidence: null,
+            result: 'win',
+            edge: 0.37,
+          },
+          result: 'win',
+          edge: 0.37,
+          percentile: 82,
+          streak: { current: 4, best: 4, delta: 1, freeze_used: false, broken_run: null },
+          badges: [],
+          nemesis_flip: null,
+          duo_tandem: null,
+        }),
+      }),
+    );
+
+    await page.goto(`/q/${question.slug}`);
+    await expect(page.getByTestId('reveal-sequence-result')).toBeVisible();
+    await expect(page.getByTestId('share-receipt-button')).toBeVisible();
+    await expect(page.getByTestId('duo-tandem')).toHaveCount(0);
+  });
 });
 
 test.describe('INV-10 — spectator page is viewer-free at the HTTP layer', () => {

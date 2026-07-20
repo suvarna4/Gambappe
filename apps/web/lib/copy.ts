@@ -460,4 +460,9 @@ export const duoCopy = {
   tandemMatched: 'Matched',
   tandemSplit: 'Split — one of you is wrong',
   tandemReceiptHeading: 'Tandem receipt',
+
+  /** SW10-T3(a) (wiring-gaps doc §4): the sealed partner chip on `SwipeBallot`'s footer — status
+   * + timing only, never the partner's side (there is no "unsealed" variant of this copy). */
+  partnerLockedChip: (partnerHandle: string, hoursAgo: number) =>
+    `▣ ${partnerHandle} LOCKED · ${hoursAgo}h AGO`,
 } as const;

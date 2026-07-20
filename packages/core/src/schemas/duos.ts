@@ -50,10 +50,28 @@ export const dequeueDuoResponseSchema = z.object({ left: z.literal(true) });
 
 // --- GET /duo/current (claimed): my duo + active match ----------------------------------------
 
+/**
+ * SW10-T3 (wiring-gaps doc §4 SW10-T3): the sealed partner chip's data — existence + timing
+ * only, NEVER the partner's side (§9.3 stays untouched; the chip has no "unsealed" state). Null
+ * when there's no active duo to report on; `{picked: false, picked_at: null}` when there is one
+ * but "today's" daily question either doesn't exist yet or the partner hasn't picked it.
+ * `picked_at` is truncated to minute precision, matching §9.2's public pick-timestamp posture
+ * (`pickPublicSchema`'s own doc comment).
+ */
+export const partnerPickTodaySchema = z.object({
+  picked: z.boolean(),
+  picked_at: zTimestamp.nullable(),
+});
+
 export const getCurrentDuoRequestSchema = z.object({});
 export const getCurrentDuoResponseSchema = z.object({
   duo: duoPublicSchema.nullable(),
   match: duoMatchPublicSchema.nullable(),
+  /** SW10-T3 contract-change: `.nullish()` (optional-or-null) per the contract-PR sequencing
+   * rule (wiring-gaps doc §4/§9 finding 1, same as SW10-T1's `nemesis_flip`) — `fetchCurrentDuo`
+   * (`apps/web/lib/duo-client.ts`) runtime-parses every response through this schema, so a
+   * required key deployed ahead of the handler change would break the live duo hub. */
+  partner_pick_today: partnerPickTodaySchema.nullish(),
 });
 
 // --- GET /duos/:id (none): public duo page ----------------------------------------------------

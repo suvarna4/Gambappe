@@ -24,6 +24,7 @@ import { formatEtClock } from '@/lib/format-et';
 import type { PickInputSource } from '@/lib/pick-input-source';
 import type { CachedPick } from '@/lib/pick-storage';
 import { haptic, useDragCommit } from '@/lib/use-drag-commit';
+import { PartnerLockedChip } from './duo/PartnerLockedChip';
 import { ReceiptSlip } from './ReceiptSlip';
 
 export interface SwipeBallotProps {
@@ -47,6 +48,15 @@ export interface SwipeBallotProps {
    * gesture affordance. Never auto-picks anything (SW7-T2 owns the URL plumbing).
    */
   arm?: boolean;
+  /**
+   * SW10-T3(a) (wiring-gaps doc §4 SW10-T3): the sealed partner chip's data — non-null only
+   * when the caller has already confirmed the `duo_queue` flag is on, the viewer has an active
+   * duo, AND the partner has picked today's question (there is no "unsealed" render — omitting
+   * this prop, or passing `null`/`undefined`, renders nothing, which keeps every existing
+   * `SwipeBallot` call site byte-identical to before this task). Never carries the partner's
+   * side — only existence + timing (§9.3 stays untouched).
+   */
+  partnerLocked?: { handle: string; pickedAtIso: string } | null;
 }
 
 function readCount(key: string): number {
@@ -75,6 +85,7 @@ export function SwipeBallot({
   onPick,
   onUndo,
   arm = false,
+  partnerLocked = null,
 }: SwipeBallotProps) {
   const [reducedMotion] = useState(() => prefersReducedMotion());
   const [pendingAge, setPendingAge] = useState<MarketSide | null>(null);
@@ -195,6 +206,17 @@ export function SwipeBallot({
     onPick(side, true, pendingSource.current);
   }
 
+  // SW10-T3(a): the sealed partner chip renders in the footer of BOTH states below — it reports
+  // the partner's lock status, which is independent of the viewer's own pick state. `null` (the
+  // prop's default) renders nothing.
+  const partnerChip = partnerLocked ? (
+    <PartnerLockedChip
+      partnerHandle={partnerLocked.handle}
+      pickedAtIso={partnerLocked.pickedAtIso}
+      nowMsValue={nowMs}
+    />
+  ) : null;
+
   // ---- Receipt state (SW1-T3). ----
   if (pick) {
     const sideLabel = pick.side === 'yes' ? yesLabel : noLabel;
@@ -219,6 +241,7 @@ export function SwipeBallot({
         <p className="text-muted px-1 font-mono text-xs">
           {copy.question.comeBackAt(formatEtClock(question.reveal_at))}
         </p>
+        {partnerChip}
       </div>
     );
   }
@@ -412,6 +435,7 @@ export function SwipeBallot({
       >
         {ballotCopy.againstArrow} {noLabel} · {yesLabel} {ballotCopy.forArrow}
       </p>
+      {partnerChip}
     </div>
   );
 }

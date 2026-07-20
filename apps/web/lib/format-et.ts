@@ -56,3 +56,13 @@ export function formatWeekdayName(dateOnly: string): string {
   const dow = new Date(Date.UTC(Number(yearStr), Number(monthStr) - 1, Number(dayStr))).getUTCDay();
   return WEEKDAY_NAMES[dow]!;
 }
+
+/**
+ * SW10-T3 (wiring-gaps doc §4 SW10-T3): whole hours elapsed since `iso`, for the sealed
+ * partner chip's "· {n}h AGO" segment. Clamped to >= 0 (a clock-skew instant slightly in the
+ * future reads as "0h AGO" rather than a negative number).
+ */
+export function formatHoursAgo(iso: string, nowMsValue: number): number {
+  const elapsedMs = nowMsValue - Date.parse(iso);
+  return Math.max(0, Math.floor(elapsedMs / 3_600_000));
+}

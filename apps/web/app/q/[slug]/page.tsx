@@ -85,6 +85,9 @@ export default async function QuestionPage({ params }: QuestionPageProps) {
   });
 
   const swipeBallot = isFlagEnabled('swipe_ballot');
+  // SW10-T3(a): same server-side, non-viewer flag posture as `swipeBallot` — safe on this ISR'd
+  // route for the same reason `swipeBallot` already is (a runtime flag, not per-request data).
+  const duoQueue = isFlagEnabled('duo_queue');
 
   return (
     <main className="mx-auto max-w-xl space-y-6 px-6 py-10">
@@ -95,7 +98,9 @@ export default async function QuestionPage({ params }: QuestionPageProps) {
         // `?arm=1` is intentionally NOT read here (searchParams) — see ViewerStrip's `arm` prop
         // doc: doing so would force this ISR'd (`revalidate = 30`) route into fully dynamic
         // rendering. ViewerStrip self-detects it client-side instead.
-        viewerSlot={<ViewerStrip question={question} swipeBallot={swipeBallot} />}
+        viewerSlot={
+          <ViewerStrip question={question} swipeBallot={swipeBallot} duoQueue={duoQueue} />
+        }
       />
       <script
         type="application/ld+json"

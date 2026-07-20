@@ -14,6 +14,7 @@ import {
   writeCachedPick,
   type CachedPick,
 } from '@/lib/pick-storage';
+import { fetchCurrentDuo } from '@/lib/duo-client';
 import ShareSheet from './share/ShareSheet';
 import { PickButtons } from './PickButtons';
 import { QuestionThread } from './QuestionThread';
@@ -41,10 +42,21 @@ export interface ViewerStripProps {
    * SSR/hydration still render `arm=false` (byte-identical, same posture as `me`/`pick` above),
    * and a post-mount effect flips it, matching how those two already resolve after paint. */
   arm?: boolean;
+  /**
+   * SW10-T3(a) (wiring-gaps doc §4 SW10-T3): `duo_queue` flag (server-read, passed in — not
+   * viewer data, same INV-10 posture as `swipeBallot` above). When on, this island fetches the
+   * viewer's active duo client-side (post-hydration, mirroring the `/me` fetch below) and, once
+   * the partner has picked today's question, forwards the sealed chip's data to `SwipeBallot`.
+   * Default `false` keeps the flag-off render — and the extra fetch — byte-identical to before
+   * this task.
+   */
+  duoQueue?: boolean;
 }
 
 type MeState =
-  { status: 'loading' } | { status: 'ready'; ageAttested: boolean } | { status: 'error' };
+  | { status: 'loading' }
+  | { status: 'ready'; ageAttested: boolean; profileId: string }
+  | { status: 'error' };
 
 /**
  * The identity-dependent island (§10.2, INV-10): the ONLY place on the question page that
@@ -59,7 +71,12 @@ type MeState =
  * from those calls (including plain network failures while unmerged) are caught and shown
  * inline; they never crash this component or the page around it.
  */
-export function ViewerStrip({ question, swipeBallot = false, arm: armProp }: ViewerStripProps) {
+export function ViewerStrip({
+  question,
+  swipeBallot = false,
+  arm: armProp,
+  duoQueue = false,
+}: ViewerStripProps) {
   const [me, setMe] = useState<MeState>({ status: 'loading' });
   const [pick, setPick] = useState<CachedPick | null>(null);
   const [busy, setBusy] = useState(false);
@@ -67,6 +84,12 @@ export function ViewerStrip({ question, swipeBallot = false, arm: armProp }: Vie
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [shareOpen, setShareOpen] = useState(false);
   const [arm, setArm] = useState(armProp ?? false);
+  // SW10-T3(a): sealed partner chip data, non-null only once every gating condition (flag,
+  // active duo, partner picked today) is confirmed — see the effect below and `duoQueue`'s doc
+  // comment above.
+  const [partnerLocked, setPartnerLocked] = useState<{ handle: string; pickedAtIso: string } | null>(
+    null,
+  );
 
   useEffect(() => {
     // Only self-detect when the caller didn't already resolve `arm` server-side (see the prop's
@@ -82,7 +105,13 @@ export function ViewerStrip({ question, swipeBallot = false, arm: armProp }: Vie
     let cancelled = false;
     fetchMe()
       .then(({ data }) => {
-        if (!cancelled) setMe({ status: 'ready', ageAttested: data.profile.age_attested });
+        if (!cancelled) {
+          setMe({
+            status: 'ready',
+            ageAttested: data.profile.age_attested,
+            profileId: data.profile.profile_id,
+          });
+        }
       })
       .catch(() => {
         if (!cancelled) setMe({ status: 'error' });
@@ -91,6 +120,37 @@ export function ViewerStrip({ question, swipeBallot = false, arm: armProp }: Vie
       cancelled = true;
     };
   }, [question.status]);
+
+  useEffect(() => {
+    // SW10-T3(a) (wiring-gaps doc §4 SW10-T3): fetch the viewer's active duo only once flag +
+    // question-state + identity are all confirmed — a claimed profile id is needed to tell the
+    // partner apart from the viewer's own entry in `duo.partners`. Best-effort: any failure (not
+    // claimed, not in a duo, network error) just leaves the chip unrendered, matching
+    // `DuoHubClient`'s own best-effort `loadCurrent` posture. Also requires `swipeBallot` — the
+    // chip only ever renders inside that branch below, so fetching without it would just be
+    // wasted network traffic for every claimed viewer on every page view (fable review of
+    // PR #90).
+    if (!duoQueue || !swipeBallot || question.status !== 'open' || me.status !== 'ready') return;
+    let cancelled = false;
+    const viewerProfileId = me.profileId;
+    fetchCurrentDuo()
+      .then(({ data }) => {
+        if (cancelled) return;
+        if (!data.duo || !data.partner_pick_today?.picked || !data.partner_pick_today.picked_at) {
+          return;
+        }
+        const partner =
+          data.duo.partners.find((p) => p.profile_id !== viewerProfileId) ?? data.duo.partners[0];
+        if (!partner) return;
+        setPartnerLocked({ handle: partner.handle, pickedAtIso: data.partner_pick_today.picked_at });
+      })
+      .catch(() => {
+        // Best-effort — see comment above.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [duoQueue, swipeBallot, question.status, me]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -196,6 +256,7 @@ export function ViewerStrip({ question, swipeBallot = false, arm: armProp }: Vie
           onPick={handlePick}
           onUndo={handleUndo}
           arm={arm}
+          partnerLocked={partnerLocked}
         />
         {error ? (
           <p className="text-loss text-xs" data-testid="viewer-strip-error">

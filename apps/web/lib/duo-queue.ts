@@ -7,11 +7,14 @@
  */
 import { and, desc, eq, inArray, ne, or, sql } from 'drizzle-orm';
 import { uuidv7 } from 'uuidv7';
-import { ApiError, DUO_MIN_PICKS, now } from '@receipts/core';
+import type { z } from 'zod';
+import { ApiError, DUO_MIN_PICKS, etDateString, now, type partnerPickTodaySchema } from '@receipts/core';
 import {
   duoMatches,
   duoQueueEntries,
   duos,
+  getPick,
+  getTodayDailyQuestion,
   isUniqueViolation,
   picks,
   type Db,
@@ -184,4 +187,37 @@ export async function getCurrentDuoAndMatch(db: Db, profileId: string): Promise<
     .limit(1);
 
   return { duo, match: match ?? null };
+}
+
+// --- SW10-T3(a): the sealed partner chip's data (wiring-gaps doc §4 SW10-T3) -------------------
+
+/** `picked_at` is truncated to minute precision (§9.2 sleep/location-profiling posture, same
+ * rule `profile-page.ts`'s `truncateToMinuteIso` applies to public pick logs). */
+function truncateToMinuteIso(date: Date): string {
+  const ms = date.getTime();
+  return new Date(ms - (ms % 60_000)).toISOString();
+}
+
+/**
+ * `GET /duo/current`'s `partner_pick_today` (§9.2, SW10-T3(a)): existence + timing of the
+ * partner's pick on TODAY's daily question — never the side (§9.3 stays untouched). `{picked:
+ * false, picked_at: null}` both when today has no daily question yet and when the partner
+ * simply hasn't picked it — the caller can't tell those apart from this shape alone, which is
+ * fine: the sealed chip only ever renders on `picked === true`, and there is no "unsealed"
+ * state for it to distinguish (the wiring-gaps doc §4 SW10-T3's own framing).
+ */
+export async function computePartnerPickToday(
+  db: Db,
+  duo: DuoRow,
+  viewerProfileId: string,
+  at: Date,
+): Promise<z.infer<typeof partnerPickTodaySchema>> {
+  const partnerId = duo.profileAId === viewerProfileId ? duo.profileBId : duo.profileAId;
+  const today = await getTodayDailyQuestion(db, etDateString(at));
+  if (!today) return { picked: false, picked_at: null };
+
+  const partnerPick = await getPick(db, today.id, partnerId);
+  if (!partnerPick) return { picked: false, picked_at: null };
+
+  return { picked: true, picked_at: truncateToMinuteIso(partnerPick.pickedAt) };
 }

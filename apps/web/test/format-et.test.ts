@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatEtClock, formatShortDate, formatWeekdayName } from '@/lib/format-et';
+import { formatEtClock, formatHoursAgo, formatShortDate, formatWeekdayName } from '@/lib/format-et';
 
 describe('formatEtClock', () => {
   it('formats a UTC morning instant as ET (EDT, UTC-4, in July)', () => {
@@ -79,5 +79,31 @@ describe('formatWeekdayName', () => {
     } finally {
       process.env.TZ = original;
     }
+  });
+});
+
+/** SW10-T3(a) (wiring-gaps doc §4 SW10-T3): the sealed partner chip's "{n}h AGO" segment. */
+describe('formatHoursAgo', () => {
+  it('rounds down to whole elapsed hours', () => {
+    const pickedAt = '2026-07-19T13:00:00Z';
+    const now = Date.parse('2026-07-19T15:59:00Z'); // 2h59m later
+    expect(formatHoursAgo(pickedAt, now)).toBe(2);
+  });
+
+  it('is exactly 0 right at the instant', () => {
+    const iso = '2026-07-19T13:00:00Z';
+    expect(formatHoursAgo(iso, Date.parse(iso))).toBe(0);
+  });
+
+  it('clamps a future/clock-skew instant to 0 rather than a negative number', () => {
+    const now = Date.parse('2026-07-19T13:00:00Z');
+    const future = '2026-07-19T13:05:00Z';
+    expect(formatHoursAgo(future, now)).toBe(0);
+  });
+
+  it('crosses a day boundary correctly (24h+)', () => {
+    const pickedAt = '2026-07-18T13:00:00Z';
+    const now = Date.parse('2026-07-19T15:30:00Z'); // 26h30m later
+    expect(formatHoursAgo(pickedAt, now)).toBe(26);
   });
 });

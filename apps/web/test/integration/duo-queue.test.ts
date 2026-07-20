@@ -35,6 +35,7 @@ import {
 import { buildMarket, buildPick, buildProfile, buildQuestion } from '@receipts/db/testing';
 import {
   checkDuoEligibility,
+  computePartnerPickToday,
   eligibilityError,
   getCurrentDuoAndMatch,
   joinDuoQueue,
@@ -289,5 +290,102 @@ describe('getCurrentDuoAndMatch (§9.2 GET /duo/current)', () => {
     const result = await getCurrentDuoAndMatch(db, profile.id);
     expect(result.duo?.id).toBe(duo!.id);
     expect(result.match?.id).toBe(currentMatch!.id);
+  });
+});
+
+describe('computePartnerPickToday (§9.2 GET /duo/current, SW10-T3(a) wiring-gaps doc §4)', () => {
+  async function makeActiveDuo(memberAId: string, memberBId: string) {
+    const [a, b] = memberAId < memberBId ? [memberAId, memberBId] : [memberBId, memberAId];
+    const [duo] = await db
+      .insert(duos)
+      .values({ id: uuidv7(), profileAId: a, profileBId: b, status: 'active' })
+      .returning();
+    return duo!;
+  }
+
+  /** A real `daily` question on an auto-assigned unique date (the factory's own
+   * `nextQuestionDate()`, same collision-avoidance every other fixture in this file relies on —
+   * a hand-picked fixed date risks colliding with another test's auto-assigned one in this
+   * shared, never-truncated file). Returns the row so the caller can read `questionDate` back
+   * for the `at` instant it passes to `computePartnerPickToday`. */
+  async function makeDailyQuestion() {
+    const [market] = await db.insert(markets).values(buildMarket()).returning();
+    const [question] = await db
+      .insert(questions)
+      .values(buildQuestion(market!.id as string, { status: 'open' }))
+      .returning();
+    return question!;
+  }
+
+  it('is {picked: false, picked_at: null} when today has no daily question yet', async () => {
+    const [viewer, partner] = await Promise.all([makeClaimedProfile(), makeClaimedProfile()]);
+    const duo = await makeActiveDuo(viewer.id, partner.id);
+
+    // Far enough out that no auto-assigned `nextQuestionDate()` fixture in this file's run will
+    // ever reach it (those start at 2026-01-02 and advance one day per factory call).
+    const result = await computePartnerPickToday(db, duo, viewer.id, new Date('2099-01-01T18:00:00Z'));
+    expect(result).toEqual({ picked: false, picked_at: null });
+  });
+
+  it("is {picked: false, picked_at: null} when today's question exists but the partner hasn't picked it", async () => {
+    const [viewer, partner] = await Promise.all([makeClaimedProfile(), makeClaimedProfile()]);
+    const duo = await makeActiveDuo(viewer.id, partner.id);
+    const question = await makeDailyQuestion();
+
+    const at = new Date(`${question.questionDate}T18:00:00Z`);
+    const result = await computePartnerPickToday(db, duo, viewer.id, at);
+    expect(result).toEqual({ picked: false, picked_at: null });
+  });
+
+  it("is picked: true with a minute-truncated picked_at once the partner has picked today's question", async () => {
+    const [viewer, partner] = await Promise.all([makeClaimedProfile(), makeClaimedProfile()]);
+    const duo = await makeActiveDuo(viewer.id, partner.id);
+    const question = await makeDailyQuestion();
+    const pickedAt = new Date(`${question.questionDate}T14:22:47.512Z`);
+    await db.insert(picks).values(buildPick(question.id, partner.id, { pickedAt }));
+
+    const at = new Date(`${question.questionDate}T18:00:00Z`);
+    const result = await computePartnerPickToday(db, duo, viewer.id, at);
+    expect(result.picked).toBe(true);
+    expect(result.picked_at).toBe(`${question.questionDate}T14:22:00.000Z`); // seconds/ms truncated away
+  });
+
+  it('never surfaces the VIEWER picking as "partner picked" (side-free, but partner-scoped)', async () => {
+    const [viewer, partner] = await Promise.all([makeClaimedProfile(), makeClaimedProfile()]);
+    const duo = await makeActiveDuo(viewer.id, partner.id);
+    const question = await makeDailyQuestion();
+    // The VIEWER picked, not the partner.
+    await db.insert(picks).values(buildPick(question.id, viewer.id, {}));
+
+    const at = new Date(`${question.questionDate}T18:00:00Z`);
+    const result = await computePartnerPickToday(db, duo, viewer.id, at);
+    expect(result).toEqual({ picked: false, picked_at: null });
+  });
+
+  it('never includes a `side` key — existence + timing only (§9.3)', async () => {
+    const [viewer, partner] = await Promise.all([makeClaimedProfile(), makeClaimedProfile()]);
+    const duo = await makeActiveDuo(viewer.id, partner.id);
+    const question = await makeDailyQuestion();
+    await db.insert(picks).values(buildPick(question.id, partner.id, { side: 'no' }));
+
+    const at = new Date(`${question.questionDate}T18:00:00Z`);
+    const result = await computePartnerPickToday(db, duo, viewer.id, at);
+    expect(Object.keys(result).sort()).toEqual(['picked', 'picked_at']);
+  });
+
+  it('resolves the partner correctly regardless of which side of the duo the viewer is stored on', async () => {
+    const [viewer, partner] = await Promise.all([makeClaimedProfile(), makeClaimedProfile()]);
+    const duo = await makeActiveDuo(viewer.id, partner.id);
+    // Confirm the canonical a<b ordering doesn't dictate which member is "the viewer" here —
+    // exercise it from whichever side the viewer landed on.
+    const viewerIsA = duo.profileAId === viewer.id;
+    expect(viewerIsA || duo.profileBId === viewer.id).toBe(true);
+
+    const question = await makeDailyQuestion();
+    await db.insert(picks).values(buildPick(question.id, partner.id, {}));
+
+    const at = new Date(`${question.questionDate}T18:00:00Z`);
+    const result = await computePartnerPickToday(db, duo, viewer.id, at);
+    expect(result.picked).toBe(true);
   });
 });

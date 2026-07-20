@@ -22,6 +22,7 @@ import {
   type StreakReplayResult,
 } from '@receipts/db';
 import { addDaysToDateString, isFlagEnabled, type RevealPayload, type RevealViewer } from '@receipts/core';
+import { getActiveDuoForProfile } from './duo-queue';
 import { getCurrentPairingForProfile } from './nemesis/service';
 import type { PairingScoreboardRow } from './nemesis/types';
 import { serializeQuestionPublic } from './serialize-question';
@@ -300,6 +301,43 @@ async function computeNemesisFlipBlock(
   };
 }
 
+// --- SW10-T3(b): duo shared-deck tandem block (wiring-gaps doc §4 SW10-T3) ---------------------
+
+type DuoTandemBlock = NonNullable<RevealViewer['duo_tandem']>;
+
+/**
+ * SW10-T3(b) (wiring-gaps doc §4 SW10-T3): the duo tandem block. Lives inside the SAME caller
+ * gate as `computeNemesisFlipBlock` above — `buildRevealPayload` only reaches here for a graded,
+ * non-void OWN pick on an ACTUALLY revealed question, so `getPick` for the partner is
+ * structurally unreachable before reveal, not merely unpopulated (identical guarantee, same
+ * corrected reveal-time trigger as SW10-T1 — see that task's note for why the original pick-time
+ * trigger was unimplementable). Non-null iff (a) the viewer has an active duo and (b) the
+ * partner has a pick on this exact question.
+ */
+async function computeDuoTandemBlock(
+  db: Db,
+  question: QuestionRow,
+  viewerProfileId: string,
+): Promise<DuoTandemBlock | null> {
+  if (!isFlagEnabled('duo_queue')) return null;
+
+  const duo = await getActiveDuoForProfile(db, viewerProfileId);
+  if (!duo) return null;
+
+  const partnerId = duo.profileAId === viewerProfileId ? duo.profileBId : duo.profileAId;
+  const partnerPick = await getPick(db, question.id, partnerId);
+  if (!partnerPick) return null;
+
+  const partner = await getProfileById(db, partnerId);
+  if (!partner) return null;
+
+  return {
+    partner_handle: partner.handle,
+    partner_side: partnerPick.side,
+    partner_side_label: partnerPick.side === 'yes' ? question.yesLabel : question.noLabel,
+  };
+}
+
 async function computeViewerStreakBlock(
   db: Db,
   profileId: string,
@@ -410,6 +448,10 @@ export async function buildRevealPayload(args: BuildRevealPayloadArgs): Promise<
         // active pairing exists AND the opponent has a pick on THIS question (see the function's
         // own doc comment for the "unreachable, not merely unpopulated" pre-reveal guarantee).
         const nemesisFlip = await computeNemesisFlipBlock(db, question, profile.id, profile.handle, at);
+        // SW10-T3(b): same gate, independent block — a viewer can be in both a nemesis pairing
+        // and a duo at once, so both sections are computed and rendered side by side, never
+        // branched between (`RevealSequence`'s own comment on this).
+        const duoTandem = await computeDuoTandemBlock(db, question, profile.id);
 
         viewer = {
           pick: serializePick(pick),
@@ -419,6 +461,7 @@ export async function buildRevealPayload(args: BuildRevealPayloadArgs): Promise<
           streak,
           badges,
           nemesis_flip: nemesisFlip,
+          duo_tandem: duoTandem,
         };
       }
     }

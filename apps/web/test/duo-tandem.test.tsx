@@ -36,4 +36,25 @@ describe('DuoTandem', () => {
   it('never leaks a money glyph (INV-8)', () => {
     expect(renderToStaticMarkup(<DuoTandem {...base} />)).not.toMatch(/\$/);
   });
+
+  /** SW10-T3(b) AC (wiring-gaps doc §4 SW10-T3): "SPLIT renders in gold mono (already
+   * implemented in DuoTandem.tsx — verify the AC, don't re-derive)". */
+  it('renders the SPLIT verdict in font-mono with the pinned gold ink (#6b5200)', () => {
+    const html = renderToStaticMarkup(<DuoTandem {...base} />);
+    const verdictMatch = html.match(/data-testid="tandem-verdict"[^>]*class="([^"]*)"/);
+    expect(verdictMatch).not.toBeNull();
+    const verdictClass = verdictMatch![1]!;
+    expect(verdictClass).toContain('font-mono');
+    expect(verdictClass).toContain('text-[#6b5200]');
+    expect(html).toContain('data-matched="false"');
+  });
+
+  it('renders the MATCHED verdict in font-mono with a different (non-gold) ink', () => {
+    const html = renderToStaticMarkup(<DuoTandem {...base} partnerSide="yes" partnerSideLabel="SCORES" />);
+    const verdictMatch = html.match(/data-testid="tandem-verdict"[^>]*class="([^"]*)"/);
+    expect(verdictMatch).not.toBeNull();
+    const verdictClass = verdictMatch![1]!;
+    expect(verdictClass).toContain('font-mono');
+    expect(verdictClass).not.toContain('text-[#6b5200]');
+  });
 });
