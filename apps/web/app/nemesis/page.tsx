@@ -77,7 +77,7 @@ export default async function NemesisHomePage() {
     getNemesisHistoryPage(db, viewerProfileId, { limit: NEMESIS_HISTORY_DEFAULT_LIMIT }),
   ]);
 
-  const pageState = selectNemesisPageState({ pairing, historyEntries: historyPage.data });
+  const pageState = selectNemesisPageState({ pairing, historyEntries: historyPage.data, at });
 
   let opponentSide: PairingSide | null = null;
   if (pairing) {

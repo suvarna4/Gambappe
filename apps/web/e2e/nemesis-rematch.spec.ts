@@ -68,6 +68,26 @@ const DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://receipts:receipts@l
 // with `NODE_ENV=production`, so `useSecureCookies` (`apps/web/auth.ts`) is always true here.
 const SESSION_COOKIE_NAME = '__Secure-authjs.session-token';
 
+/**
+ * A Monday `week_start` (`YYYY-MM-DD`) whose `nemesis:conclude` instant (that week's Sunday
+ * 22:00 ET) is safely in the past but still inside `page-state.ts`'s `VERDICT_FRESH_WINDOW_MS`
+ * (8 days) of REAL current time. This suite's own header explains why every pairing here omits a
+ * `status` override to become the promoted "verdict state" entry — that promotion (`lib/nemesis/
+ * page-state.ts`'s `selectNemesisPageState`) requires the week to be genuinely recent, not just
+ * non-cancelled, so (unlike the wide-real-clock-covering SEASON dates just above, which only
+ * need to CONTAIN whenever "now" happens to be) this can't be a fixed calendar date — copied
+ * verbatim from `nemesis-page-states.spec.ts`'s identical helper (same rationale documented
+ * there in full).
+ */
+function recentFreshWeekStart(): string {
+  const now = new Date();
+  const isoDow = now.getUTCDay() === 0 ? 7 : now.getUTCDay(); // Mon=1..Sun=7
+  const daysSinceThisMonday = isoDow - 1;
+  const lastWeekMonday = new Date(now);
+  lastWeekMonday.setUTCDate(now.getUTCDate() - daysSinceThisMonday - 7);
+  return lastWeekMonday.toISOString().slice(0, 10);
+}
+
 /** Drags `card` by `dxRatio` × its own width and releases — same shape as
  * `swipe-ballot.spec.ts`'s helper, reused here (fable review of PR #84) to prove
  * `VerdictSwipeCard`'s ACTUAL drag→action mapping, not just the always-present tap-button
@@ -195,7 +215,7 @@ test.describe('/nemesis rematch-request flow (§8.4 step 0, §9.2, real Postgres
     const [a, b] = viewerId < opponentId ? [viewerId, opponentId] : [opponentId, viewerId];
 
     // A terminal (completed) pairing this season — "a past nemesis this season" (§9.2).
-    await db.insert(nemesisPairings).values(buildNemesisPairing(seasonId, a, b, { weekStart: '2026-06-01' }));
+    await db.insert(nemesisPairings).values(buildNemesisPairing(seasonId, a, b, { weekStart: recentFreshWeekStart() }));
 
     // `domain`+`path` (not `url`) — Chromium's CDP `Storage.setCookies` rejects a `__Secure-`
     // prefixed cookie set via `url` ("Invalid cookie fields"), verified empirically by
@@ -258,7 +278,7 @@ test.describe('/nemesis rematch-request flow (§8.4 step 0, §9.2, real Postgres
     const opponentId = opponent!.id as string;
     const [a, b] = viewerId < opponentId ? [viewerId, opponentId] : [opponentId, viewerId];
 
-    await db.insert(nemesisPairings).values(buildNemesisPairing(seasonId, a, b, { weekStart: '2026-06-01' }));
+    await db.insert(nemesisPairings).values(buildNemesisPairing(seasonId, a, b, { weekStart: recentFreshWeekStart() }));
     // The opponent already requested a rematch against the viewer — an OPEN incoming request.
     await db.insert(rematchRequests).values({
       id: randomUUID(),
@@ -302,7 +322,7 @@ test.describe('/nemesis rematch-request flow (§8.4 step 0, §9.2, real Postgres
       .returning();
     const opponentId = opponent!.id as string;
     const [a, b] = viewerId < opponentId ? [viewerId, opponentId] : [opponentId, viewerId];
-    await db.insert(nemesisPairings).values(buildNemesisPairing(seasonId, a, b, { weekStart: '2026-06-01' }));
+    await db.insert(nemesisPairings).values(buildNemesisPairing(seasonId, a, b, { weekStart: recentFreshWeekStart() }));
 
     await context.addCookies([
       {
@@ -337,7 +357,7 @@ test.describe('/nemesis rematch-request flow (§8.4 step 0, §9.2, real Postgres
       .returning();
     const opponentId = opponent!.id as string;
     const [a, b] = viewerId < opponentId ? [viewerId, opponentId] : [opponentId, viewerId];
-    await db.insert(nemesisPairings).values(buildNemesisPairing(seasonId, a, b, { weekStart: '2026-06-01' }));
+    await db.insert(nemesisPairings).values(buildNemesisPairing(seasonId, a, b, { weekStart: recentFreshWeekStart() }));
 
     await context.addCookies([
       {

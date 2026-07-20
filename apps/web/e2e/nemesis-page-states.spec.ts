@@ -36,6 +36,28 @@ import type pg from 'pg';
 
 const DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://receipts:receipts@localhost:5432/receipts';
 
+/**
+ * A Monday `week_start` (`YYYY-MM-DD`) whose `nemesis:conclude` instant (that week's Sunday
+ * 22:00 ET) is safely in the past but still inside `page-state.ts`'s `VERDICT_FRESH_WINDOW_MS`
+ * (8 days) of REAL current time — this suite runs against `next start`'s real wall clock (see
+ * the header comment above on why season dates are wide-real-clock-covering, same reasoning
+ * applies here), so this can't be a fixed calendar date the way the sibling
+ * `nemesis-rematch.spec.ts` suite's `weekStart: '2026-06-01'` fixtures get away with (that
+ * suite only exercises `RematchPanel`'s own state machine, which has no freshness concept —
+ * this suite's test (c) specifically needs the promoted entry's week to be genuinely fresh
+ * relative to whenever the test actually runs). Picks last week's Monday (7-13 days back from
+ * "now"), whose conclusion lands 1-7 days ago — comfortably inside the 8-day window with margin
+ * on both ends regardless of what day of the week the test executes.
+ */
+function recentFreshWeekStart(): string {
+  const now = new Date();
+  const isoDow = now.getUTCDay() === 0 ? 7 : now.getUTCDay(); // Mon=1..Sun=7
+  const daysSinceThisMonday = isoDow - 1;
+  const lastWeekMonday = new Date(now);
+  lastWeekMonday.setUTCDate(now.getUTCDate() - daysSinceThisMonday - 7);
+  return lastWeekMonday.toISOString().slice(0, 10);
+}
+
 // See `nemesis-rematch.spec.ts`'s header comment on this exact constant — `next start` always
 // runs with `NODE_ENV=production`, so `useSecureCookies` (`apps/web/auth.ts`) is always true here.
 const SESSION_COOKIE_NAME = '__Secure-authjs.session-token';
@@ -214,13 +236,16 @@ test.describe('/nemesis page-state redesign (real Postgres + HTTP)', () => {
     const [newerA, newerB] = viewerId < newerOpponentId ? [viewerId, newerOpponentId] : [newerOpponentId, viewerId];
 
     // Two settled (completed, non-cancelled) weeks, no active pairing — only the NEWER one
-    // (later `week_start`) should be promoted to the verdict state.
+    // (later `week_start`, and the one actually inside its `VERDICT_FRESH_WINDOW_MS`) should be
+    // promoted to the verdict state. The older entry's exact date doesn't matter — it's only
+    // ever rendered via the plain `NemesisHistoryList` row below, which has no freshness concept
+    // — but the newer one MUST be real-wall-clock-recent, hence `recentFreshWeekStart()`.
     await db
       .insert(nemesisPairings)
       .values(buildNemesisPairing(seasonId, olderA, olderB, { weekStart: '2026-06-01' }));
     await db
       .insert(nemesisPairings)
-      .values(buildNemesisPairing(seasonId, newerA, newerB, { weekStart: '2026-06-08' }));
+      .values(buildNemesisPairing(seasonId, newerA, newerB, { weekStart: recentFreshWeekStart() }));
 
     await addSessionCookie(page, sessionToken);
     await page.goto('/nemesis');
