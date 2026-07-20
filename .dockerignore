@@ -1,0 +1,11 @@
+# Keep host build artifacts OUT of the image build context (WS15-T3): every dist/ the
+# runtime needs is built inside the image (apps/worker/Dockerfile build stage), so a stale
+# host dist can never be silently baked in — that's how a staging image once shipped a
+# pre-fix @receipts/venues build over freshly-merged source.
+node_modules
+**/node_modules
+**/dist
+**/.turbo
+.git
+.next
+**/.next

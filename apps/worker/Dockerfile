@@ -9,7 +9,15 @@ COPY packages ./packages
 COPY apps/worker ./apps/worker
 RUN pnpm install --frozen-lockfile --filter worker... --filter .
 RUN pnpm --filter @receipts/config build || true
-RUN pnpm --filter @receipts/core build && pnpm --filter @receipts/db build && pnpm --filter worker build
+# Build EVERY workspace package the worker imports at runtime — `COPY packages` above brings
+# in whatever dist/ happens to sit in the build context, and a package skipped here ships
+# that stale (or missing) dist silently. WS15-T3: venues + engine were skipped, and a staging
+# image quietly carried a pre-fix @receipts/venues dist over the freshly-merged source.
+RUN pnpm --filter @receipts/core build \
+  && pnpm --filter @receipts/db build \
+  && pnpm --filter @receipts/engine build \
+  && pnpm --filter @receipts/venues build \
+  && pnpm --filter worker build
 
 FROM base AS runtime
 ENV NODE_ENV=production
