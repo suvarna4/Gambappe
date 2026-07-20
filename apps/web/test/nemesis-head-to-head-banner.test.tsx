@@ -8,7 +8,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { NemesisHeadToHeadBanner } from '@/components/nemesis/NemesisHeadToHeadBanner';
 
 describe('NemesisHeadToHeadBanner', () => {
-  it('shows both handles and their scores', () => {
+  it('shows both handles and the score badge between them', () => {
     const html = renderToStaticMarkup(
       <NemesisHeadToHeadBanner
         viewerHandle="Fox #4821"
@@ -20,8 +20,7 @@ describe('NemesisHeadToHeadBanner', () => {
     );
     expect(html).toContain('Fox #4821');
     expect(html).toContain('Maria O.');
-    expect(html).toContain('>2<');
-    expect(html).toContain('>3<');
+    expect(html).toContain('2–3');
   });
 
   it('renders a proportional bar split matching the score ratio (a 4-1 week is 80/20)', () => {
@@ -51,7 +50,7 @@ describe('NemesisHeadToHeadBanner', () => {
     expect(html.match(/width:50%/g)?.length).toBe(2);
   });
 
-  it('colors the viewer/opponent bar segments off the authoritative outcome, not the raw scores — a tiebreak win keeps a real win/loss split even at an even score', () => {
+  it('dims the loser\'s half off the authoritative outcome, not the raw scores — a tiebreak win still dims the right side even at an even score', () => {
     const html = renderToStaticMarkup(
       <NemesisHeadToHeadBanner
         viewerHandle="You"
@@ -61,11 +60,19 @@ describe('NemesisHeadToHeadBanner', () => {
         outcome="won"
       />,
     );
-    expect(html).toContain('bg-win');
-    expect(html).toContain('bg-loss');
+    // Fixed by position (mockup's own scheme for this exhibit): viewer's half is always
+    // side-a-tinted, opponent's is always side-b-tinted, regardless of who won.
+    expect(html).toContain('from-side-a/45');
+    expect(html).toContain('from-side-b/45');
+    // The ONLY outcome-driven visual: the loser's whole half dialed down via opacity, the
+    // winner's left untouched. Here the viewer won, so only the opponent's half carries the
+    // dim class.
+    const halves = html.match(/<div class="[^"]*flex-1[^"]*">/g) ?? [];
+    expect(halves[0]).not.toContain('opacity-[0.55]');
+    expect(halves[1]).toContain('opacity-[0.55]');
   });
 
-  it('draws both segments muted for an actual draw', () => {
+  it('dims neither side for an actual draw', () => {
     const html = renderToStaticMarkup(
       <NemesisHeadToHeadBanner
         viewerHandle="You"
@@ -75,12 +82,10 @@ describe('NemesisHeadToHeadBanner', () => {
         outcome="drew"
       />,
     );
-    expect(html).not.toContain('bg-win');
-    expect(html).not.toContain('bg-loss');
-    expect(html.match(/bg-muted/g)?.length).toBe(2);
+    expect(html).not.toContain('opacity-[0.55]');
   });
 
-  it('keeps each score outside the truncating handle span, so a long handle never clips its own score away', () => {
+  it('keeps the score badge structurally outside both truncating handle spans, so a long handle can never clip the score away', () => {
     const html = renderToStaticMarkup(
       <NemesisHeadToHeadBanner
         viewerHandle="A Genuinely Extremely Long Display Handle That Would Overflow"
@@ -90,13 +95,15 @@ describe('NemesisHeadToHeadBanner', () => {
         outcome="won"
       />,
     );
-    // The score marker must sit in a span that is NOT itself truncating — only the handle span
-    // truncates. This asserts the fix for the bug where `{handle} {score}` shared one
-    // `truncate` span, so ellipsis clipped the score itself on long handles.
-    expect(html).toMatch(/<span class="[^"]*shrink-0[^"]*">4<\/span>/);
-    expect(html).toMatch(/<span class="[^"]*shrink-0[^"]*">1<\/span>/);
+    // The score lives in its own centered badge element (`aria-hidden`, no `truncate` class),
+    // never inside either handle's own `truncate` span — so a long handle clipping itself can
+    // never clip the score along with it.
+    const badge = html.match(/<div aria-hidden="true"[^>]*>4–1<\/div>/);
+    expect(badge).not.toBeNull();
+    expect(badge?.[0]).not.toContain('truncate');
     const handleSpan = html.match(/<span class="[^"]*truncate[^"]*">A Genuinely[^<]*<\/span>/);
     expect(handleSpan).not.toBeNull();
+    expect(handleSpan?.[0]).not.toContain('4');
   });
 
   it('never asserts "edge" facts — score-margin framing only, matching VerdictCard\'s own pinned AC', () => {
