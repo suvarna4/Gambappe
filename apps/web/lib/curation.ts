@@ -6,7 +6,15 @@
  */
 import { z } from 'zod';
 import type { QuestionPublic } from '@receipts/core';
-import { DAILY_LOCK_LOCAL, DAILY_OPEN_LOCAL, DAILY_REVEAL_LOCAL, SCHEDULE_TZ, slugifyHandle } from '@receipts/core';
+import {
+  DAILY_LOCK_LOCAL,
+  DAILY_OPEN_LOCAL,
+  DAILY_REVEAL_LOCAL,
+  SCHEDULE_TZ,
+  etDateString,
+  now,
+  slugifyHandle,
+} from '@receipts/core';
 
 /**
  * Composer input shape — shared between the API route and (eventually) the admin UI form,
@@ -122,8 +130,20 @@ export function resolveComposerTimes(body: ComposerBody): ComposerTimesInput {
 export function validateComposerInput(
   market: ComposerMarketInput,
   times: ComposerTimesInput,
+  at: Date = now(),
 ): string[] {
   const errors: string[] = [];
+
+  // WS15-T6 guardrail: a lock_at already in the past means a stillborn question — every
+  // lifecycle job fires immediately and the ET-keyed today lookup will likely never show it.
+  // The usual cause is a curator whose LOCAL date lags the ET product day (staging hit this
+  // at 2 AM ET: question_date set to "yesterday"). A past open_at alone stays legal — that's
+  // the normal compose-today's-question-late flow (it just opens immediately).
+  if (times.lockAt.getTime() <= at.getTime()) {
+    errors.push(
+      `lock_at is already in the past — the product day runs on ET; did you mean question_date ${etDateString(at)}?`,
+    );
+  }
 
   if (market.closeTime.getTime() < times.lockAt.getTime()) {
     errors.push('market close_time must be at or after lock_at');

@@ -10,6 +10,7 @@ import { sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import type pg from 'pg';
 import { uuidv7 } from 'uuidv7';
+import { setTestClock } from '@receipts/core';
 import { connect, insertMarket, type Db, type NewMarketRow } from '@receipts/db';
 
 const dbUrl =
@@ -19,6 +20,10 @@ let pool: pg.Pool;
 let db: Db;
 
 beforeAll(async () => {
+  // Pin the clock: the fixtures below hardcode 2026-07-20 dates, and the WS15-T6 past-lock
+  // guardrail makes composer validation time-sensitive — un-pinned, this file would start
+  // failing the day after those dates pass on the real calendar.
+  setTestClock('2026-07-20T06:00:00Z');
   ({ pool, db } = connect({ connectionString: dbUrl }));
   await db.execute(sql`DROP SCHEMA public CASCADE`);
   await db.execute(sql`CREATE SCHEMA public`);
@@ -42,6 +47,7 @@ afterAll(async () => {
   const boss = await getBoss();
   await boss.stop({ graceful: false });
   await pool.end();
+  setTestClock(null);
 });
 
 beforeEach(async () => {
