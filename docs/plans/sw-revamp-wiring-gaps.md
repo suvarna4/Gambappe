@@ -35,10 +35,11 @@ live — already renders the new ink with no separate wiring step needed), SW4 (
 reference `printShop.*` tokens directly; SW4-T1/T3's original triggers were the two tasks
 `docs/plans/obituary-handoff.md` (SW9) already fixed and this session verified end-to-end),
 SW6-T1 (`PlacementSwipeCard` — live on `/placement`; note it's statically prerendered, so a
-build must actually receive `FLAG_SWIPE_BALLOT` in its env — Turbo's `globalPassThroughEnv` in
-`turbo.json` does not currently list it, so `pnpm build` silently strips it and bakes in the
-flag-off render regardless of the runtime flag; `next build` run directly inside `apps/web`
-picks it up correctly), SW7 (the real service worker `apps/web/public/sw.js` implements
+build must actually receive `FLAG_SWIPE_BALLOT` in its env. FIXED (WS15-T5): `turbo.json`'s
+`globalEnv` now includes `FLAG_*`, so turbo-wrapped builds — including Vercel's, which
+auto-wraps monorepo builds in turbo and was baking flag-off statics despite the project env
+var — pass every flag through AND hash it (a flag flip busts the build cache instead of
+reusing a stale flag-off prerender)), SW7 (the real service worker `apps/web/public/sw.js` implements
 `notificationclick`; `?arm=1` threads through `app/page.tsx` → `ViewerStrip` → `SwipeBallot`
 with a client self-detect fallback for `/q/[slug]`), SW8-T1 (`e2e/a11y.spec.ts` runs axe;
 `docs/a11y-swipe-ux.md` exists), SW8-T3 (`ViewerStrip`'s `handlePick` calls

@@ -16,6 +16,6 @@
       "cache": false
     }
   },
-  "globalEnv": ["NODE_ENV", "TEST_CLOCK", "TEST_CLOCK_ENABLED"],
+  "globalEnv": ["NODE_ENV", "TEST_CLOCK", "TEST_CLOCK_ENABLED", "FLAG_*"],
   "globalPassThroughEnv": ["DATABASE_URL", "REDIS_URL", "CI"]
 }
