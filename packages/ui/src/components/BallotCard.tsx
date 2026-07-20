@@ -139,12 +139,22 @@ export interface UnderCardProps {
  * SW1-T1 · The card peeking from under the ballot in the deck (§2.5): tomorrow's appointment
  * or a blank slip. Never interactive; dimmed and scaled by the deck shell (SW2-T1), so this is
  * just the paper + optional kicker.
+ *
+ * Design-diff audit fix: the base classes deliberately carry NO `position` utility. Every real
+ * caller (`DeckStage`, `SwipeBallot`, `/dev/ui`'s `gallery-ballotcard` tile) passes `absolute
+ * ...` via `className` to peek from behind another card — but Tailwind's generated stylesheet
+ * happens to emit `.relative` after `.absolute` (same specificity, source-order tiebreak), so a
+ * hardcoded base `relative` here would silently outrank every caller's `absolute` override,
+ * leaving the card in normal flow instead of layered behind its sibling (confirmed via the
+ * compiled CSS, not just visually: `.absolute{position:absolute}` then `.relative{position:
+ * relative}` later in the same stylesheet). Letting the caller own `position` entirely avoids
+ * that trap.
  */
 export function UnderCard({ label, className = '' }: UnderCardProps) {
   return (
     <div
       aria-hidden="true"
-      className={`bg-paper text-ink/70 relative flex flex-col rounded-lg px-4 pt-3 pb-3 ${className}`}
+      className={`bg-paper text-ink/70 flex flex-col rounded-lg px-4 pt-3 pb-3 ${className}`}
     >
       <div className="h-1.5 -translate-y-1" style={perforationStyle} />
       {label ? (
