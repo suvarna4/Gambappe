@@ -1,14 +1,38 @@
 import Link from 'next/link';
 import { Stamp } from '@receipts/ui';
 import { nemesisCopy } from '@/lib/copy';
+import { scoreMarginFromHistory, verdictOutcomeFromHistory } from '@/lib/nemesis/verdict';
 import type { NemesisHistoryEntry } from '@/lib/nemesis/types';
+import type { DayResult } from './VerdictCard';
 import { DrawBadge } from './DrawBadge';
-import { RematchPanel } from './RematchPanel';
+import { RematchPanel, type RematchVerdict } from './RematchPanel';
 
 export interface NemesisHistoryListProps {
   viewerProfileId: string;
   entries: NemesisHistoryEntry[];
+  /** SW10-T2: per-pairing week-strip dots for the verdict card, keyed by `pairing_id` — derived
+   * server-side (`app/nemesis/page.tsx`) from `GET /pairings/:id`'s scoreboard, since the history
+   * entry itself carries no per-day data. Absent (or missing a key) just renders that card with
+   * an empty dot strip rather than failing — the scoreboard fetch is best-effort. */
+  dayResultsByPairingId?: Record<string, ReadonlyArray<DayResult>>;
   className?: string;
+}
+
+/** `null` for a `cancelled` entry — `RematchPanel` keeps the plain button/confirm-dialog flow
+ * for those, since `VerdictOutcome` has no cancelled member (SW10-T2). */
+function verdictFor(
+  entry: NemesisHistoryEntry,
+  dayResultsByPairingId: Record<string, ReadonlyArray<DayResult>>,
+): RematchVerdict | null {
+  const outcome = verdictOutcomeFromHistory(entry.outcome);
+  if (!outcome) return null;
+  return {
+    outcome,
+    youWins: entry.my_score,
+    opponentWins: entry.their_score,
+    scoreMargin: scoreMarginFromHistory(entry),
+    dayResults: dayResultsByPairingId[entry.pairing_id] ?? [],
+  };
 }
 
 function OutcomeBadge({ outcome }: { outcome: NemesisHistoryEntry['outcome'] }) {
@@ -25,6 +49,7 @@ function OutcomeBadge({ outcome }: { outcome: NemesisHistoryEntry['outcome'] }) 
 export function NemesisHistoryList({
   viewerProfileId,
   entries,
+  dayResultsByPairingId = {},
   className = '',
 }: NemesisHistoryListProps) {
   if (entries.length === 0) {
@@ -60,6 +85,7 @@ export function NemesisHistoryList({
                     }
                   : null
               }
+              verdict={verdictFor(entry, dayResultsByPairingId)}
             />
           </div>
         </li>

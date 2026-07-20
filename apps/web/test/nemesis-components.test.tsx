@@ -14,8 +14,16 @@ const VIEWER_ID = '018f1e2b-0000-7000-8000-0000000000v1';
 const OPPONENT = { profile_id: '018f1e2b-0000-7000-8000-0000000000o1', handle: 'Otter #9001' };
 
 function renderPanel(rematchRequest: RematchState | null): string {
+  // `verdict: null` (as if this were a cancelled-outcome week) keeps these cases on the original
+  // plain button/confirm-dialog flow — the SW10-T2 swipeable verdict-card branch has its own
+  // coverage in `verdict-swipe-card.test.tsx`.
   return renderToStaticMarkup(
-    <RematchPanel viewerProfileId={VIEWER_ID} opponent={OPPONENT} rematchRequest={rematchRequest} />,
+    <RematchPanel
+      viewerProfileId={VIEWER_ID}
+      opponent={OPPONENT}
+      rematchRequest={rematchRequest}
+      verdict={null}
+    />,
   );
 }
 

@@ -192,10 +192,13 @@ export const nemesisCopy = {
   verdictLost: 'Taken down',
   verdictDrew: 'Dead even',
   verdictScore: (you: number, opp: number) => `${you}–${opp}`,
-  /** Loser card's data-derived line (edge gap or streak-of-weeks). */
-  verdictLoserLine: (opponentHandle: string, edgeGap: number) =>
-    `${opponentHandle}'s edge beat yours by ${edgeGap} points. The rematch button is right there.`,
-  verdictWinnerLine: (opponentHandle: string) => `You out-edged ${opponentHandle} when it counted.`,
+  /** Loser card's data-derived line — score-margin only (SW10-T2: `nemesisHistoryEntrySchema`
+   * carries `my_score`/`their_score` and nothing else — no edge, no streak-of-weeks — so this
+   * asserts only the margin the week was decided by, never "edge"/"out-edged" framing). */
+  verdictLoserLine: (opponentHandle: string, scoreMargin: number) =>
+    `${opponentHandle} closed it out ${scoreMargin} clear. The rematch button is right there.`,
+  verdictWinnerLine: (opponentHandle: string, scoreMargin: number) =>
+    `You closed it out ${scoreMargin} clear of ${opponentHandle}.`,
   newFate: 'New fate',
   runItBack: 'Run it back',
 } as const;

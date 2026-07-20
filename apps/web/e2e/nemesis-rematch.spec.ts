@@ -4,6 +4,20 @@
  * (inside `NemesisHistoryList`) now calls `/api/v1/rematch-requests*` instead of the deleted
  * mock backend (`lib/nemesis/mock-api.ts`, see `/nemesis/page.tsx`'s header for the handoff).
  *
+ * SW10-T2: the "ask for a rematch" affordance is now `VerdictCard`'s rematch-by-swipe close
+ * (`VerdictSwipeCard`, wired in `RematchPanel`) instead of the old plain "Request rematch"
+ * button + confirm dialog — a click-driven flow can't literally survive becoming a swipe. This
+ * suite still verifies the exact same DB/state lifecycle it always did; only the interaction
+ * step that KICKS OFF the request changed, from clicking `rematch-request-button` (then
+ * confirming) to clicking `verdict-run-it-back` — `VerdictCard`'s always-present tap-button
+ * fallback, the same accessible-equivalent path `SwipeBallot`'s own e2e suite favors over raw
+ * pointer drags for flow tests that aren't specifically exercising the drag gesture itself (see
+ * `golden-loop.spec.ts`'s `pick-yes`/`pick-no` well clicks vs. `swipe-ballot.spec.ts`'s dedicated
+ * drag simulation — the gesture math is `useDragCommit`, shared with `SwipeBallot` and already
+ * covered there, so it doesn't need re-proving here). The swipe/tap commits immediately (no
+ * separate confirm step — that's the whole point of the gesture), so there's no "Yes, request
+ * it" click anymore either.
+ *
  * `/nemesis` is SSR-gated (`auth()` + redirect to `/claim` for anyone without a real session —
  * unlike `/duo`, which resolves identity client-side and can be exercised with plain
  * `page.route` mocking, see `duo.spec.ts`'s own header). Reaching it needs a REAL Auth.js
@@ -116,10 +130,15 @@ test.describe('/nemesis rematch-request flow (§8.4 step 0, §9.2, real Postgres
     ]);
 
     await page.goto('/nemesis');
-    await expect(page.getByText(opponent!.handle as string)).toBeVisible();
+    // Scoped to the history row's link specifically — SW10-T2's verdict card ALSO prints the
+    // opponent's handle in its own copy line, so a bare `getByText` now matches both.
+    await expect(page.getByRole('link', { name: opponent!.handle as string })).toBeVisible();
 
-    await page.getByTestId('rematch-request-button').click();
-    await page.getByRole('button', { name: 'Yes, request it' }).click();
+    // SW10-T2: `VerdictCard`'s always-present "Run it back" tap button is the accessible
+    // equivalent of a right-swipe (D-SW9 affirmative-right) — it fires the same
+    // `POST /rematch-requests` `RematchPanel`'s old plain button used to.
+    await expect(page.getByTestId('verdict-card')).toBeVisible();
+    await page.getByTestId('verdict-run-it-back').click();
 
     await expect(page.getByTestId('rematch-pending')).toBeVisible();
     await expect(page.getByTestId('rematch-pending')).toContainText('Rematch requested');

@@ -5,16 +5,13 @@ import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerE
 import type { MarketSide, QuestionPublic } from '@receipts/core';
 import {
   BallotCard,
-  dragProgress,
   dragSide,
   FLING_MS,
   GUARDRAIL_KEYS,
-  HAPTIC_ARM,
   HAPTIC_COMMIT,
   HAPTIC_UNDO,
   hintsHidden,
   impliedCents,
-  isCommit,
   NUDGE_IDLE_MS,
   prefersReducedMotion,
   railsOpacity,
@@ -26,6 +23,7 @@ import { ballotCopy, copy } from '@/lib/copy';
 import { formatEtClock } from '@/lib/format-et';
 import type { PickInputSource } from '@/lib/pick-input-source';
 import type { CachedPick } from '@/lib/pick-storage';
+import { haptic, useDragCommit } from '@/lib/use-drag-commit';
 import { ReceiptSlip } from './ReceiptSlip';
 
 export interface SwipeBallotProps {
@@ -49,13 +47,6 @@ export interface SwipeBallotProps {
    * gesture affordance. Never auto-picks anything (SW7-T2 owns the URL plumbing).
    */
   arm?: boolean;
-}
-
-/** Vibrate if the API exists; a no-op everywhere else (never gate behavior on it). */
-function haptic(pattern: number | readonly number[]): void {
-  if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-    navigator.vibrate(pattern as number | number[]);
-  }
 }
 
 function readCount(key: string): number {
@@ -86,9 +77,6 @@ export function SwipeBallot({
   arm = false,
 }: SwipeBallotProps) {
   const [reducedMotion] = useState(() => prefersReducedMotion());
-  const [dx, setDx] = useState(0);
-  const [dragging, setDragging] = useState(false);
-  const [armed, setArmed] = useState(false);
   const [pendingAge, setPendingAge] = useState<MarketSide | null>(null);
   // Input method that triggered a pending age-gate, so the eventual confirm reports it (SW8-T3).
   const pendingSource = useRef<PickInputSource>('swipe');
@@ -96,10 +84,6 @@ export function SwipeBallot({
   const [nudge, setNudge] = useState(false);
   const [pickCount, setPickCount] = useState(0);
   const [nowMs, setNowMs] = useState(() => Date.now());
-
-  const cardRef = useRef<HTMLDivElement>(null);
-  const startX = useRef(0);
-  const armedRef = useRef(false);
 
   const yesProbability = question.yes_price ?? 0.5;
   const yesLabel = question.yes_label;
@@ -150,10 +134,6 @@ export function SwipeBallot({
     return () => window.clearTimeout(id);
   }, [reducedMotion, isOpen, pick, pendingAge, arm]);
 
-  const width = () => cardRef.current?.offsetWidth ?? 0;
-  const progress = dragProgress(dx, width());
-  const activeSide = dragging || flingSide ? (flingSide ?? dragSide(dx)) : null;
-
   const recordThrow = useCallback(() => {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(GUARDRAIL_KEYS.thrown, '1');
@@ -170,9 +150,6 @@ export function SwipeBallot({
       if (ageGateRequired) {
         pendingSource.current = source;
         setPendingAge(side);
-        setDx(0);
-        setArmed(false);
-        armedRef.current = false;
         return;
       }
       haptic(HAPTIC_COMMIT);
@@ -181,48 +158,27 @@ export function SwipeBallot({
         setFlingSide(side);
         window.setTimeout(() => setFlingSide(null), FLING_MS);
       }
-      setDx(0);
-      setArmed(false);
-      armedRef.current = false;
       onPick(side, false, source);
     },
     [ageGateRequired, disabled, onPick, recordThrow, reducedMotion],
   );
 
+  // SW1-T2's drag/arm/commit engine, extracted to `useDragCommit` (SW10-T2) so `VerdictCard`'s
+  // rematch-by-swipe gesture can reuse it — `submit` above (already the shared entry point for
+  // wells/keys/drag) is the commit handler here too, mapping the hook's generic `right`/`left`
+  // direction to `MarketSide` per D-SW9 (right = yes/for, left = no/against).
+  const dragBlocked = disabled || Boolean(pick) || Boolean(pendingAge);
+  const drag = useDragCommit({
+    disabled: dragBlocked,
+    onCommit: (direction) => submit(direction === 'right' ? 'yes' : 'no', 'swipe'),
+  });
+  const { cardRef, dx, dragging, armed, progress } = drag;
+  const activeSide = dragging || flingSide ? (flingSide ?? dragSide(dx)) : null;
+
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (disabled || pick || pendingAge) return;
-    setDragging(true);
+    if (dragBlocked) return;
     setNudge(false);
-    startX.current = e.clientX;
-    setDx(0);
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-  };
-
-  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (!dragging) return;
-    const nextDx = e.clientX - startX.current;
-    setDx(nextDx);
-    const p = dragProgress(nextDx, width());
-    if (isCommit(p) && !armedRef.current) {
-      armedRef.current = true;
-      setArmed(true);
-      haptic(HAPTIC_ARM);
-    } else if (!isCommit(p) && armedRef.current) {
-      armedRef.current = false;
-      setArmed(false);
-    }
-  };
-
-  const endDrag = () => {
-    if (!dragging) return;
-    setDragging(false);
-    if (isCommit(dragProgress(dx, width()))) {
-      submit(dragSide(dx), 'swipe');
-    } else {
-      setDx(0);
-      setArmed(false);
-      armedRef.current = false;
-    }
+    drag.onPointerDown(e);
   };
 
   const handleUndo = useCallback(() => {
@@ -352,9 +308,9 @@ export function SwipeBallot({
           data-testid="ballot-card-interactive"
           data-armed={armed ? 'true' : 'false'}
           onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={endDrag}
-          onPointerCancel={endDrag}
+          onPointerMove={drag.onPointerMove}
+          onPointerUp={drag.onPointerUp}
+          onPointerCancel={drag.onPointerCancel}
           className={`relative touch-none select-none ${nudge ? 'motion-safe:[animation:ballot-nudge_2.6s_ease-in-out_2]' : ''}`}
           style={{
             transform: flingTransform,

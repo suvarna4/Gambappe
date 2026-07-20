@@ -5,9 +5,12 @@ import { auth } from '../../auth';
 import { NemesisAssignmentCard } from '@/components/nemesis/NemesisAssignmentCard';
 import { NemesisHistoryList } from '@/components/nemesis/NemesisHistoryList';
 import { NemesisMatchupCard } from '@/components/nemesis/NemesisMatchupCard';
+import type { DayResult } from '@/components/nemesis/VerdictCard';
+import { deriveDayResults } from '@/lib/nemesis/verdict';
 import {
   getCurrentPairingForProfile,
   getNemesisHistoryPage,
+  getPairingPublicById,
   getPairingSideRef,
   NEMESIS_HISTORY_DEFAULT_LIMIT,
 } from '@/lib/nemesis/service';
@@ -85,6 +88,26 @@ export default async function NemesisHomePage() {
         : { a: opponentSide, b: viewerSideFull };
   }
 
+  // SW10-T2: the verdict card's week-strip dots come from each history entry's own pairing
+  // scoreboard (`GET /pairings/:id`, `pairingPublicSchema.scoreboard`) — the history entry itself
+  // (`nemesisHistoryEntrySchema`) carries no per-day data. Skipped for `cancelled` entries: no
+  // verdict card ever renders for those, so the fetch would be wasted.
+  const verdictEligible = historyPage.data.filter((entry) => entry.outcome !== 'cancelled');
+  const verdictPairings = await Promise.all(
+    verdictEligible.map((entry) => getPairingPublicById(db, entry.pairing_id, at)),
+  );
+  const dayResultsByPairingId: Record<string, ReadonlyArray<DayResult>> = {};
+  verdictEligible.forEach((entry, i) => {
+    const verdictPairing = verdictPairings[i];
+    if (verdictPairing) {
+      dayResultsByPairingId[entry.pairing_id] = deriveDayResults(
+        verdictPairing.scoreboard,
+        viewerProfileId,
+        verdictPairing,
+      );
+    }
+  });
+
   return (
     <main className="mx-auto max-w-xl space-y-8 px-6 py-10">
       <h1 className="text-2xl font-bold">Your nemesis</h1>
@@ -107,7 +130,11 @@ export default async function NemesisHomePage() {
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">History</h2>
-        <NemesisHistoryList viewerProfileId={viewerProfileId} entries={historyPage.data} />
+        <NemesisHistoryList
+          viewerProfileId={viewerProfileId}
+          entries={historyPage.data}
+          dayResultsByPairingId={dayResultsByPairingId}
+        />
       </section>
     </main>
   );

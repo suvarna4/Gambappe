@@ -11,8 +11,8 @@ const base = {
   opponentHandle: 'Maria O.',
   youWins: 2,
   opponentWins: 3,
-  edgeGap: 11,
-  dayResults: ['loss', 'win', 'loss', 'win', 'split'] as const,
+  scoreMargin: 1,
+  dayResults: ['loss', 'win', 'loss', 'win', 'neutral'] as const,
 };
 
 describe('VerdictCard', () => {
@@ -20,8 +20,7 @@ describe('VerdictCard', () => {
     const html = renderToStaticMarkup(<VerdictCard {...base} outcome="lost" />);
     expect(html).toContain('Taken down');
     expect(html).toContain('2–3');
-    // Apostrophe is HTML-escaped in SSR; match the distinctive tail.
-    expect(html).toContain('edge beat yours by 11 points');
+    expect(html).toContain('Maria O. closed it out 1 clear');
   });
 
   it('names the win outcome with its own line', () => {
@@ -29,7 +28,14 @@ describe('VerdictCard', () => {
       <VerdictCard {...base} outcome="won" youWins={3} opponentWins={2} />,
     );
     expect(html).toContain('You took the week');
-    expect(html).toContain('out-edged Maria O.');
+    expect(html).toContain('You closed it out 1 clear of Maria O.');
+  });
+
+  it('never asserts "edge" facts on either card (SW10-T2 — the history entry has no edge data)', () => {
+    const loser = renderToStaticMarkup(<VerdictCard {...base} outcome="lost" />);
+    const winner = renderToStaticMarkup(<VerdictCard {...base} outcome="won" />);
+    expect(loser.toLowerCase()).not.toContain('edge');
+    expect(winner.toLowerCase()).not.toContain('edge');
   });
 
   it('orders rematch-by-swipe new-fate-left / run-it-back-right (affirmative right, D-SW9)', () => {
@@ -45,5 +51,16 @@ describe('VerdictCard', () => {
   it('renders a static spectator card (no buttons) without handlers', () => {
     const html = renderToStaticMarkup(<VerdictCard {...base} outcome="lost" />);
     expect(html).not.toContain('<button');
+  });
+
+  it('shares one template between the winner and loser variants — same markup skeleton, only text differs', () => {
+    const loser = renderToStaticMarkup(<VerdictCard {...base} outcome="lost" />);
+    const winner = renderToStaticMarkup(<VerdictCard {...base} outcome="won" />);
+    // Normalize away the one attribute value that's supposed to differ (`data-outcome`) and every
+    // text node, leaving just the tag/attribute skeleton. If winner/loser were copy-pasted into
+    // separate markup instead of one component branching on `outcome`, this would diverge.
+    const skeleton = (html: string) =>
+      html.replace(/data-outcome="[^"]*"/g, 'data-outcome="X"').replace(/>[^<]+</g, '><');
+    expect(skeleton(loser)).toEqual(skeleton(winner));
   });
 });

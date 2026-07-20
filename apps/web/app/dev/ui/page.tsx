@@ -146,8 +146,8 @@ export default function UiGalleryPage() {
               opponentHandle="Maria O."
               youWins={2}
               opponentWins={3}
-              edgeGap={11}
-              dayResults={['loss', 'win', 'loss', 'win', 'split']}
+              scoreMargin={11}
+              dayResults={['loss', 'win', 'loss', 'win', 'neutral']}
             />
             <ReactionStamps selected="Called it" />
           </div>
