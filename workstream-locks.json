@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-20T02:04:25.178Z",
+  "updated_at": "2026-07-20T02:04:26.619Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1785,12 +1785,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": "questions_daily_date_uq has no status exclusion; composer pre-check rejects re-compose after void. Index must exclude voided; daily lookups prefer non-voided; streak history dedupe by date.",
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-code-web-session-54bb90dd",
+      "branch": "claude/ws15-t2-daily-void-slot",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-20T02:04:18.522Z"
+      "claimed_at": "2026-07-20T02:04:26.619Z",
+      "updated_at": "2026-07-20T02:04:26.619Z"
     }
   }
 }
