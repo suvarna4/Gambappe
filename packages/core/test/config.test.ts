@@ -19,7 +19,7 @@ describe('Appendix D constants', () => {
         "CARD_STORY_WIDTH": 1080,
         "CROWD_MIN_N": 20,
         "DAILY_LOCK_LOCAL": "12:00",
-        "DAILY_OPEN_LOCAL": "09:00",
+        "DAILY_OPEN_LOCAL": "03:00",
         "DAILY_REVEAL_LOCAL": "20:00",
         "DUO_BAND_BASE": 150,
         "DUO_BAND_CAP": 400,
