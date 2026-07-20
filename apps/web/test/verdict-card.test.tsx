@@ -31,11 +31,16 @@ describe('VerdictCard', () => {
     expect(html).toContain('You closed it out 1 clear of Maria O.');
   });
 
-  it('never asserts "edge" facts on either card (SW10-T2 — the history entry has no edge data)', () => {
-    const loser = renderToStaticMarkup(<VerdictCard {...base} outcome="lost" />);
-    const winner = renderToStaticMarkup(<VerdictCard {...base} outcome="won" />);
-    expect(loser.toLowerCase()).not.toContain('edge');
-    expect(winner.toLowerCase()).not.toContain('edge');
+  it('never asserts "edge" facts on either card, at any reachable scoreMargin (SW10-T2 — the history entry has no edge data; pinned AC: "grep both lines")', () => {
+    // scoreMargin=1 (the ordinary case) AND scoreMargin=0 (the tiebreak case, fable review of
+    // PR #84 round 3 — the original margin-0 copy said "edged out", which is exactly the wording
+    // this AC bans, even though the underlying claim was accurate).
+    for (const scoreMargin of [0, 1]) {
+      const loser = renderToStaticMarkup(<VerdictCard {...base} outcome="lost" scoreMargin={scoreMargin} />);
+      const winner = renderToStaticMarkup(<VerdictCard {...base} outcome="won" scoreMargin={scoreMargin} />);
+      expect(loser.toLowerCase()).not.toContain('edge');
+      expect(winner.toLowerCase()).not.toContain('edge');
+    }
   });
 
   it('a draw gets its own line, never a false "0 clear" margin boast (fable review of PR #84)', () => {
@@ -46,7 +51,7 @@ describe('VerdictCard', () => {
     expect(html).not.toContain('closed it out');
   });
 
-  it('a tiebreak win/loss (tied score, decided on edge) never prints the same false "0 clear" boast (fable review of PR #84, round 2)', () => {
+  it('a tiebreak win/loss (tied score, decided by the internal edge tiebreak) never prints the same false "0 clear" boast (fable review of PR #84, round 2)', () => {
     const won = renderToStaticMarkup(<VerdictCard {...base} outcome="won" scoreMargin={0} />);
     const lost = renderToStaticMarkup(<VerdictCard {...base} outcome="lost" scoreMargin={0} />);
     expect(won).toContain('tiebreak');

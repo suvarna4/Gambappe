@@ -194,18 +194,20 @@ export const nemesisCopy = {
   verdictScore: (you: number, opp: number) => `${you}–${opp}`,
   /** Loser/winner cards' data-derived lines — score-margin only (SW10-T2: `nemesisHistoryEntrySchema`
    * carries `my_score`/`their_score` and nothing else — no edge, no streak-of-weeks — so this
-   * asserts only the margin the week was decided by, never "edge"/"out-edged" framing). A `won`/
-   * `lost` outcome with `scoreMargin === 0` is a real, reachable state — the scorer breaks a tied
-   * week on aggregate edge (`packages/engine/src/scoring.ts`), not just draws it — so the "N clear"
-   * phrasing gets a margin-0 variant instead of printing the same false "0 clear" boast the draw
-   * line was fixed for (fable review of PR #84, round 2). */
+   * asserts only the margin the week was decided by, never "edge"/"out-edged" framing, per the
+   * pinned AC: "grep both lines" for that wording — including the margin-0 branch below, so it
+   * stays "tiebreak", never "edged"). A `won`/`lost` outcome with `scoreMargin === 0` is a real,
+   * reachable state — the scorer breaks a tied week on aggregate edge internally
+   * (`packages/engine/src/scoring.ts`), not just draws it — so the "N clear" phrasing gets a
+   * margin-0 variant instead of printing the same false "0 clear" boast the draw line was fixed
+   * for (fable review of PR #84, round 2; wording itself corrected in round 3). */
   verdictLoserLine: (opponentHandle: string, scoreMargin: number) =>
     scoreMargin === 0
-      ? `${opponentHandle} edged this one out on the tiebreak. The rematch button is right there.`
+      ? `${opponentHandle} took this one on the tiebreak. The rematch button is right there.`
       : `${opponentHandle} closed it out ${scoreMargin} clear. The rematch button is right there.`,
   verdictWinnerLine: (opponentHandle: string, scoreMargin: number) =>
     scoreMargin === 0
-      ? `You edged out ${opponentHandle} on the tiebreak.`
+      ? `You took this one on the tiebreak, dead level with ${opponentHandle} otherwise.`
       : `You closed it out ${scoreMargin} clear of ${opponentHandle}.`,
   /** Drawn card's line — `scoreMargin` is always 0 for a draw, so the winner/loser lines'
    * "closed it out N clear" framing would render a false "0 clear" boast (fable review of
