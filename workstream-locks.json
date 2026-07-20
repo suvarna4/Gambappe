@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-20T06:15:12.635Z",
+  "updated_at": "2026-07-20T06:16:29.195Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1759,12 +1759,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": "Spec: docs/plans/sw-revamp-wiring-gaps.md §4 SW10-T5 (completes SW8-T2's unmet snapshot AC). toHaveScreenshot over every gallery tile, baselines committed, CI-gating; deliberate-pixel-change demo in the PR; extend the existing playwright-report artifact upload.",
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-session-35b05898-7175",
+      "branch": "claude/sw10-t5-visual-regression",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-20T01:18:01.583Z"
+      "claimed_at": "2026-07-20T06:16:29.195Z",
+      "updated_at": "2026-07-20T06:16:29.195Z"
     },
     "WS15-T1": {
       "title": "Kalshi adapter: current API schema (*_dollars fields) + listing strategy",
