@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-20T04:32:30.007Z",
+  "updated_at": "2026-07-20T04:43:05.048Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1719,13 +1719,13 @@
       "phase": "SP2",
       "depends_on": [],
       "mock_start_ok": false,
-      "note": "PR #84 open, independently verified (lint/typecheck/unit/build/e2e all green); fable review pending",
-      "status": "in_review",
+      "note": "Merged. Wired VerdictCard + rematch-by-swipe into /nemesis; useDragCommit shared hook extracted from SwipeBallot. 4 fable review rounds (untested gesture mapping, false margin boasts on draws + tiebreaks, double-submit guard, racy test helper under parallel workers, commit haptic, pinned-AC wording violation) — all fixed.",
+      "status": "done",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/sw10-t2-verdict-rematch",
       "pr": "https://github.com/Gambappe/Gambappe/pull/84",
       "claimed_at": "2026-07-20T01:24:56.091Z",
-      "updated_at": "2026-07-20T02:04:21.971Z"
+      "updated_at": "2026-07-20T04:43:05.048Z"
     },
     "SW10-T3": {
       "title": "Duo: sealed partner chip + wire the tandem line [contract-change]",
