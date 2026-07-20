@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-20T05:36:57.681Z",
+  "updated_at": "2026-07-20T05:44:13.369Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1732,13 +1732,13 @@
       "phase": "SP2",
       "depends_on": [],
       "mock_start_ok": false,
-      "note": "Implemented: (a) partner_pick_today on GET /duo/current + PartnerLockedChip in SwipeBallot footer; (b) duo_tandem on revealViewerSchema, computeDuoTandemBlock in reveal-payload.ts, DuoTandem mounted in RevealSequence alongside NemesisFlip. Unit+integration+e2e tests added, pnpm verify green (build via direct next build per known sandbox proxy issue).",
-      "status": "in_review",
+      "note": "Merged. Duo sealed partner chip (SwipeBallot footer) + duo_tandem reveal block mounted alongside NemesisFlip in RevealSequence. 2 fable review rounds (doc-contract gap x2, overstated independence-test claim, wasted duo fetch when swipe_ballot off) — all fixed.",
+      "status": "done",
       "owner": "claude-session-35b05898-7175",
       "branch": "claude/sw10-t3-duo-tandem",
       "pr": "https://github.com/Gambappe/Gambappe/pull/90",
       "claimed_at": "2026-07-20T04:43:55.566Z",
-      "updated_at": "2026-07-20T05:25:07.460Z"
+      "updated_at": "2026-07-20T05:44:13.369Z"
     },
     "SW10-T4": {
       "title": "Wire ReactionStamps into /vs/[pairingId] [contract-change]",
