@@ -257,6 +257,12 @@ export const ballotCopy = {
   crowdSealed: (time: string) => `CROWD HIDDEN UNTIL LOCK · ${time}`,
   /** Idle-nudge sr hint (visually the card sways; SR users get the wells). */
   swipeHint: 'Swipe the card, or use the buttons below.',
+  /** Design-diff audit · the peeking next-day card's real-data label, once
+   * `GET /questions/tomorrow` confirms one exists (`docs/swipe-ux-plan.md` §2.5's under-card
+   * bullet, pinned verbatim: "headline hidden — shows only 'TOMORROW · opens 9:00 ET'"). The
+   * `UnderCard`'s flat fallback (`copy.question.tomorrowTeaser`) covers every other case —
+   * curation hasn't reached tomorrow yet, or the fetch fails. */
+  tomorrowPeekLabel: (time: string) => `TOMORROW · opens ${time}`,
 } as const;
 
 /**

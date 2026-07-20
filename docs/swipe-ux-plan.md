@@ -579,6 +579,17 @@ present, else blank slip (SPEC-GAP note if the source is missing).
 AC: each `question-state-*` testid renders in the stage; §9.3 crowd-hidden-while-open
 holds (no crowd data in any `open` render); locked crowd bar is axis-flipped;
 countdown math via the existing server-offset pattern (no raw `Date.now()` drift).
+**Under-card "tomorrow" data gap closed (design-diff audit, post-SW2-T2):** SW2-T2's own
+PR (`feat(sw2-t2)`) shipped only the non-`open` deck states above — the under-card kept
+rendering the flat `tomorrowTeaser` banner with no real data plumbed in, and no
+`SPEC-GAP` note was ever left recording that. `GET /questions/tomorrow` (design doc §9.2,
+`questionPeekSchema`) now provides the "next-question source" this AC asked for, wired
+into `SwipeBallot`'s committed-receipt state (`apps/web/components/SwipeBallot.tsx`'s
+`tomorrowPeek` prop, fetched by `ViewerStrip` post-hydration) — matching this file's own
+"headline hidden" line above verbatim. `DeckStage`'s static under-card (pre-commit) is
+UNCHANGED — this closes the gap only for the state the mockup's "Committed" exhibit
+actually depicts; wiring the same real data into the pre-commit interactive state and
+into `DeckStates`' non-`open` presentations is still open, if wanted.
 
 **SW2-T3 · Side-axis sweep (flag-independent) · SP1 · Depends: — (Wave 1)**
 Spec: §2.2 + D-SW9. **Applies to the CURRENT ui too — this is a correctness fix, not

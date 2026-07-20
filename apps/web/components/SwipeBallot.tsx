@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
-import type { MarketSide, QuestionPublic } from '@receipts/core';
+import type { MarketSide, QuestionPeek, QuestionPublic } from '@receipts/core';
 import {
   BallotCard,
   dragSide,
@@ -18,6 +18,7 @@ import {
   sideAxisPair,
   stampScale,
   tintOpacity,
+  UnderCard,
 } from '@receipts/ui';
 import { ballotCopy, copy } from '@/lib/copy';
 import { formatClock } from '@/lib/format-et';
@@ -57,6 +58,18 @@ export interface SwipeBallotProps {
    * side — only existence + timing (§9.3 stays untouched).
    */
   partnerLocked?: { handle: string; pickedAtIso: string } | null;
+  /**
+   * Design-diff audit (`docs/swipe-ux-plan.md` §2.5's under-card AC): tomorrow's real question,
+   * once `ViewerStrip` has confirmed one exists via `GET /questions/tomorrow` — non-null only
+   * after that fetch resolves, so the default (`null`/`undefined`, every existing call site) is
+   * the current flat-banner behavior, byte-identical to before this task. Rendered ONLY in the
+   * receipt (`pick`) branch below, peeking from behind `ReceiptSlip` — never in the interactive
+   * branch, which keeps showing `DeckStage`'s own static under-card unchanged (see that
+   * component's header for why ownership is split this way). Never carries a headline (§2.5:
+   * "headline hidden — shows only 'TOMORROW · opens 9:00 ET'") — see `questionPeekSchema`'s doc
+   * comment in `packages/core` for why the wire shape has nothing else to show anyway.
+   */
+  tomorrowPeek?: QuestionPeek | null;
 }
 
 function readCount(key: string): number {
@@ -86,6 +99,7 @@ export function SwipeBallot({
   onUndo,
   arm = false,
   partnerLocked = null,
+  tomorrowPeek = null,
 }: SwipeBallotProps) {
   const [reducedMotion] = useState(() => prefersReducedMotion());
   const [pendingAge, setPendingAge] = useState<MarketSide | null>(null);
@@ -227,17 +241,35 @@ export function SwipeBallot({
       : null;
     return (
       <div className="space-y-2" data-testid="viewer-strip-pick">
-        <ReceiptSlip
-          sideLabel={sideLabel}
-          entryCents={entryCents}
-          pickedAtLabel={formatClock(pick.pickedAtIso)}
-          serial={`№ ${question.question_date ?? question.slug.slice(0, 10)}`}
-          sealedNote={ballotCopy.crowdSealed(formatClock(question.lock_at))}
-          secondsLeft={secondsLeft}
-          onUndo={handleUndo}
-          disabled={disabled}
-          reducedMotion={reducedMotion}
-        />
+        <div className="relative">
+          {/* Design-diff audit: the peeking next-day card, physically behind the printed receipt
+              (mockup's "Committed" exhibit — `docs/mockups/swipe-ux.html`, search "TOMORROW" /
+              "SCHEDULED" / "№ 213"). Conditional on real data so the "nothing to peek at" case is
+              a no-op here — `DeckStage`'s own static under-card (rendered by the server shell one
+              level up, unconditionally, for every `open`-state render) keeps showing through
+              exactly as it does today; this element only mounts once `tomorrowPeek` is confirmed,
+              at which point it paints in front of that static one (same offset/position, later in
+              paint order) and `ReceiptSlip` — sharing this wrapper's stacking context, DOM-order
+              after this element — covers its lower portion, leaving only the top sliver peeking
+              above the receipt's edge. */}
+          {tomorrowPeek ? (
+            <UnderCard
+              label={ballotCopy.tomorrowPeekLabel(formatClock(tomorrowPeek.open_at))}
+              className="absolute inset-x-3 -top-3 scale-95 opacity-90"
+            />
+          ) : null}
+          <ReceiptSlip
+            sideLabel={sideLabel}
+            entryCents={entryCents}
+            pickedAtLabel={formatClock(pick.pickedAtIso)}
+            serial={`№ ${question.question_date ?? question.slug.slice(0, 10)}`}
+            sealedNote={ballotCopy.crowdSealed(formatClock(question.lock_at))}
+            secondsLeft={secondsLeft}
+            onUndo={handleUndo}
+            disabled={disabled}
+            reducedMotion={reducedMotion}
+          />
+        </div>
         <p className="text-muted px-1 font-mono text-xs">
           {copy.question.comeBackAt(formatClock(question.reveal_at))}
         </p>

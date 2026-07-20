@@ -6,7 +6,7 @@
  * below are WS10-T2 (curation tooling, §15.2).
  */
 import { and, asc, eq, gte, lte, ne, sql } from 'drizzle-orm';
-import { BOT_EXCLUDE_THRESHOLD } from '@receipts/core';
+import { addDaysToDateString, BOT_EXCLUDE_THRESHOLD } from '@receipts/core';
 import type { Db } from '../client.js';
 import { markets, questions } from '../schema/index.js';
 
@@ -129,6 +129,19 @@ export async function getDailyQuestion(db: Db, questionDate: string): Promise<Qu
 /** Today's daily question by ET calendar date (§9.2 `GET /questions/today`). */
 export async function getTodayDailyQuestion(db: Db, questionDateEt: string): Promise<QuestionRow | null> {
   return getDailyQuestion(db, questionDateEt);
+}
+
+/** Tomorrow's daily question by ET calendar date (design-diff audit vs. `docs/mockups/
+ * swipe-ux.html` / `docs/swipe-ux-plan.md` §2.5's "under-card" AC — the peeking next-day card,
+ * `GET /questions/tomorrow`). Thin wrapper over `getDailyQuestion` at `questionDateEt` + 1 day,
+ * same division of labor as `getTodayDailyQuestion`'s wrapper over the same lookup: curation may
+ * not have reached tomorrow yet (curation can run close to open time), so `null` here is an
+ * expected, common outcome, not an error — the caller degrades to the flat teaser copy rather
+ * than treating it as exceptional. Excludes `voided` (via `getDailyQuestion`); the caller still
+ * has to gate on `draft`/effective-status itself (`serializeQuestionPeek`) — same split as
+ * `getDailyQuestion`/`assertQuestionPubliclyVisible` upstream of it. */
+export async function getNextDailyQuestion(db: Db, questionDateEt: string): Promise<QuestionRow | null> {
+  return getDailyQuestion(db, addDaysToDateString(questionDateEt, 1));
 }
 
 /** The date's daily INCLUDING a voided-only day — active row preferred when a voided daily

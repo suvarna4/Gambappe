@@ -72,6 +72,17 @@ test.describe('SW1-T5 swipe ballot', () => {
     await expect(demo.getByTestId('receipt-slip')).toContainText('CUTS');
   });
 
+  test('design-diff audit: the peeking next-day card shows behind the printed receipt', async ({
+    page,
+  }) => {
+    // `SwipeBallotGalleryDemo` wires a fixed `tomorrowPeek` fixture (no live API call) — see that
+    // file's header — so committing a pick should surface the real-data peek label, not the flat
+    // banner. §2.5 pins the label verbatim (headline stays hidden): "TOMORROW · opens {time}".
+    await demo.getByTestId('pick-yes').click();
+    await expect(demo.getByTestId('receipt-slip')).toBeVisible();
+    await expect(page.getByText(/^TOMORROW · opens/)).toBeVisible();
+  });
+
   test('reduced motion still commits (transform-free path)', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.reload();

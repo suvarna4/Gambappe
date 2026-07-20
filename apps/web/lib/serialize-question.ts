@@ -9,7 +9,7 @@
  *     once effectively locked, it's null until the real lock snapshot exists (a late lock job
  *     "back-fills" it; there's nothing dishonest about returning null in the meantime).
  */
-import { ApiError, type QuestionStatus, type QuestionPublic } from '@receipts/core';
+import { ApiError, type QuestionPeek, type QuestionStatus, type QuestionPublic } from '@receipts/core';
 import type { MarketRow, QuestionRow } from '@receipts/db';
 
 /** State-machine order (§5.7: draft → scheduled → open → locked → revealed) — used to keep
@@ -102,5 +102,29 @@ export function serializeQuestionPublic(question: QuestionRow, market: MarketRow
     is_volatile: question.isVolatile,
     venue: market.venue,
     venue_url: market.venueUrl,
+  };
+}
+
+/**
+ * `QuestionRow` → the `GET /questions/tomorrow` peek shape (design-diff audit, §9.2
+ * contract-change), or `null` when there's nothing safe to peek at. Pure — no market row needed,
+ * because (per `questionPeekSchema`'s doc comment) the peek never carries anything derived from
+ * the market at all.
+ *
+ * Reuses this file's own masking primitives rather than reinventing them: `effectiveQuestionStatus`
+ * for the §5.7 timestamp-derived state, and the same draft-rejection `assertQuestionPubliclyVisible`
+ * already enforces for every other public read path. Returns `null` (never throws) for every
+ * disqualifying case — a `draft` row, or a row whose effective status has already moved past
+ * `scheduled` (already open/locked/revealed/voided "tomorrow" isn't "tomorrow, unopened" anymore,
+ * and this endpoint has no shape for that) — so the caller can uniformly treat "nothing to peek
+ * at" as a 404 without a second layer of status branching.
+ */
+export function serializeQuestionPeek(question: QuestionRow, at: Date): QuestionPeek | null {
+  if (question.status === 'draft') return null;
+  const status = effectiveQuestionStatus(question, at);
+  if (status !== 'scheduled') return null;
+  return {
+    status: 'scheduled',
+    open_at: question.openAt.toISOString(),
   };
 }

@@ -60,6 +60,32 @@ export type QuestionPublic = z.infer<typeof questionPublicSchema>;
 export const getTodayQuestionRequestSchema = z.object({});
 export const getTodayQuestionResponseSchema = questionPublicSchema;
 
+// --- GET /questions/tomorrow (design-diff audit vs. docs/mockups/swipe-ux.html + the
+//     `docs/swipe-ux-plan.md` §2.5 "under-card" AC — contract-change) ---------------------------
+
+/**
+ * The "peeking next-day card" (swipe-ux-plan §2.5: "the stage, rails, under-card ... render in
+ * the server shell"; §2.5's under-card bullet: "tomorrow's `scheduled` question when published
+ * (headline hidden — shows only 'TOMORROW · opens 9:00 ET'), else a blank slip. Never
+ * interactive."). Deliberately the narrowest possible shape — NOT `questionPublicSchema` — for
+ * two independent reasons: (1) `questionPublicSchema.yes_price` is populated regardless of
+ * status (§9.3 only gates `crowd`), so reusing it verbatim here would leak the venue price for a
+ * question that hasn't opened; (2) the design intentionally hides the headline pre-open (above),
+ * so there's nothing else safe to carry. `status` is pinned to the literal `'scheduled'` — the
+ * ONLY state this endpoint ever serves; an already-open/locked/revealed "next daily" isn't
+ * "tomorrow, unopened" anymore, and `GET /questions/tomorrow` 404s instead of shipping a shape
+ * for that (§9.2).
+ */
+export const questionPeekSchema = z.object({
+  status: z.literal('scheduled'),
+  open_at: zTimestamp,
+});
+
+export type QuestionPeek = z.infer<typeof questionPeekSchema>;
+
+export const getTomorrowQuestionRequestSchema = z.object({});
+export const getTomorrowQuestionResponseSchema = questionPeekSchema;
+
 // --- GET /questions/:slug ---------------------------------------------------------------------
 
 export const getQuestionRequestSchema = z.object({

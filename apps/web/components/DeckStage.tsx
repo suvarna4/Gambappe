@@ -7,7 +7,17 @@ export interface DeckStageProps {
   question: QuestionPublic;
   /** The hydrating viewer island (`ViewerStrip` → `SwipeBallot`), placed in the card position. */
   viewerSlot: ReactNode;
-  /** Optional label for the peek card under the deck (tomorrow's appointment). */
+  /**
+   * Flat fallback label for the peek card under the deck (tomorrow's appointment) — always the
+   * static `copy.question.tomorrowTeaser` banner (viewer-free, INV-10). Design-diff audit: once
+   * a pick is committed, `SwipeBallot`'s own `pick` branch (client-side, post-hydration) renders
+   * a SECOND, real-data `UnderCard` directly behind its printed `ReceiptSlip` when
+   * `GET /questions/tomorrow` confirms one exists — see that file's `tomorrowPeek` prop. That one
+   * paints in front of (visually replaces) this static one at the same position when it renders;
+   * this prop/element deliberately stays untouched so every OTHER open-state render (pre-pick,
+   * or the flag-off ticket path entirely) is unaffected and every existing snapshot for those
+   * states holds.
+   */
   underLabel?: string;
 }
 

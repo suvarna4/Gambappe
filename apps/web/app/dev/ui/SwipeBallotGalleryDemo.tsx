@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { QuestionPublic } from '@receipts/core';
+import type { QuestionPeek, QuestionPublic } from '@receipts/core';
 import { DeckStage } from '@/components/DeckStage';
 import { SwipeBallot } from '@/components/SwipeBallot';
 import type { CachedPick } from '@/lib/pick-storage';
@@ -33,6 +33,16 @@ const DEMO_Q: QuestionPublic = {
   venue_url: 'https://kalshi.example/markets/demo',
 };
 
+/** Design-diff audit: a fixed local `QuestionPeek` fixture — no API is called by this demo (see
+ * the file-level comment), so `SwipeBallot`'s `tomorrowPeek` prop is exercised with a static
+ * value here rather than a real `GET /questions/tomorrow` round trip. Gives `/dev/ui` a tile that
+ * actually shows the peeking next-day card behind the printed receipt, and gives
+ * `e2e/swipe-ballot.spec.ts` something deterministic to assert on. */
+const DEMO_PEEK: QuestionPeek = {
+  status: 'scheduled',
+  open_at: '2026-07-20T13:00:00Z',
+};
+
 export default function SwipeBallotGalleryDemo() {
   const [pick, setPick] = useState<CachedPick | null>(null);
 
@@ -52,6 +62,7 @@ export default function SwipeBallotGalleryDemo() {
         })
       }
       onUndo={() => setPick(null)}
+      tomorrowPeek={DEMO_PEEK}
     />
   );
 

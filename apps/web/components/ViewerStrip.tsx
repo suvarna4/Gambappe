@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { MarketSide, QuestionPublic } from '@receipts/core';
+import type { MarketSide, QuestionPeek, QuestionPublic } from '@receipts/core';
 import { copy, shareCopy } from '@/lib/copy';
 import { postAnalyticsEvent } from '@/lib/analytics-client';
 import { DEFAULT_PICK_SOURCE, type PickInputSource } from '@/lib/pick-input-source';
@@ -15,6 +15,7 @@ import {
   type CachedPick,
 } from '@/lib/pick-storage';
 import { fetchCurrentDuo } from '@/lib/duo-client';
+import { fetchTomorrowPeek } from '@/lib/tomorrow-peek-client';
 import ShareSheet from './share/ShareSheet';
 import { PickButtons } from './PickButtons';
 import { QuestionThread } from './QuestionThread';
@@ -90,6 +91,10 @@ export function ViewerStrip({
   const [partnerLocked, setPartnerLocked] = useState<{ handle: string; pickedAtIso: string } | null>(
     null,
   );
+  // Design-diff audit: the peeking next-day card (`docs/swipe-ux-plan.md` §2.5's under-card AC).
+  // `null` until (and unless) `GET /questions/tomorrow` confirms a real one exists — see the
+  // effect below for the fetch trigger and `SwipeBallot`'s doc comment for how this renders.
+  const [tomorrowPeek, setTomorrowPeek] = useState<QuestionPeek | null>(null);
 
   useEffect(() => {
     // Only self-detect when the caller didn't already resolve `arm` server-side (see the prop's
@@ -156,6 +161,31 @@ export function ViewerStrip({
     if (typeof window === 'undefined') return;
     setPick(readCachedPick(window.localStorage, question.id));
   }, [question.id]);
+
+  useEffect(() => {
+    // Design-diff audit (`docs/swipe-ux-plan.md` §2.5's under-card AC): fetch tomorrow's peek
+    // client-side, post-hydration — same pattern as the `duoQueue` effect above (`fetchCurrentDuo`)
+    // and `fetchMe` below. Trigger is "a pick is on the board" (the committed-receipt state is the
+    // only place this renders, `SwipeBallot`'s `pick` branch — see that file), not every visit to
+    // an open question: the peek is decorative enrichment behind a state the viewer is already
+    // looking at, not something worth a network round trip for every spectator who never picks.
+    // Best-effort: a 404 (curation hasn't reached tomorrow yet — the common case most days) or any
+    // other failure just leaves `tomorrowPeek` at its `null` default, which renders nothing extra
+    // — `UnderCard`'s existing flat fallback (`copy.question.tomorrowTeaser`, via `DeckStage`)
+    // keeps showing through unchanged, exactly the "degrade gracefully" requirement.
+    if (!swipeBallot || question.status !== 'open' || !pick) return;
+    let cancelled = false;
+    fetchTomorrowPeek()
+      .then(({ data }) => {
+        if (!cancelled) setTomorrowPeek(data);
+      })
+      .catch(() => {
+        // Best-effort — see comment above.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [swipeBallot, question.status, pick]);
 
   // Ticks the undo countdown; also doubles as the local expiry check driving `canUndo` below.
   // Pointless once revealed — `RevealSequence` (below) owns rendering then, and undo/pick UI
@@ -257,6 +287,7 @@ export function ViewerStrip({
           onUndo={handleUndo}
           arm={arm}
           partnerLocked={partnerLocked}
+          tomorrowPeek={tomorrowPeek}
         />
         {error ? (
           <p className="text-loss text-xs" data-testid="viewer-strip-error">
