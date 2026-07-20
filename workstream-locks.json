@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-20T03:15:04.815Z",
+  "updated_at": "2026-07-20T03:21:59.037Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1798,12 +1798,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": "apps/worker/Dockerfile builds core/db/worker but ships packages/venues + packages/engine dist straight from the build context — a stale local dist gets baked in silently (bit the WS15-T1 staging rollout: v2 image had the pre-fix adapter).",
-      "status": "claimed",
+      "status": "done",
       "owner": "claude-code-web-session-54bb90dd",
       "branch": "claude/ws15-t3-worker-dockerfile",
       "pr": null,
       "claimed_at": "2026-07-20T03:15:04.815Z",
-      "updated_at": "2026-07-20T03:15:04.815Z"
+      "updated_at": "2026-07-20T03:21:59.036Z"
     }
   }
 }
