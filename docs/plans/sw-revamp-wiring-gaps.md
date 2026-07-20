@@ -9,7 +9,7 @@ repo-wide pattern: several SW5/SW8 tasks are marked `done` in the workstream-loc
 their components were never actually mounted on the real pages a user visits.
 
 This doc records the audit (§2), which components are genuinely live vs. gallery-only (§3), and
-five remediation tasks (§4, registered as **SW10** in the workstream-lock registry) that close
+five remediation tasks (§4, to be registered as **SW10** in the workstream-lock registry once a fable review round returns clean) that close
 each gap. §5 corrects the record on the five original tasks.
 
 ## 2. How the gap was found, and how every other SW task was checked
@@ -95,7 +95,7 @@ gallery page" that "gate CI." `e2e/dev-ui.spec.ts` only makes content assertions
 the e2e suite. There is no visual regression gate today, so a future styling regression on any
 of these components would ship silently.
 
-## 4. Tasks (registered as SW10 in the workstream-lock registry)
+## 4. Tasks (to be registered as SW10 in the workstream-lock registry after a clean review round)
 
 **SW10-T1 · Nemesis daily flip: reveal-payload data + real wiring · Depends: —**
 `[contract-change]`
@@ -118,7 +118,14 @@ sequencing (fable round 3):** the core-first `[contract-change]` PR must declare
 emitter. The follow-up implementation PR adds the emitter and may then tighten to
 `.nullable()`. The block is emitted from
 `buildRevealPayload` (`apps/web/lib/reveal-payload.ts`) by a new `computeNemesisFlipBlock`,
-mirroring `computeBrokenRunBlock`'s shape. Mechanical emission condition: non-null iff (a) the
+mirroring `computeBrokenRunBlock`'s shape. `narration` is `string | null`, pinned in fable
+round 4 (no daily-flip beat exists in the catalog, and this repo forbids freehand copy outside
+`copy.ts`/the `narrate()` catalog): render via the EXISTING catalog beats only —
+`nemesis_lead_taken` when this question's grading flipped the week-tally leader,
+`nemesis_comeback` when it leveled the tally from behind (both already in
+`packages/engine/src/narration.ts`, currently derivation-less); null otherwise, and the UI
+omits the line (make `NemesisFlip`'s `narration` prop optional accordingly — SW4-T1's
+degrade-by-omission precedent). Mechanical emission condition: non-null iff (a) the
 viewer has an active pairing this week (`getCurrentPairingForProfile`) AND (b) the opponent has
 a pick on this `question_id` (`getPick`) — no separate "has the viewer locked" check needed:
 the reveal payload is structurally unreachable pre-reveal (§6.5 publication rule, same
@@ -160,12 +167,16 @@ needed:
 - `dayResults`: derive from the EXISTING public `GET /pairings/:id`
   (`pairingPublicSchema.scoreboard` — per-question `{a,b}.{side,result}`, fully unmasked for a
   completed pairing), fetched by the `pairing_id` the history entry already carries. Mapping,
-  pinned (fable round 3 — the scoreboard has more states than the card's four dots): use only
-  rows with a non-null `question_date` (the shared dailies; nemesis-bonus rows have null dates
-  and get no dot); viewer-relative per row — `win` = viewer's result `win` and opponent's not
-  `win`; `loss` = the mirror; `split` = both `win` or both `loss` (same result, no day taken);
-  `pending` = either side's result null/`pending`; a `void` result or a no-pick (null side)
-  row maps to `split`'s neutral dot (nobody took the day).
+  re-pinned in fable round 4 (round 3's head-to-head "day taken" model contradicted the real
+  scorer): `scoreNemesisWeek` (`packages/engine/src/scoring.ts`) awards points INDEPENDENTLY —
+  a both-win day gives BOTH players +1 — and the card prints `my_score`/`their_score` (that
+  scorer's output) directly above the dots, so the dots must mirror the same accrual or the
+  card contradicts itself. Dot = the VIEWER'S OWN result per scoreboard row: `win` iff the
+  viewer picked and won; `loss` iff picked and lost; `pending` iff the row is unsettled; the
+  neutral dot (the component's `split` style, repurposed — rename the union member if clearer)
+  for a void row or a viewer-no-pick row (the scorer awards nothing there). Include EVERY
+  scoreboard row, nemesis-bonus rows too (null `question_date`) — the scorer counts them
+  (`apps/worker/src/jobs/nemesis-conclude.ts`), so excluding them would desync dots from score.
 - `edgeGap` + the verdict copy: today's LOSER line (`copy.ts:196-197`) says "`{handle}`'s edge
   beat yours by `{edgeGap}` points", and the WINNER line ("You out-edged `{handle}` when it
   counted", `copy.ts:198`) has the same problem — feeding day-win margins into edge-points
@@ -209,7 +220,10 @@ default omitted so every existing `SwipeBallot` call site is unaffected) — sea
 shows LOCKED status only, never the partner's side, ever (this chip has no "unsealed" state —
 the partner's actual pick only ever surfaces via (b), post-reveal); (b) a `duo_tandem`
 block on `revealViewerSchema` (`.nullish()` in the core-first PR, same sequencing rule as
-SW10-T1's block), populated by `getActiveDuoForProfile` + `getPick`, mechanically
+SW10-T1's block) — fields, matching `DuoTandem`'s props (`DuoTandem.tsx:4-12`; the viewer's
+own side comes from the payload's existing `viewer.pick`):
+`{ partner_handle, partner_side, partner_side_label }` — populated by
+`getActiveDuoForProfile` + `getPick`, mechanically
 non-null iff the viewer has an active duo AND the partner has a pick on this `question_id` —
 same "unreachable pre-reveal, not merely unpopulated" structural guarantee as SW10-T1. Mount
 `DuoTandem` **once, in `RevealSequence.tsx`**, next to SW10-T1's `NemesisFlip` section (same
@@ -403,3 +417,26 @@ and found four spec-precision issues, all fixed above:
    results, and no-pick rows; the card has four dot states). Fixed: mapping pinned in the task.
 4. **LOW — the edge-copy reword missed the winner line**, which is equally edge-worded and
    equally unbacked by day-win data. Fixed: both lines reworded, grep AC covers both.
+
+## 10. Fable adversarial review — round 4 findings (fixed in this doc)
+
+Round 4 verified round 3's fixes hold (`.nullish()` is sufficient for both consumer modes and
+trips no drift/registry gate; the read-path split is implementable in `buildPairingPublic`,
+which both pairing endpoints share; the single-mount claim is exact) and found five issues,
+all fixed above:
+
+1. **MEDIUM — round 3's own `dayResults` mapping contradicted the real scorer.**
+   `scoreNemesisWeek` awards points independently (both-win → both +1), not head-to-head, and
+   nemesis-bonus rows count in the score — so round 3's "day taken" dots (and its bonus-row
+   exclusion) would contradict the `my_score`/`their_score` printed directly above them.
+   Fixed: dot = the viewer's OWN result per row, every scored row included.
+2. **MEDIUM — that mapping was also non-deterministic** (a viewer-won/opponent-no-pick row
+   matched three rules at once). The viewer-own-result re-pin dissolves this.
+3. **MEDIUM — `nemesis_flip.narration` had no specced source** (no daily-flip beat exists;
+   freehand copy is forbidden). Fixed: `string | null`, rendered only via the existing
+   `nemesis_lead_taken`/`nemesis_comeback` catalog beats with pinned trigger rules; UI omits
+   the line when null.
+4. **LOW — stale present-tense "registered" wording.** Fixed: "to be registered … after a
+   clean review round."
+5. **LOW — `duo_tandem`'s fields were never enumerated.** Fixed:
+   `{ partner_handle, partner_side, partner_side_label }`, matching `DuoTandem`'s props.
