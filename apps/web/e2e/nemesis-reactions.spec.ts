@@ -10,15 +10,25 @@
  * AC (wiring-gaps doc §4 SW10-T4): "the viewer's own current stamp round-trips (post → reload →
  * `selected` reflects it, assert on `/nemesis` or via the client-derived path, NOT on
  * `/vs/[pairingId]`'s ISR render, which may serve a ≤30s-stale snapshot by design)" — this file
- * asserts exactly that, on `/nemesis`, across a real page reload (not just in-session state).
+ * asserts exactly that, across a real page reload (not just in-session state).
  *
- * `/nemesis` is SSR-gated (`auth()` + redirect to `/claim`), so this seeds a real Auth.js session
- * onto an already-`claimed` profile the same way `nemesis-rematch.spec.ts`'s header comment
- * justifies — see that file for the full rationale on both the session-seeding approach and the
- * wide-season/advisory-lock pattern reused verbatim below (this file's own pairing doesn't need a
- * SPECIFIC season window since `getCurrentPairingForProfile` only filters on `status='active'`,
- * but seeding through the same canonical row avoids minting yet another wide-season duplicate in
- * this suite's shared local Postgres).
+ * Structural redesign (design-diff audit): `NemesisMatchupCard` (and the `ReactionStampsPanel`
+ * mounted inside it) no longer renders inline on `/nemesis` — that page now shows only the
+ * compact, redesigned `NemesisAssignmentCard` for the assignment state, with the full matchup
+ * split out to the new private `/nemesis/matchup` route (see that route's own header for why:
+ * `/vs/[pairingId]` stays deliberately viewer-free, INV-10, so the viewer's own "You"-labeled
+ * matchup — where these reaction stamps actually live — needs a private home). This suite was
+ * updated to navigate to `/nemesis/matchup` accordingly; the AC's "or via the client-derived
+ * path" clause already anticipated this kind of relocation.
+ *
+ * `/nemesis/matchup` is SSR-gated exactly like `/nemesis` (`auth()` + redirect to `/claim`), so
+ * this seeds a real Auth.js session onto an already-`claimed` profile the same way
+ * `nemesis-rematch.spec.ts`'s header comment justifies — see that file for the full rationale on
+ * both the session-seeding approach and the wide-season/advisory-lock pattern reused verbatim
+ * below (this file's own pairing doesn't need a SPECIFIC season window since
+ * `getCurrentPairingForProfile` only filters on `status='active'`, but seeding through the same
+ * canonical row avoids minting yet another wide-season duplicate in this suite's shared local
+ * Postgres).
  */
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
@@ -131,7 +141,7 @@ test.describe('/nemesis reaction stamps (§9.2 POST /reactions pairing branch, r
       },
     ]);
 
-    await page.goto('/nemesis');
+    await page.goto('/nemesis/matchup');
     const panel = page.getByTestId('reaction-stamps-panel');
     await expect(panel).toBeVisible();
 
@@ -187,7 +197,7 @@ test.describe('/nemesis reaction stamps (§9.2 POST /reactions pairing branch, r
       },
     ]);
 
-    await page.goto('/nemesis');
+    await page.goto('/nemesis/matchup');
     const panel = page.getByTestId('reaction-stamps-panel');
     await expect(panel).toBeVisible();
 
