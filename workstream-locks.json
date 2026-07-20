@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-20T01:24:54.698Z",
+  "updated_at": "2026-07-20T01:24:56.092Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1720,12 +1720,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": "Spec: docs/plans/sw-revamp-wiring-gaps.md §4 SW10-T2. Replaces RematchPanel's plain button; dayResults derive from GET /pairings/:id scoreboard (viewer's OWN result per row, all rows incl. bonus); edgeGap retyped to score margin with BOTH verdict copy lines reworded (no edge wording); cancelled weeks get no card; NOT a contract-change.",
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-session-35b05898-7175",
+      "branch": "claude/sw10-t2-verdict-rematch",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-20T01:18:01.583Z"
+      "claimed_at": "2026-07-20T01:24:56.091Z",
+      "updated_at": "2026-07-20T01:24:56.091Z"
     },
     "SW10-T3": {
       "title": "Duo: sealed partner chip + wire the tandem line [contract-change]",
