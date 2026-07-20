@@ -7,6 +7,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import type { Db } from '../client.js';
 import { picks, placementAnswers, profiles, questions, reactions, streakFreezeUses } from '../schema/index.js';
 import { replayStreak, type ReplayDailyQuestion, type ReplayFreezeUse, type ReplayPick } from '../streak-replay.js';
+import { listAllRevealedOrVoidedDaily } from './questions.js';
 
 export interface MergeResult {
   targetProfileId: string;
@@ -140,15 +141,10 @@ export async function mergeGhostIntoProfile(
     // Step 3 (§6.4): ghosts can't post — no `posts` re-parenting needed.
 
     // --- Step 4: recompute P's streak fields from the merged pick history (§6.6 replay) -------
-    const dailyQuestionRows = await tx
-      .select({ id: questions.id, questionDate: questions.questionDate, status: questions.status })
-      .from(questions)
-      .where(and(eq(questions.kind, 'daily'), sql`${questions.status} IN ('revealed', 'voided')`));
-    const dailyQuestions: ReplayDailyQuestion[] = dailyQuestionRows
-      .filter((q): q is { id: string; questionDate: string; status: 'revealed' | 'voided' } =>
-        q.questionDate !== null,
-      )
-      .map((q) => ({ id: q.id, questionDate: q.questionDate, status: q.status as 'revealed' | 'voided' }));
+    // Via the shared repo query so the WS15-T2 dedupe (a voided daily coexisting with its
+    // revealed same-date replacement collapses to the revealed row) applies to merge replay
+    // exactly as it does to reveal/sweep replay.
+    const dailyQuestions: ReplayDailyQuestion[] = await listAllRevealedOrVoidedDaily(tx);
 
     const targetPickRows = await tx
       .select({ questionId: picks.questionId, result: picks.result })

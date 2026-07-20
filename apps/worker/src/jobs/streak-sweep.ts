@@ -24,7 +24,7 @@ import { now } from '@receipts/core';
 import {
   applyStreakForNonParticipant,
   createDb,
-  getDailyQuestion,
+  getDailyQuestionAnyStatus,
   getLatestRevealedOrVoidedDailyDate,
   listRevealedOrVoidedDailyThrough,
   listStreakSweepCandidates,
@@ -42,7 +42,9 @@ export async function runStreakSweep(db: Db, pool: pg.Pool, at: Date = now()): P
   const targetDate = await getLatestRevealedOrVoidedDailyDate(db);
   if (!targetDate) return { targetDate: null, swept: 0 };
 
-  const dailyQuestion = await getDailyQuestion(db, targetDate);
+  // AnyStatus (WS15-T2): the target date may be a voided-only day — the sweep still has to
+  // advance contiguous runs across it (§6.6), so a voided row must be found, not skipped.
+  const dailyQuestion = await getDailyQuestionAnyStatus(db, targetDate);
   if (!dailyQuestion) return { targetDate, swept: 0 }; // shouldn't happen; defensive
 
   const candidates = await listStreakSweepCandidates(db, dailyQuestion.id, targetDate);

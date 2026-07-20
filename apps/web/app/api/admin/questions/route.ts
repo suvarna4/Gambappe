@@ -6,7 +6,7 @@
 import { NextResponse } from 'next/server';
 import { uuidv7 } from 'uuidv7';
 import { ApiError, errorEnvelope, nowMs } from '@receipts/core';
-import { getDailyQuestion, getMarketById, insertQuestion } from '@receipts/db';
+import { getDailyQuestion, getMarketById, getQuestionBySlug, insertQuestion } from '@receipts/db';
 import { getDb } from '@/lib/stores';
 import { withAdminAudit } from '@/lib/admin-audit';
 import { buildQuestionSlug, composerBodySchema, resolveComposerTimes, validateComposerInput } from '@/lib/curation';
@@ -49,8 +49,9 @@ async function postHandler(request: Request): Promise<NextResponse> {
     return rejected(new ApiError('VALIDATION_FAILED', 'Composer validation failed', { errors }));
   }
 
-  // Pre-check for a clean error; the DB's partial unique index (kind='daily', question_date)
-  // is the final backstop against a genuine race between two concurrent composer calls.
+  // Pre-check for a clean error; the DB's partial unique index (kind='daily', question_date,
+  // non-voided — WS15-T2: a voided daily frees its slot for a replacement) is the final
+  // backstop against a genuine race between two concurrent composer calls.
   const existingDaily = await getDailyQuestion(db, body.question_date);
   if (existingDaily) {
     return rejected(
@@ -58,7 +59,14 @@ async function postHandler(request: Request): Promise<NextResponse> {
     );
   }
 
-  const slug = buildQuestionSlug(body.question_date, body.headline);
+  // A replacement composed with the SAME headline as its voided predecessor would collide on
+  // `questions_slug_uq` (voided rows keep their slug — they're history, §5.7). Suffix until
+  // free; bounded because each probe either frees or the compose genuinely can't proceed.
+  let slug = buildQuestionSlug(body.question_date, body.headline);
+  for (let n = 2; (await getQuestionBySlug(db, slug)) !== null; n++) {
+    if (n > 10) return rejected(new ApiError('VALIDATION_FAILED', 'Could not find a free slug for this date/headline'));
+    slug = `${buildQuestionSlug(body.question_date, body.headline)}-${n}`;
+  }
   try {
     const question = await insertQuestion(db, {
       id: uuidv7(),

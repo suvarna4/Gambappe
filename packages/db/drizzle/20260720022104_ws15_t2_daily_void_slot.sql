@@ -1,0 +1,2 @@
+DROP INDEX "questions_daily_date_uq";--> statement-breakpoint
+CREATE UNIQUE INDEX "questions_daily_date_uq" ON "questions" USING btree ("question_date") WHERE "questions"."kind" = 'daily' AND "questions"."status" <> 'voided';

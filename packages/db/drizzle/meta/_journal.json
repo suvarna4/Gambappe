@@ -29,6 +29,13 @@
       "when": 1784414238868,
       "tag": "20260718223718_ws6_t3_duo_matchmaking_priority",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784514064576,
+      "tag": "20260720022104_ws15_t2_daily_void_slot",
+      "breakpoints": true
     }
   ]
 }

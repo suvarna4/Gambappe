@@ -128,7 +128,11 @@ export const questions = pgTable(
   },
   (t) => [
     uniqueIndex('questions_slug_uq').on(t.slug),
-    uniqueIndex('questions_daily_date_uq').on(t.questionDate).where(sql`${t.kind} = 'daily'`),
+    // ≤1 ACTIVE daily per date; voided rows are excluded (WS15-T2) so an admin void frees the
+    // date slot for a replacement compose. Multiple voided rows per date are legal history.
+    uniqueIndex('questions_daily_date_uq')
+      .on(t.questionDate)
+      .where(sql`${t.kind} = 'daily' AND ${t.status} <> 'voided'`),
     index('questions_kind_status_idx').on(t.kind, t.status),
     index('questions_status_lock_at_idx').on(t.status, t.lockAt),
     index('questions_status_reveal_at_idx').on(t.status, t.revealAt),

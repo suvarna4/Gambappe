@@ -276,4 +276,35 @@ describe('POST /api/admin/questions (§15.2)', () => {
     expect(dup.status).toBe(409);
     expect(dupBody.error.code).toBe('DUPLICATE_DAILY_QUESTION');
   });
+
+  it('allows a replacement compose after the incumbent daily is voided (WS15-T2), suffixing a colliding slug', async () => {
+    const { POST } = await import('../../app/api/admin/questions/route.js');
+    const first = await seedMarket();
+    const second = await seedMarket({ venueMarketId: 'curation-test-replacement' });
+
+    const makeBody = (marketId: string) => ({
+      market_id: marketId,
+      headline: 'Will the Fed cut rates?', // SAME headline both times — exercises the slug suffix
+      yes_label: 'Cut',
+      no_label: 'Hold',
+      question_date: '2026-07-20',
+      is_volatile: false,
+    });
+
+    const ok = await POST(jsonRequest('http://localhost/api/admin/questions', 'POST', makeBody(first.id)));
+    const okBody = (await ok.json()) as { data: { id: string; slug: string } };
+    expect(ok.status).toBe(201);
+
+    // Curator picked the wrong market — void it (the settlement admin PATCH path's tx).
+    const { voidQuestionAdmin } = await import('../../lib/settlement-admin.js');
+    const voided = await voidQuestionAdmin(db, okBody.data.id, 'wrong market, recomposing');
+    expect(voided.voided).toBe(true);
+
+    const replacement = await POST(jsonRequest('http://localhost/api/admin/questions', 'POST', makeBody(second.id)));
+    const replacementBody = (await replacement.json()) as { data: { slug: string; status: string } };
+    expect(replacement.status).toBe(201);
+    expect(replacementBody.data.status).toBe('scheduled');
+    // The voided predecessor keeps its slug; the replacement gets the -2 suffix.
+    expect(replacementBody.data.slug).toBe('2026-07-20-will-the-fed-cut-rates-2');
+  });
 });

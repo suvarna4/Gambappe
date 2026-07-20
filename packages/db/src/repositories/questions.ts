@@ -5,7 +5,7 @@
  * pg-boss job or a duplicate admin action is always safe. The market browser/tagging queries
  * below are WS10-T2 (curation tooling, §15.2).
  */
-import { and, asc, eq, gte, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, lte, ne, sql } from 'drizzle-orm';
 import { BOT_EXCLUDE_THRESHOLD } from '@receipts/core';
 import type { Db } from '../client.js';
 import { markets, questions } from '../schema/index.js';
@@ -104,12 +104,20 @@ export async function getQuestionById(db: Db, id: string): Promise<QuestionRow |
   return row ?? null;
 }
 
-/** The daily question for a date (unique partial index guarantees ≤1). */
+/** The ACTIVE daily question for a date (unique partial index guarantees ≤1 non-voided,
+ * WS15-T2). Voided rows are cancelled history — excluded so a voided slot reads as "no
+ * daily" (today endpoint) and as free (composer pre-check, allowing a replacement). */
 export async function getDailyQuestion(db: Db, questionDate: string): Promise<QuestionRow | null> {
   const [row] = await db
     .select()
     .from(questions)
-    .where(and(eq(questions.kind, 'daily'), eq(questions.questionDate, questionDate)))
+    .where(
+      and(
+        eq(questions.kind, 'daily'),
+        eq(questions.questionDate, questionDate),
+        ne(questions.status, 'voided'),
+      ),
+    )
     .limit(1);
   return row ?? null;
 }
@@ -117,6 +125,21 @@ export async function getDailyQuestion(db: Db, questionDate: string): Promise<Qu
 /** Today's daily question by ET calendar date (§9.2 `GET /questions/today`). */
 export async function getTodayDailyQuestion(db: Db, questionDateEt: string): Promise<QuestionRow | null> {
   return getDailyQuestion(db, questionDateEt);
+}
+
+/** The date's daily INCLUDING a voided-only day — active row preferred when a voided daily
+ * coexists with its replacement (WS15-T2). For consumers that process voided days as real
+ * history rather than treating the slot as free: `streak:sweep` must still advance
+ * `last_counted_date` across a contiguous voided day (§6.6), which requires finding the
+ * voided row when it's all that date has. */
+export async function getDailyQuestionAnyStatus(db: Db, questionDate: string): Promise<QuestionRow | null> {
+  const [row] = await db
+    .select()
+    .from(questions)
+    .where(and(eq(questions.kind, 'daily'), eq(questions.questionDate, questionDate)))
+    .orderBy(sql`(${questions.status} = 'voided') asc`)
+    .limit(1);
+  return row ?? null;
 }
 
 // --- §5.7 state machine transitions ------------------------------------------------------------
@@ -241,12 +264,16 @@ export async function listRevealedOrVoidedDailyBetween(
   from: string,
   to: string,
 ): Promise<Array<{ id: string; questionDate: string; status: 'revealed' | 'voided' }>> {
+  // ≤1 row per date (WS15-T2): a voided daily can coexist with its revealed replacement on
+  // the same date — for replay, the revealed row IS that date's history (the §6.6 "voided
+  // day" skip only applies when the date ended with no real daily). DISTINCT ON + the
+  // revealed-first sort key picks it; a voided-only date still yields its voided row.
   const rows = await db.execute(sql`
-    SELECT id, question_date, status
+    SELECT DISTINCT ON (question_date) id, question_date, status
     FROM questions
     WHERE kind = 'daily' AND status IN ('revealed', 'voided')
       AND question_date >= ${from} AND question_date <= ${to}
-    ORDER BY question_date ASC
+    ORDER BY question_date ASC, (status = 'revealed') DESC
   `);
   return rows.rows.map((r) => ({
     id: r['id'] as string,
@@ -279,10 +306,14 @@ export async function getPriorDayDailyQuestion(
   db: Db,
   questionDate: string,
 ): Promise<{ status: QuestionRow['status'] } | null> {
+  // Prefer the ACTIVE row when a voided daily coexists with its replacement (WS15-T2): the
+  // ordering guard must wait on the replacement's settlement, not read the voided row and
+  // wave the reveal through early. A voided-only prior day still returns 'voided' (settled).
   const rows = await db.execute(sql`
     SELECT status
     FROM questions
     WHERE kind = 'daily' AND question_date = (${questionDate}::date - INTERVAL '1 day')::date
+    ORDER BY (status = 'voided') ASC
     LIMIT 1
   `);
   const row = rows.rows[0];
