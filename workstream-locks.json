@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-20T06:56:14.959Z",
+  "updated_at": "2026-07-20T06:56:17.017Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1863,12 +1863,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": "noQuestionToday/tomorrowTeaser hardcoded 9:00 ET; WS15-T7 moved open to 03:00 ET (midnight PT). Copy now derives from the constant.",
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-code-web-session-54bb90dd",
+      "branch": "claude/ws15-t8-open-time-copy",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-20T06:56:14.946Z"
+      "claimed_at": "2026-07-20T06:56:17.016Z",
+      "updated_at": "2026-07-20T06:56:17.016Z"
     }
   }
 }
