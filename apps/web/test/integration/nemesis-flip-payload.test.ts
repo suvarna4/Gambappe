@@ -245,6 +245,37 @@ describe('buildRevealPayload — nemesis_flip mechanical condition (SW10-T1)', (
     // Byte-identical-otherwise: the rest of the viewer block is completely unaffected.
     expect(payload.viewer!.result).toBe('win');
   });
+
+  it('is null for a mutually-picked question outside the pairing\'s current week (fable round 2 of PR #85)', async () => {
+    const seasonId = await makeSeasonRow();
+    const [viewer, opponent] = await Promise.all([makeClaimedProfile(), makeClaimedProfile()]);
+    await makePairing(seasonId, viewer.id, opponent.id, { scoreA: 0, scoreB: 0 });
+
+    // A daily question dated a full week before `WEEK_START` — outside this pairing's
+    // `weekStart..weekEnd` range, so `getPairingScoreboardQuestions`'s own SQL (the daily-date
+    // BETWEEN clause, OR an explicit `pairing_questions` bonus row) never includes it. Both the
+    // viewer and the opponent happen to have picked it too (e.g. reached via an archival reveal
+    // link) — mechanically satisfying "opponent has a pick on this question" while it's not
+    // actually a row on this week's scoreboard at all.
+    const lastWeekQuestion = await makeRevealedDailyQuestion(-7);
+    await makePick(lastWeekQuestion, viewer.id, {
+      side: 'yes',
+      result: 'win',
+      edge: computeEdge('yes', 0.6, true),
+      yesPriceAtEntry: 0.6,
+    });
+    await makePick(lastWeekQuestion, opponent.id, {
+      side: 'no',
+      result: 'loss',
+      edge: computeEdge('no', 0.6, false),
+      yesPriceAtEntry: 0.6,
+    });
+
+    const payload = await getPayloadFor(lastWeekQuestion, viewer.id);
+    expect(payload.viewer!.nemesis_flip).toBeNull();
+    // The rest of the viewer block still reflects the archival reveal normally.
+    expect(payload.viewer!.result).toBe('win');
+  });
 });
 
 describe('buildRevealPayload — nemesis_flip tally correctness (SW10-T1, fable round 5 HIGH finding)', () => {

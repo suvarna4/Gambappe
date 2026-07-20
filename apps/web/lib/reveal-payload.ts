@@ -249,6 +249,14 @@ async function computeNemesisFlipBlock(
   if (!opponentPick) return null;
 
   const scoreboard = pairing.scoreboard;
+  // Fable review of PR #85 round 2 (MEDIUM): without this, an archival reveal for a question
+  // outside the pairing's current week (e.g. reached via the viewer's own obituary
+  // `last_pick.question_slug` link) could still satisfy "opponent has a pick on this question" if
+  // the opponent happened to pick it too on some other week, producing a negative/zero `dayNumber`
+  // and a before/after tally that's a no-op for this question (so `nemesis_lead_taken` can never
+  // fire, but `nemesis_comeback` still could, misattributing this week's comeback to a past date).
+  // Require the question to actually be a row on THIS pairing's scoreboard.
+  if (!scoreboard.some((row) => row.question_id === question.id)) return null;
   const after = tallyScoreboard(scoreboard, viewerIsA);
   const before = tallyScoreboard(
     scoreboard.filter((row) => row.question_id !== question.id),
