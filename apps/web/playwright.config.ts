@@ -58,7 +58,45 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  reporter: process.env.CI ? 'github' : 'list',
+  // SW10-T5: `'github'` alone (the pre-existing CI value) never writes an `apps/web/playwright-
+  // report` directory — that's the `'html'` reporter's job, and CI wasn't running it. Confirmed
+  // by forcing a local failure with `reporter: 'github'` and `CI=true`: the run correctly failed
+  // and wrote `-actual.png`/`-expected.png`/`-diff.png` under `test-results/`, but no
+  // `playwright-report/` was created at all. `.github/workflows/ci.yml`'s "Upload Playwright
+  // report on failure" step has always uploaded that (never-created) path on failure — silently
+  // producing an empty/near-empty artifact, for every e2e spec, not just this task's new visual
+  // ones. Adding `'html'` alongside the existing `'github'` reporter is the minimal fix: it makes
+  // that already-wired upload step actually contain something (the HTML report embeds the
+  // actual/expected/diff images for every failed `toHaveScreenshot`, browsable without re-running
+  // anything), with no CI YAML change needed — matching this task's "extend that rather than
+  // inventing new plumbing" instruction. `open: 'never'` keeps CI from trying to launch a browser
+  // to view it (the local `list` reporter path is unaffected).
+  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
+  expect: {
+    // SW10-T5 (wiring-gaps doc §4): `toHaveScreenshot` tolerance for the `/dev/ui` visual
+    // regression gate (`e2e/dev-ui-visual.spec.ts`). Playwright's own default is a byte-exact
+    // pixel match, which is unrealistically strict across font-rendering stacks — sub-pixel
+    // antialiasing on glyph edges (the gallery is text-heavy: Barlow Condensed headlines, mono
+    // numerals) shifts a handful of pixels between otherwise-identical renders even on the SAME
+    // browser build. `threshold` (0.2, pixelmatch's own default) is the per-pixel YIQ color
+    // distance before a pixel counts as "different" at all — left at default, it already
+    // absorbs most antialiasing drift. `maxDiffPixelRatio: 0.02` is the extra margin on top:
+    // up to 2% of a tile's pixels may differ (beyond `threshold`) before the assertion fails.
+    // 2% is generous enough to absorb minor cross-environment font hinting differences but
+    // still catches anything a human would call a real visual change — the deliberate one-pixel
+    // style change this task's AC demands (see the PR description) changes a border/color over
+    // a much larger area than 2% of its tile and fails cleanly under this budget.
+    // RISK (documented in this task's PR description, flagged per SW10-T5's own process step):
+    // baselines committed by this task were generated against whatever Chromium build this
+    // dev sandbox had pre-cached, NOT a freshly `playwright install`-ed one matching this
+    // `@playwright/test` version exactly — the sandbox's outbound network policy blocks
+    // `cdn.playwright.dev`, so parity with CI's `playwright install --with-deps chromium` step
+    // (`.github/workflows/ci.yml`) could not be independently confirmed here. If CI's first run
+    // on this PR shows diffs that are clearly rendering-only (not the covered components' actual
+    // layout), regenerate baselines from an environment that mirrors CI's browser install
+    // exactly (or from CI itself) rather than loosening this budget further.
+    toHaveScreenshot: { maxDiffPixelRatio: 0.02 },
+  },
   use: {
     baseURL,
     trace: 'on-first-retry',
