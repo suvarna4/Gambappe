@@ -111,6 +111,44 @@ export const rematchRequests = pgTable(
   (t) => [index('rematch_requests_target_idx').on(t.targetProfileId, t.status)],
 );
 
+/**
+ * `pairing_reactions` (SW10-T4, wiring-gaps doc §4 — swipe-ux-plan §2.9 SW5-T4's preset stamp
+ * "trash talk" reactions). Deliberately a SEPARATE table from `schema/social.ts`'s generic
+ * `reactions` (used for `question`/`duo_match` toggle reactions): pairing reactions are capped
+ * at one per player per ET calendar DAY (not per emoji), and a same-day repost REPLACES the
+ * day's stamp rather than toggling it — a shape the generic table's
+ * `(context_kind, context_id, profile_id, emoji)` unique index can't express. `emoji` holds a
+ * `PAIRING_REACTION_SET` text preset (API-enforced via `pairingReactionEmojiSchema`), kept as
+ * plain `text` for the same reason `reactions.emoji` is — no DB-level enum coupling to a
+ * `core/config.ts` value.
+ */
+export const pairingReactions = pgTable(
+  'pairing_reactions',
+  {
+    id: uuid('id').primaryKey(),
+    pairingId: uuid('pairing_id')
+      .notNull()
+      .references(() => nemesisPairings.id),
+    profileId: uuid('profile_id')
+      .notNull()
+      .references(() => profiles.id),
+    emoji: text('emoji').notNull(),
+    /** ET calendar day (`etDateString`, DD-1) this stamp is FOR — the "per day" unit the unique
+     * index below enforces; a same-day repost updates this row rather than inserting a new one. */
+    reactionDate: date('reaction_date').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('pairing_reactions_pairing_profile_date_uq').on(
+      t.pairingId,
+      t.profileId,
+      t.reactionDate,
+    ),
+    index('pairing_reactions_pairing_date_idx').on(t.pairingId, t.reactionDate),
+  ],
+);
+
 /** `duos` (§5.5). Canonical order a < b; team Glicko defaults 1500/350/0.06. */
 export const duos = pgTable(
   'duos',

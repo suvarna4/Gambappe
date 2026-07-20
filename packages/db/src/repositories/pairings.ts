@@ -6,9 +6,10 @@
  * (for masking, §9.3) and a profile's lifetime pairing history (`GET /me/nemesis-history`).
  */
 import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
+import { uuidv7 } from 'uuidv7';
 import type { MarketSide, PickResult, QuestionKind } from '@receipts/core';
 import type { Db } from '../client.js';
-import { nemesisPairings, profiles } from '../schema/index.js';
+import { nemesisPairings, pairingReactions, profiles } from '../schema/index.js';
 // `NemesisPairingRow` already lives in moderation.ts (WS11-T3) and is re-exported from
 // `index.ts` via that module — imported (not re-declared/re-exported) here to avoid an
 // ambiguous duplicate `export *` of the same name from two repository files. Same reasoning
@@ -212,4 +213,92 @@ export async function listNemesisHistoryForProfile(db: Db, profileId: string): P
         : { profileId: opponentId, handle: opponentId, slug: opponentId },
     };
   });
+}
+
+// --- Pairing reactions (SW10-T4, wiring-gaps doc §4 — preset stamp "trash talk") --------------
+
+export type PairingReactionRow = typeof pairingReactions.$inferSelect;
+
+export interface UpsertPairingReactionInput {
+  pairingId: string;
+  profileId: string;
+  emoji: string;
+  /** ET calendar day (`etDateString`) — the "per day" unit `pairing_reactions`' unique index
+   * enforces. Computed by the caller (`apps/web/lib/nemesis/reactions.ts`), not here, so this
+   * stays a pure data-access function with no wall-clock dependency (§4.3). */
+  reactionDate: string;
+}
+
+/**
+ * One stamp per player per day: a same-day repost REPLACES the existing row (updates `emoji`)
+ * rather than toggling or erroring — see `createReactionResponseSchema`'s `'replaced'` state
+ * doc comment (`@receipts/core`) for why replace was chosen over a 409. Read-then-write inside
+ * a transaction rather than a single `ON CONFLICT DO UPDATE` so the caller can distinguish
+ * "added" from "replaced" for the response envelope; the table's own unique index
+ * (`pairing_reactions_pairing_profile_date_uq`) is still the actual race guard — a concurrent
+ * duplicate insert fails the unique constraint and the caller's transaction retries are not
+ * needed because `POST /reactions`' per-profile-per-day access pattern makes a genuine race
+ * exceedingly rare (same posture as `insertBlock`'s idempotent-conflict handling, this file's
+ * neighbor in `moderation.ts`).
+ */
+export async function upsertPairingReaction(
+  db: Db,
+  input: UpsertPairingReactionInput,
+  at: Date,
+): Promise<{ state: 'added' | 'replaced'; row: PairingReactionRow }> {
+  return db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select()
+      .from(pairingReactions)
+      .where(
+        and(
+          eq(pairingReactions.pairingId, input.pairingId),
+          eq(pairingReactions.profileId, input.profileId),
+          eq(pairingReactions.reactionDate, input.reactionDate),
+        ),
+      )
+      .limit(1);
+
+    if (existing) {
+      const [updated] = await tx
+        .update(pairingReactions)
+        .set({ emoji: input.emoji, updatedAt: at })
+        .where(eq(pairingReactions.id, existing.id))
+        .returning();
+      if (!updated) throw new Error('upsertPairingReaction: update returned no row');
+      return { state: 'replaced' as const, row: updated };
+    }
+
+    const [inserted] = await tx
+      .insert(pairingReactions)
+      .values({
+        id: uuidv7(),
+        pairingId: input.pairingId,
+        profileId: input.profileId,
+        emoji: input.emoji,
+        reactionDate: input.reactionDate,
+        updatedAt: at,
+      })
+      .returning();
+    if (!inserted) throw new Error('upsertPairingReaction: insert returned no row');
+    return { state: 'added' as const, row: inserted };
+  });
+}
+
+/**
+ * Today's per-player stamps for a pairing's public payload (§9.2 `pairingPublicSchema.
+ * today_reactions`) — at most 2 rows (one per participant). Callers are responsible for the
+ * §14.3 block-severance check (`areProfilesBlocked`, `moderation.ts`) — this stays a pure,
+ * block-unaware data-access function, same split as `getPairingScoreboardQuestions`/
+ * `toScoreboardRow`'s masking-is-the-caller's-job convention.
+ */
+export async function getTodayPairingReactions(
+  db: Db,
+  pairingId: string,
+  reactionDate: string,
+): Promise<Array<{ profileId: string; emoji: string }>> {
+  return db
+    .select({ profileId: pairingReactions.profileId, emoji: pairingReactions.emoji })
+    .from(pairingReactions)
+    .where(and(eq(pairingReactions.pairingId, pairingId), eq(pairingReactions.reactionDate, reactionDate)));
 }

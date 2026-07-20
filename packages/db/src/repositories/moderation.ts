@@ -93,6 +93,28 @@ export async function deleteBlock(db: Db, blockerProfileId: string, blockedProfi
   return deleted.length > 0;
 }
 
+/**
+ * Direction-agnostic: true if EITHER profile has blocked the other (§5.6/§14.3). A single-pair
+ * existence check, distinct from `listAllBlockedPairs`'s whole-table read (that one feeds the
+ * matchmaker's exclusion set; this one is a per-request guard). First consumer: SW10-T4's
+ * pairing-reaction write + read enforcement (`apps/web/lib/nemesis/reactions.ts`,
+ * `apps/web/lib/nemesis/service.ts`) — the reactions write path had no block-check at all
+ * before that task (`applyBlock` only cancels pairing/duo state; it never touches reactions).
+ */
+export async function areProfilesBlocked(db: Db, profileIdA: string, profileIdB: string): Promise<boolean> {
+  const [row] = await db
+    .select({ blockerProfileId: blocks.blockerProfileId })
+    .from(blocks)
+    .where(
+      or(
+        and(eq(blocks.blockerProfileId, profileIdA), eq(blocks.blockedProfileId, profileIdB)),
+        and(eq(blocks.blockerProfileId, profileIdB), eq(blocks.blockedProfileId, profileIdA)),
+      ),
+    )
+    .limit(1);
+  return row !== undefined;
+}
+
 export type NemesisPairingRow = typeof nemesisPairings.$inferSelect;
 
 /** The blocked profile's currently-active pairing, if any (§5.7 exit applies to `active` only). */
