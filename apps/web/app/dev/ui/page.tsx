@@ -58,7 +58,7 @@ export default function UiGalleryPage() {
         <div className="bg-bg relative rounded-md p-6">
           <div className="mx-auto max-w-[260px]">
             <UnderCard
-              label="TOMORROW · opens 9:00 ET"
+              label="TOMORROW · opens 12:00 AM PT"
               className="absolute inset-x-6 top-8 scale-95"
             />
             <BallotCard

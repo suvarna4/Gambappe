@@ -61,7 +61,7 @@ export default function SwipeBallotGalleryDemo() {
     <DeckStage
       question={DEMO_Q}
       viewerSlot={ballot}
-      underLabel="Tomorrow's question lands at 9:00 ET."
+      underLabel="Tomorrow's question lands at 12:00 AM PT."
     />
   );
 }

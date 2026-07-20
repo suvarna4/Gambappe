@@ -15,7 +15,22 @@
  *  - The two claim-nudge strings and the publicness sentence below are PINNED VERBATIM —
  *    do not paraphrase them (§11.3, §13.3 both point back at this file for the rendered text).
  */
-import { PAIRING_REACTION_SET, PRODUCT_NAME } from '@receipts/core';
+import { DAILY_OPEN_LOCAL, PAIRING_REACTION_SET, PRODUCT_NAME } from '@receipts/core';
+
+/**
+ * WS15-T8: the daily open time, displayed in PACIFIC time — the product decision behind
+ * WS15-T7 was "the question is live from midnight PT," so that's the moment the copy names.
+ * Derived from `DAILY_OPEN_LOCAL` (ET, HH:mm) rather than hardcoded (§0.1 rule 4): ET and PT
+ * shift DST together, so PT is a constant −3h from ET.
+ */
+function dailyOpenDisplayPt(): string {
+  const [etHour, minute] = DAILY_OPEN_LOCAL.split(':').map(Number);
+  const ptHour = ((etHour ?? 0) - 3 + 24) % 24;
+  const meridiem = ptHour < 12 ? 'AM' : 'PM';
+  const hour12 = ptHour % 12 === 0 ? 12 : ptHour % 12;
+  return `${hour12}:${String(minute ?? 0).padStart(2, '0')} ${meridiem} PT`;
+}
+const DAILY_OPEN_PT = dailyOpenDisplayPt(); // "12:00 AM PT" while DAILY_OPEN_LOCAL is 03:00 ET
 
 /** INV-6, pinned verbatim (§10.6): shown on the claim/signup screen. */
 export const CLAIM_PUBLICNESS_STATEMENT =
@@ -111,8 +126,8 @@ export const copy = {
      * `@receipts/core`'s `topPercentDisplay`, the same helper `/p/[slug]` uses for this stat. */
     percentileLabel: (topPercent: number) => `Top ${topPercent}%`,
     freezeUsedNote: 'Freeze used — streak safe.',
-    tomorrowTeaser: "Tomorrow's question lands at 9:00 ET.",
-    noQuestionToday: "There's no daily question live right now — check back at 9:00 ET.",
+    tomorrowTeaser: `Tomorrow's question lands at ${DAILY_OPEN_PT}.`,
+    noQuestionToday: `There's no daily question live right now — check back at ${DAILY_OPEN_PT}.`,
     priceStaleNotice: 'Prices are catching up — try again in a minute.',
   },
   errors: {
