@@ -7,19 +7,23 @@ env README `/root/.ccr/README.md`).
 
 ## Kalshi (`packages/venues/src/kalshi/`)
 
-Base URL: env `KALSHI_API_BASE` (e.g. `https://trading-api.kalshi.com/trade-api/v2` prod,
-a demo/sandbox base for dev — exact demo host TBD, see SPEC-GAP below).
+Base URL: env `KALSHI_API_BASE` — `https://api.elections.kalshi.com/trade-api/v2` (prod,
+live-verified reachable unauthenticated for market-data reads) or
+`https://demo-api.kalshi.co/trade-api/v2` (demo/paper-trading; responds, but carries no real
+trading activity — every market's liquidity/interest is zero, so catalog sync against demo
+yields nothing past any activity floor. Use prod for market data even in staging).
 
 Endpoints used:
 
-- `GET {base}/markets?status=open&limit=200&cursor=...` — catalog listing for
-  `listCandidateMarkets` (§7.5 `venue:sync-catalog`). Client-side filtered by close-time
-  window and liquidity floor; paginated via `cursor` up to 5 pages.
+- `GET {base}/markets?status=open&limit=200&min_close_ts=...&max_close_ts=...&cursor=...` —
+  catalog listing for `listCandidateMarkets` (§7.5 `venue:sync-catalog`). Close-time window
+  is narrowed server-side via `min_close_ts`/`max_close_ts` (live-verified honored), then
+  re-checked client-side; activity floor client-side; paginated via `cursor` up to 15 pages
+  (the raw listing is ~96% auto-generated `KXMVE…` multi-game combo markets with zero open
+  interest, so a deep scan + activity floor is what surfaces real markets — WS15-T1).
 - `GET {base}/markets/{ticker}` — single market lookup, used by `getMarket`, `getYesPrice`,
-  and `getResolution` (all three read the same object; Kalshi's market payload doesn't
-  appear to expose a separate price-quote-with-timestamp endpoint in the docs we have
-  training-data knowledge of, so `getYesPrice`'s `ts` is the local fetch instant, not a
-  venue-reported quote time).
+  and `getResolution` (all three read the same object; `getYesPrice`'s `ts` is the local
+  fetch instant, not a venue-reported quote time).
 
 **SPEC-GAP(WS1-T2-1) — rate limits.** §7.2 requires "respect venue-published tiers when
 confirmed." We could not fetch Kalshi's current rate-limit documentation live, so the
@@ -28,33 +32,35 @@ A human/future task should verify Kalshi's actual published tier (historically d
 around 10 req/s for unauthenticated/basic tiers, but this needs re-confirmation against
 current docs) before raising the configured rps in production.
 
-**SPEC-GAP(WS1-T2-2) — exact market JSON shape.** `packages/venues/src/kalshi/schemas.ts`
-is a best-effort reconstruction of the Kalshi trade API v2 `/markets` and `/markets/{ticker}`
-response shape from training-data knowledge (fields: `ticker`, `event_ticker`,
-`market_type`, `title`, `category`, `status`, `result`, `close_time`, `expiration_time`,
-`yes_bid`/`yes_ask`/`no_bid`/`no_ask` in cents, `last_price`, `liquidity`, `volume`). This
-has NOT been verified against a live response. In particular:
+**Market JSON shape — LIVE-VERIFIED 2026-07-20 (WS15-T1), replacing former SPEC-GAP(WS1-T2-2).**
+Verified against `api.elections.kalshi.com` and `demo-api.kalshi.co` (3,000-market scan +
+settled-market samples):
 
-- The exact `status` vocabulary (`open`/`closed`/`settled`/`finalized`/...) and whether both
-  `settled` and `finalized` are real, distinct terminal states needs verification.
-- The exact `result` token used for voided/no-contest markets (`"void"` assumed here) is
-  unverified — Kalshi's real API may represent voids differently (e.g. a distinct market
-  `status` rather than a `result` value). Per DD-7/§7.3 "never guess," anything that doesn't
-  match `yes`/`no`/`void`/`voided` on a settled/finalized market is treated as `unresolved`,
-  so an unverified void representation fails safe (stays unresolved, retried by
-  `settlement:poll`) rather than mis-grading.
-- Whether individual Kalshi `market` objects can ever be non-binary (`market_type !==
-  'binary'`) is unverified — Kalshi's real product model is "one market = one binary
-  yes/no contract," with multi-option events expressed as several sibling markets under one
-  `event_ticker`, not a single multi-outcome market object. The `market_type` filter here is
-  a defensive placeholder satisfying DD-7/the WS1-T2 AC pending live confirmation; it may be
-  dead code against the real API (harmless either way — it will simply never trigger).
-- `venueUrl` (`https://kalshi.com/markets/{ticker}`) is a best-guess link pattern, not
+- Prices/liquidity are dollar-denominated **strings**: `yes_bid_dollars`/`yes_ask_dollars`/
+  `last_price_dollars` in `"0.0000"`–`"1.0000"` (already probabilities), `liquidity_dollars`,
+  `notional_value_dollars`. The legacy integer-cents fields (`yes_bid`, `last_price`,
+  `liquidity`, …) are GONE from live responses (0/3000). `schemas.ts` accepts both
+  generations; `normalize.ts` prefers dollars.
+- Per-market `category` is GONE (0/3000) — categories now live on series/events, which the
+  adapter doesn't fetch; `mapKalshiCategory(undefined)` → `other`, curators override per
+  question (§15.2). A future task could walk `/series` for real categories.
+- `liquidity_dollars` is `"0.0000"` on every market of the public feed, including ones with
+  an active order book — an order-book-liquidity floor alone filters Kalshi to zero forever
+  (this is exactly the bug WS15-T1 fixed after staging synced 0 Kalshi markets).
+  `open_interest_fp` (fixed-point string, contracts) is the reliably-populated activity
+  signal; the candidate floor passes on `max(liquidity, open_interest × notional)`.
+- `status` vocabulary: `open` and terminal `finalized` observed live; `settled` kept as an
+  accepted alias. Settled markets carry `result: "yes" | "no"`.
+- Still unverified: the exact `result` token for voided/no-contest markets (`"void"`
+  assumed). Per DD-7/§7.3 "never guess," an unrecognized token on a finalized market stays
+  `unresolved` (fails safe, retried by `settlement:poll`).
+- `market_type` is `"binary"` on every live market observed (including multi-game combos,
+  which are structurally binary); the non-binary filter is defensive and likely never
+  triggers against the real API.
+- `expected_expiration_time` exists and is Kalshi's own resolve-time estimate (tighter than
+  `expiration_time`, the latest legal one) — preferred for `expectedResolveTime`.
+- `venueUrl` (`https://kalshi.com/markets/{ticker}`) remains a best-guess link pattern, not
   verified against Kalshi's current site routing.
-
-None of the above blocks WS1-T2 (contract suite + unit ACs all pass against the hand-authored
-fixtures), but production cutover should re-verify this file against current Kalshi docs
-first (design doc R1 risk row).
 
 ### Kalshi WS ticker (`packages/venues/src/kalshi/ws-ticker.ts`, WS1-T6, P1.5, flag `kalshi_ws_ticker`)
 
