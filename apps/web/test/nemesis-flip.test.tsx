@@ -1,7 +1,6 @@
 /**
- * SW5-T1 · `NemesisFlip` — the receipt's nemesis section (presentational; ViewerStrip wires it
- * to live matchup data in the DB-equipped session, mounting it only after the viewer's pick so
- * the opponent's side is never fetched early — §2.9).
+ * SW5-T1/SW10-T1 · `NemesisFlip` — the receipt's nemesis section (presentational; `RevealSequence`
+ * wires it to live matchup data, mounted at reveal — §2.9, wiring-gaps doc §4 SW10-T1).
  */
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -20,12 +19,18 @@ const base = {
 };
 
 describe('NemesisFlip', () => {
-  it('prints the sealed-until-lock note, opponent stamp, narration, and tally', () => {
+  it('prints the sealed-until-reveal note, opponent stamp, narration, and tally', () => {
     const html = renderToStaticMarkup(<NemesisFlip {...base} />);
-    expect(html).toContain('Maria O. · unsealed when you locked');
+    expect(html).toContain('Maria O. · unsealed at reveal');
     expect(html).toContain('HOLDS @ 27¢');
     expect(html).toContain('Tonight one of you eats this.');
     expect(html).toContain('Week 30 · Day 2');
+  });
+
+  it('omits the narration line entirely when narration is null (SW10-T1 degrade rule)', () => {
+    const html = renderToStaticMarkup(<NemesisFlip {...base} narration={null} />);
+    expect(html).not.toContain('Tonight one of you eats this.');
+    expect(html).toContain('HOLDS @ 27¢'); // rest of the block still renders
   });
 
   it('renders the tally viewer-relative (opponent ahead → names the opponent)', () => {

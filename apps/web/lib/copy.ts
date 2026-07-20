@@ -172,10 +172,12 @@ export const nemesisCopy = {
 
   historyEmpty: 'No nemesis history yet — your first assignment lands Monday 9am ET.',
 
-  /** SW5-T1 · The daily receipt "flip" during an active nemesis week (swipe-ux-plan §2.9). The
-   * opponent's pick is sealed until the viewer locks; the note makes that no-anchoring rule
-   * explicit. Narration is data-generated (§13.3) and passed in. No money words (INV-8). */
-  flipSealedNote: (opponentHandle: string) => `${opponentHandle} · unsealed when you locked`,
+  /** SW5-T1/SW10-T1 · The daily receipt "flip" during an active nemesis week (swipe-ux-plan
+   * §2.9). The opponent's pick is sealed until reveal (SW10-T1: not "until you locked" — see
+   * `NemesisFlip`'s doc comment for why that original timing was unimplementable); the note
+   * makes the actual unseal moment explicit. Narration is data-generated (§13.3) and passed in.
+   * No money words (INV-8). */
+  flipSealedNote: (opponentHandle: string) => `${opponentHandle} · unsealed at reveal`,
   flipTally: (opponentHandle: string, youWins: number, oppWins: number) =>
     youWins === oppWins
       ? `Week even, ${youWins}–${oppWins}`

@@ -844,6 +844,162 @@ test.describe('reveal sequence (§10.3, WS7-T3)', () => {
     await page.goto(`/q/${question.slug}`);
     await expect(page.getByTestId('obituary-card')).toBeVisible();
   });
+
+  /**
+   * SW10-T1 (wiring-gaps doc §4 SW10-T1): mocked-payload branch-coverage for the `nemesis_flip`
+   * UI branching, following this file's existing SW9 obituary-wake pattern — the TRIGGER itself
+   * (the server actually emitting `nemesis_flip` off real seeded pairing/pick history) is
+   * `e2e/nemesis-flip.spec.ts`'s real-HTTP test; these cases only exercise `RevealSequence`'s
+   * own branching once it already has a `nemesis_flip` shape in hand.
+   */
+  test('a populated nemesis_flip renders NemesisFlip as a second section, alongside the result stamp', async ({
+    page,
+  }) => {
+    const { question } = await seedQuestion(
+      {},
+      { status: 'revealed', outcome: 'yes', crowdYesAtLock: 6, crowdNoAtLock: 4, revealedAt: new Date() },
+    );
+
+    await page.route(`**/api/v1/questions/${question.slug}/reveal`, (route) =>
+      route.fulfill({
+        status: 200,
+        json: revealMockBody(question, {
+          pick: {
+            id: '018f1e2b-0000-7000-8000-0000000000fb',
+            question_id: question.id,
+            profile_id: '018f1e2b-0000-7000-8000-0000000000e3',
+            side: 'yes',
+            yes_price_at_entry: 0.63,
+            price_stamped_at: '2026-07-19T13:00:00Z',
+            picked_at: '2026-07-19T13:00:00Z',
+            source: 'spectator_page',
+            confidence: null,
+            result: 'win',
+            edge: 0.37,
+          },
+          result: 'win',
+          edge: 0.37,
+          percentile: 82,
+          streak: { current: 4, best: 4, delta: 1, freeze_used: false, broken_run: null },
+          badges: [],
+          nemesis_flip: {
+            opponent_handle: 'Maria O.',
+            opponent_side: 'no',
+            opponent_side_label: 'No it will not',
+            opponent_entry_cents: 27,
+            narration: 'You takes the lead, 3–2, with 1 questions left.',
+            you_wins: 3,
+            opponent_wins: 2,
+            week_label: 'Week of Jul 13 · Day 3',
+          },
+        }),
+      }),
+    );
+
+    await page.goto(`/q/${question.slug}`);
+    // The existing result content still renders unchanged.
+    await expect(page.getByTestId('reveal-sequence-result')).toBeVisible();
+    await expect(page.getByTestId('reveal-sequence-result')).toContainText('WIN');
+    await expect(page.getByTestId('share-receipt-button')).toBeVisible();
+    // ...alongside (never replacing) the new nemesis section.
+    const flip = page.getByTestId('nemesis-flip');
+    await expect(flip).toBeVisible();
+    await expect(flip).toContainText('Maria O.');
+    await expect(flip).toContainText('No it will not @ 27¢');
+    await expect(flip).toContainText('You lead 3–2');
+    await expect(flip).toContainText('Week of Jul 13 · Day 3');
+  });
+
+  test('a null nemesis_flip: NemesisFlip does not render, rest of the reveal is unaffected', async ({
+    page,
+  }) => {
+    const { question } = await seedQuestion(
+      {},
+      { status: 'revealed', outcome: 'yes', crowdYesAtLock: 6, crowdNoAtLock: 4, revealedAt: new Date() },
+    );
+
+    await page.route(`**/api/v1/questions/${question.slug}/reveal`, (route) =>
+      route.fulfill({
+        status: 200,
+        json: revealMockBody(question, {
+          pick: {
+            id: '018f1e2b-0000-7000-8000-0000000000fc',
+            question_id: question.id,
+            profile_id: '018f1e2b-0000-7000-8000-0000000000e4',
+            side: 'yes',
+            yes_price_at_entry: 0.63,
+            price_stamped_at: '2026-07-19T13:00:00Z',
+            picked_at: '2026-07-19T13:00:00Z',
+            source: 'spectator_page',
+            confidence: null,
+            result: 'win',
+            edge: 0.37,
+          },
+          result: 'win',
+          edge: 0.37,
+          percentile: 82,
+          streak: { current: 4, best: 4, delta: 1, freeze_used: false, broken_run: null },
+          badges: [],
+          nemesis_flip: null,
+        }),
+      }),
+    );
+
+    await page.goto(`/q/${question.slug}`);
+    await expect(page.getByTestId('reveal-sequence-result')).toBeVisible();
+    await expect(page.getByTestId('share-receipt-button')).toBeVisible();
+    await expect(page.getByTestId('nemesis-flip')).toHaveCount(0);
+  });
+
+  test('nemesis_flip with narration: null (degrade case) renders the block without a narration line', async ({
+    page,
+  }) => {
+    const { question } = await seedQuestion(
+      {},
+      { status: 'revealed', outcome: 'yes', crowdYesAtLock: 6, crowdNoAtLock: 4, revealedAt: new Date() },
+    );
+
+    await page.route(`**/api/v1/questions/${question.slug}/reveal`, (route) =>
+      route.fulfill({
+        status: 200,
+        json: revealMockBody(question, {
+          pick: {
+            id: '018f1e2b-0000-7000-8000-0000000000fd',
+            question_id: question.id,
+            profile_id: '018f1e2b-0000-7000-8000-0000000000e5',
+            side: 'yes',
+            yes_price_at_entry: 0.63,
+            price_stamped_at: '2026-07-19T13:00:00Z',
+            picked_at: '2026-07-19T13:00:00Z',
+            source: 'spectator_page',
+            confidence: null,
+            result: 'win',
+            edge: 0.37,
+          },
+          result: 'win',
+          edge: 0.37,
+          percentile: 82,
+          streak: { current: 4, best: 4, delta: 1, freeze_used: false, broken_run: null },
+          badges: [],
+          nemesis_flip: {
+            opponent_handle: 'Maria O.',
+            opponent_side: 'no',
+            opponent_side_label: 'No it will not',
+            opponent_entry_cents: 27,
+            narration: null,
+            you_wins: 2,
+            opponent_wins: 2,
+            week_label: 'Week of Jul 13 · Day 3',
+          },
+        }),
+      }),
+    );
+
+    await page.goto(`/q/${question.slug}`);
+    const flip = page.getByTestId('nemesis-flip');
+    await expect(flip).toBeVisible();
+    await expect(flip).toContainText('Week even, 2–2');
+  });
 });
 
 test.describe('INV-10 — spectator page is viewer-free at the HTTP layer', () => {

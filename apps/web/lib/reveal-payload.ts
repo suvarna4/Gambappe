@@ -4,7 +4,7 @@
  * rule, §6.5/§6.7 — before ever reaching this builder).
  */
 import type { Redis } from 'ioredis';
-import { isCalledIt } from '@receipts/engine';
+import { isCalledIt, narrate } from '@receipts/engine';
 import {
   getFreezeUsesForProfile,
   getPick,
@@ -21,10 +21,13 @@ import {
   type ReplayFreezeUse,
   type StreakReplayResult,
 } from '@receipts/db';
-import { addDaysToDateString, type RevealPayload, type RevealViewer } from '@receipts/core';
+import { addDaysToDateString, isFlagEnabled, type RevealPayload, type RevealViewer } from '@receipts/core';
+import { getCurrentPairingForProfile } from './nemesis/service';
+import type { PairingScoreboardRow } from './nemesis/types';
 import { serializeQuestionPublic } from './serialize-question';
 import { serializePick } from './serialize-pick';
 import { getViewerPercentile } from './percentile';
+import { formatShortDate, formatWeekdayName } from './format-et';
 import { questionOgHash } from './og/entities';
 
 /**
@@ -118,6 +121,182 @@ async function computeBrokenRunBlock(
     last_pick: lastPick,
     freezes_survived: freezesSurvived,
     longest_odds_cents: oddsCents.length > 0 ? Math.min(...oddsCents) : null,
+  };
+}
+
+// --- SW10-T1: nemesis daily flip (wiring-gaps doc §4 SW10-T1) ---------------------------------
+
+type NemesisFlipBlock = NonNullable<RevealViewer['nemesis_flip']>;
+
+/** Viewer-relative win tally over a set of scoreboard rows (§8.8's independent accrual, NEVER
+ * `pairing.score_a`/`score_b` — those default 0 until the week concludes). Exported for direct
+ * unit testing (kept a pure function of already-fetched scoreboard rows, no DB/contract faking —
+ * distinct from the SW9 "no mocks of the reveal contract" rule, which targets end-to-end trigger
+ * tests, not this kind of pure derivation helper). */
+export function tallyScoreboard(
+  rows: readonly PairingScoreboardRow[],
+  viewerIsA: boolean,
+): { you: number; opponent: number } {
+  let aWins = 0;
+  let bWins = 0;
+  for (const row of rows) {
+    if (row.a?.result === 'win') aWins += 1;
+    if (row.b?.result === 'win') bWins += 1;
+  }
+  return viewerIsA ? { you: aWins, opponent: bWins } : { you: bWins, opponent: aWins };
+}
+
+/**
+ * The `nemesis_flip.narration` line (doc §4 SW10-T1, pinned across fable rounds 4-7): renders
+ * ONLY via the existing `nemesis_lead_taken`/`nemesis_comeback` catalog beats. Returns `null`
+ * when neither beat's trigger condition is met, or a required slot is unresolvable (degrade
+ * rule — the UI omits the line). Exported for direct unit testing — see `tallyScoreboard`'s
+ * comment on why a pure-function unit test here doesn't run afoul of the SW9 "no mocks of the
+ * reveal contract" rule.
+ */
+export function deriveNemesisFlipNarration(args: {
+  viewerHandle: string;
+  opponentHandle: string;
+  scoreboard: readonly PairingScoreboardRow[];
+  viewerIsA: boolean;
+  questionDate: string | null;
+  after: { you: number; opponent: number };
+  before: { you: number; opponent: number };
+  questionsLeft: number;
+}): string | null {
+  const { viewerHandle, opponentHandle, scoreboard, viewerIsA, questionDate, after, before, questionsLeft } = args;
+
+  if (after.you === after.opponent) {
+    // Candidate: `nemesis_comeback` — viewer-relative running deficit over date-ordered
+    // resolved DAILY rows only (round 7's null-date rule: nemesis-bonus rows have no defined
+    // position in an order-dependent running sum).
+    const dailyRows = scoreboard
+      .filter((row): row is PairingScoreboardRow & { question_date: string } => row.question_date !== null)
+      .slice()
+      .sort((a, b) => a.question_date.localeCompare(b.question_date));
+
+    let youTrace = 0;
+    let opponentTrace = 0;
+    let peak = 0;
+    let peakDate: string | null = null;
+    for (const row of dailyRows) {
+      const yourSide = viewerIsA ? row.a : row.b;
+      const opponentSide = viewerIsA ? row.b : row.a;
+      if (yourSide?.result === 'win') youTrace += 1;
+      if (opponentSide?.result === 'win') opponentTrace += 1;
+      const deficit = opponentTrace - youTrace; // positive = viewer behind
+      if (deficit > peak) {
+        peak = deficit;
+        peakDate = row.question_date;
+      }
+    }
+
+    // Round 7 degrade rule: if the daily-only trace disagrees with the full after-tally on
+    // whether the week is level, don't guess — the bonus-row contribution makes the trace
+    // untrustworthy for this specific decision.
+    if (youTrace !== opponentTrace) return null;
+    if (peak < 2 || peakDate === null || questionDate === null) return null;
+
+    return narrate({
+      beat: 'nemesis_comeback',
+      data: {
+        handle: viewerHandle, // always the VIEWER's own handle — an opponent's comeback narrates nothing
+        deficit: peak,
+        downDay: formatWeekdayName(peakDate),
+        levelDay: formatWeekdayName(questionDate),
+      },
+    }).line;
+  }
+
+  // Candidate: `nemesis_lead_taken` — emit only when today's grading flipped the leader.
+  const afterLeader: 'you' | 'opponent' = after.you > after.opponent ? 'you' : 'opponent';
+  const beforeLeader: 'you' | 'opponent' | 'tied' =
+    before.you === before.opponent ? 'tied' : before.you > before.opponent ? 'you' : 'opponent';
+  if (afterLeader === beforeLeader) return null;
+
+  const leaderHandle = afterLeader === 'you' ? viewerHandle : opponentHandle;
+  const leaderScore = afterLeader === 'you' ? after.you : after.opponent;
+  const trailerScore = afterLeader === 'you' ? after.opponent : after.you;
+  return narrate({
+    beat: 'nemesis_lead_taken',
+    data: { leaderHandle, leaderScore, trailerScore, questionsLeft },
+  }).line;
+}
+
+/**
+ * SW10-T1 (wiring-gaps doc §4 SW10-T1): the nemesis daily "flip" block. Lives inside the caller's
+ * existing viewer gate — `buildRevealPayload` only reaches here for a graded, non-void OWN pick
+ * on an ACTUALLY revealed question (the route 423s pre-reveal), so `getPick` for the opponent is
+ * structurally unreachable before reveal, not merely unpopulated. Non-null iff (a) the viewer has
+ * an active nemesis pairing this week and (b) the opponent has a pick on this exact question.
+ */
+async function computeNemesisFlipBlock(
+  db: Db,
+  question: QuestionRow,
+  viewerProfileId: string,
+  viewerHandle: string,
+  at: Date,
+): Promise<NemesisFlipBlock | null> {
+  if (!isFlagEnabled('nemesis')) return null;
+
+  const pairing = await getCurrentPairingForProfile(db, viewerProfileId, at);
+  if (!pairing) return null;
+
+  const viewerIsA = pairing.a.profile_id === viewerProfileId;
+  const opponentRef = viewerIsA ? pairing.b : pairing.a;
+
+  const opponentPick = await getPick(db, question.id, opponentRef.profile_id);
+  if (!opponentPick) return null;
+
+  const scoreboard = pairing.scoreboard;
+  // Fable review of PR #85 round 2 (MEDIUM): without this, an archival reveal for a question
+  // outside the pairing's current week (e.g. reached via the viewer's own obituary
+  // `last_pick.question_slug` link) could still satisfy "opponent has a pick on this question" if
+  // the opponent happened to pick it too on some other week, producing a negative/zero `dayNumber`
+  // and a before/after tally that's a no-op for this question (so `nemesis_lead_taken` can never
+  // fire, but `nemesis_comeback` still could, misattributing this week's comeback to a past date).
+  // Require the question to actually be a row on THIS pairing's scoreboard.
+  if (!scoreboard.some((row) => row.question_id === question.id)) return null;
+  const after = tallyScoreboard(scoreboard, viewerIsA);
+  const before = tallyScoreboard(
+    scoreboard.filter((row) => row.question_id !== question.id),
+    viewerIsA,
+  );
+  const questionsLeft = scoreboard.filter(
+    (row) => row.a?.result === 'pending' || row.b?.result === 'pending',
+  ).length;
+
+  const narration = deriveNemesisFlipNarration({
+    viewerHandle,
+    opponentHandle: opponentRef.handle,
+    scoreboard,
+    viewerIsA,
+    questionDate: question.questionDate,
+    after,
+    before,
+    questionsLeft,
+  });
+
+  // "Week of {week_start} · Day {n}" — `n` is this question's 1-indexed offset into the pairing's
+  // week (undated bonus questions have no defined day number, so the segment is dropped rather
+  // than guessed).
+  const dayNumber = question.questionDate
+    ? Math.round(
+        (Date.parse(`${question.questionDate}T00:00:00Z`) - Date.parse(`${pairing.week_start}T00:00:00Z`)) /
+          86_400_000,
+      ) + 1
+    : null;
+  const weekLabel = `Week of ${formatShortDate(pairing.week_start)}${dayNumber !== null ? ` · Day ${dayNumber}` : ''}`;
+
+  return {
+    opponent_handle: opponentRef.handle,
+    opponent_side: opponentPick.side,
+    opponent_side_label: opponentPick.side === 'yes' ? question.yesLabel : question.noLabel,
+    opponent_entry_cents: impliedEntryCents(opponentPick),
+    narration,
+    you_wins: after.you,
+    opponent_wins: after.opponent,
+    week_label: weekLabel,
   };
 }
 
@@ -227,6 +406,10 @@ export async function buildRevealPayload(args: BuildRevealPayloadArgs): Promise<
         const streak = question.questionDate
           ? await computeViewerStreakBlock(db, profile.id, question.questionDate)
           : { current: profile.currentStreak, best: profile.bestStreak, delta: 0, freeze_used: false, broken_run: null };
+        // SW10-T1: same reveal-time gate as `streak`/`broken_run` above — non-null only when an
+        // active pairing exists AND the opponent has a pick on THIS question (see the function's
+        // own doc comment for the "unreachable, not merely unpopulated" pre-reveal guarantee).
+        const nemesisFlip = await computeNemesisFlipBlock(db, question, profile.id, profile.handle, at);
 
         viewer = {
           pick: serializePick(pick),
@@ -235,6 +418,7 @@ export async function buildRevealPayload(args: BuildRevealPayloadArgs): Promise<
           percentile,
           streak,
           badges,
+          nemesis_flip: nemesisFlip,
         };
       }
     }

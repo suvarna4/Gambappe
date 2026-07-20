@@ -4,6 +4,7 @@ import { OBITUARY_MIN_STREAK, Stamp, StreakFlame, prefersReducedMotion } from '@
 import { buildObituaryFacts, copy, shareCopy } from '@/lib/copy';
 import { formatShortDate } from '@/lib/format-et';
 import { ApiClientError, fetchReveal } from '@/lib/pick-client';
+import { NemesisFlip } from './nemesis/NemesisFlip';
 import { ObituaryCard } from './ObituaryCard';
 import ShareSheet from './share/ShareSheet';
 
@@ -225,6 +226,26 @@ export function RevealSequence({ question }: RevealSequenceProps) {
         open={shareOpen}
         onOpenChange={setShareOpen}
       />
+      {/* SW10-T1 (wiring-gaps doc §4 SW10-T1): the nemesis daily "flip" — a dashed-separator
+          second section ALONGSIDE the result/streak/share content above, never replacing it.
+          Non-null only at reveal, when an active pairing exists and the opponent has picked this
+          question (see `computeNemesisFlipBlock`'s own doc comment). Single mount point: this
+          `ViewerStrip -> RevealSequence` chain is how `DeckStates`' revealed branch receives
+          viewer content too (via its `viewerSlot` prop), so one mount here serves both flag
+          states — do NOT add a second mount in `DeckStates` (would duplicate the section and
+          break INV-10). */}
+      {viewer.nemesis_flip ? (
+        <NemesisFlip
+          opponentHandle={viewer.nemesis_flip.opponent_handle}
+          opponentSide={viewer.nemesis_flip.opponent_side}
+          opponentSideLabel={viewer.nemesis_flip.opponent_side_label}
+          opponentEntryCents={viewer.nemesis_flip.opponent_entry_cents}
+          narration={viewer.nemesis_flip.narration}
+          youWins={viewer.nemesis_flip.you_wins}
+          opponentWins={viewer.nemesis_flip.opponent_wins}
+          weekLabel={viewer.nemesis_flip.week_label}
+        />
+      ) : null}
     </div>
   );
 }

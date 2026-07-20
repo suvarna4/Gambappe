@@ -37,3 +37,22 @@ export function formatShortDate(dateOnly: string): string {
   const month = SHORT_MONTH_NAMES[Number(monthStr) - 1] ?? monthStr;
   return `${month} ${dayStr}`;
 }
+
+const WEEKDAY_NAMES = [
+  'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
+] as const;
+
+/**
+ * SW10-T1 (wiring-gaps doc §4 SW10-T1, §12 round 6): formats a `YYYY-MM-DD` calendar date into
+ * its weekday name ("2026-07-08" -> "Wednesday"), for the `nemesis_comeback` beat's `downDay`/
+ * `levelDay` slots. Same timezone-immune posture as `formatShortDate`: never parse the bare date
+ * in LOCAL time (`new Date('YYYY-MM-DD')` interpreted locally is not immune) — `Date.UTC` +
+ * `getUTCDay()` is fine because a bare calendar date has no time-of-day to get wrong.
+ */
+export function formatWeekdayName(dateOnly: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateOnly);
+  if (!match) return dateOnly; // defensive — the contract's zDateOnly guarantees this shape
+  const [, yearStr, monthStr, dayStr] = match;
+  const dow = new Date(Date.UTC(Number(yearStr), Number(monthStr) - 1, Number(dayStr))).getUTCDay();
+  return WEEKDAY_NAMES[dow]!;
+}

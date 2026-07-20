@@ -118,6 +118,30 @@ export const revealStreakSchema = z.object({
   broken_run: brokenRunSchema.nullable(),
 });
 
+/**
+ * The nemesis daily "flip" (SW10-T1, swipe-ux-plan §2.9; wiring-gaps doc §4 SW10-T1). Fires AT
+ * REVEAL, not at pick time (the original pick-time trigger was found unimplementable without
+ * violating §9.3's no-probe-by-picking rule — see the wiring-gaps doc §3/§9). Non-null iff the
+ * viewer has an active nemesis pairing this week AND the opponent has a pick on this exact
+ * question. `you_wins`/`opponent_wins` are derived by replaying the pairing's scoreboard rows
+ * (never `nemesis_pairings.score_a`/`score_b`, which stay 0 until the week concludes).
+ */
+export const nemesisFlipSchema = z.object({
+  opponent_handle: z.string(),
+  opponent_side: z.enum(MARKET_SIDE),
+  opponent_side_label: z.string(),
+  /** Implied entry price of the opponent's HELD side, in integer cents. */
+  opponent_entry_cents: z.number().int().min(0).max(100),
+  /** One engine-narrated line (`nemesis_lead_taken`/`nemesis_comeback`), or null when no beat's
+   * trigger condition is met / a required slot is unresolvable (degrade rule). */
+  narration: z.string().nullable(),
+  /** Head-to-head wins this week, viewer-relative. */
+  you_wins: z.number().int().nonnegative(),
+  opponent_wins: z.number().int().nonnegative(),
+  /** e.g. "Week of Jul 06 · Day 2". */
+  week_label: z.string(),
+});
+
 export const revealViewerSchema = z.object({
   pick: pickSchema,
   result: z.enum(PICK_RESULT),
@@ -126,6 +150,10 @@ export const revealViewerSchema = z.object({
   percentile: z.number().min(0).max(100).nullable(),
   streak: revealStreakSchema,
   badges: z.array(z.literal('called_it')),
+  /** SW10-T1 contract-change: `.nullish()` (optional-or-null) per the contract-PR sequencing
+   * rule (wiring-gaps doc §4/§9 finding 1) — the emitter and this field ship together here, but
+   * `.nullish()` is kept rather than tightened to `.nullable()` to match the doc's pinned shape. */
+  nemesis_flip: nemesisFlipSchema.nullish(),
 });
 
 export const revealShareSchema = z.object({

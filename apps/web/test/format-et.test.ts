@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatEtClock, formatShortDate } from '@/lib/format-et';
+import { formatEtClock, formatShortDate, formatWeekdayName } from '@/lib/format-et';
 
 describe('formatEtClock', () => {
   it('formats a UTC morning instant as ET (EDT, UTC-4, in July)', () => {
@@ -43,6 +43,39 @@ describe('formatShortDate', () => {
       );
       // The real formatter never constructs a `Date`, so it stays correct under the same TZ.
       expect(formatShortDate('2026-07-01')).toBe('Jul 01');
+    } finally {
+      process.env.TZ = original;
+    }
+  });
+});
+
+/** SW10-T1 (wiring-gaps doc §4 SW10-T1, §12 round 6): the `nemesis_comeback` weekday formatter. */
+describe('formatWeekdayName', () => {
+  it('formats a mid-week date', () => {
+    expect(formatWeekdayName('2026-07-08')).toBe('Wednesday');
+  });
+
+  it('formats a year boundary', () => {
+    expect(formatWeekdayName('2026-01-01')).toBe('Thursday');
+  });
+
+  it('formats a December date', () => {
+    expect(formatWeekdayName('2026-12-25')).toBe('Friday');
+  });
+
+  it('is immune to local timezone — never rolls the calendar date via Date parsing', () => {
+    const original = process.env.TZ;
+    process.env.TZ = 'Pacific/Honolulu'; // UTC-10 — same bug class `formatShortDate`'s own test guards against
+    try {
+      // Proves the bug class is real under this timezone: a naive `new Date(dateOnly)` parses
+      // as UTC midnight, which rolls to the PREVIOUS calendar day (and so the previous weekday)
+      // here.
+      expect(new Date('2026-07-01').toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu', weekday: 'long' })).toContain(
+        'Tuesday',
+      );
+      // The real formatter never constructs a `Date` from the bare string in local time, so it
+      // stays correct (Wednesday) under the same TZ.
+      expect(formatWeekdayName('2026-07-01')).toBe('Wednesday');
     } finally {
       process.env.TZ = original;
     }
