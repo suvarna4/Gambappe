@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-20T03:36:51.194Z",
+  "updated_at": "2026-07-20T03:36:52.660Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1811,12 +1811,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": "API already supports ?venue/?category/?cursor + next_cursor meta; CurationClient fetches one unfiltered 50-row page. With 200 same-day Kalshi rows, Polymarket (07-31 close) never surfaces.",
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-code-web-session-54bb90dd",
+      "branch": "claude/ws15-t4-curate-filters",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-20T03:36:51.180Z"
+      "claimed_at": "2026-07-20T03:36:52.660Z",
+      "updated_at": "2026-07-20T03:36:52.660Z"
     }
   }
 }
