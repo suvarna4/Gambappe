@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-21T08:57:25.415Z",
+  "updated_at": "2026-07-21T09:02:36.908Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1917,12 +1917,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": "Spec: docs/journeys-plan.md §2 + §5 WS16-T3. One frame family owns ALL perforation/stub/admit chrome; BallotCard+TicketCard refactored to compose it; gallery tiles + deliberate visual-baseline refresh in this PR. Tokens unchanged.",
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-opus-fohjki",
       "branch": "feat/ws16-t3-ticketframe",
-      "pr": null,
+      "pr": "https://github.com/Gambappe/Gambappe/pull/110",
       "claimed_at": "2026-07-21T08:32:42.518Z",
-      "updated_at": "2026-07-21T08:32:42.518Z"
+      "updated_at": "2026-07-21T09:02:36.908Z"
     },
     "WS17-T1": {
       "title": "App shell: bottom tab bar (Stack/Sweat/Rivals/Crowd/You), sinks while deck on stage",
