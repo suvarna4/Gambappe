@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-21T09:07:39.317Z",
+  "updated_at": "2026-07-21T09:07:41.181Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1963,12 +1963,12 @@
       ],
       "mock_start_ok": false,
       "note": "Spec: docs/journeys-plan.md §5 WS18-T1 (+§4). lib/stack-feed.ts shared by route and '/' SSR (question-view.ts delegation pattern); serialize via serialize-question.ts only; flag topic_markets; cap 8, soonest-close first; ghost default all categories; exposes rival_sealed .nullish() on shared questions.",
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-opus-fohjki-agentF",
+      "branch": "feat/ws18-t1-stack-feed",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-21T08:22:30.580Z"
+      "claimed_at": "2026-07-21T09:07:41.181Z",
+      "updated_at": "2026-07-21T09:07:41.181Z"
     },
     "WS18-T2": {
       "title": "Topic follows: POST/DELETE /api/v1/topics/:category/follow + TopicFollowChips",
