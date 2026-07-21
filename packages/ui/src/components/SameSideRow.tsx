@@ -38,7 +38,7 @@ function Column({ entry, align }: { entry: SameSideEntry; align: 'left' | 'right
 
 export function SameSideRow({ left, right, className = '' }: SameSideRowProps) {
   return (
-    <div data-testid="same-side-row" className={`flex items-stretch gap-3 ${className}`}>
+    <div data-testid="same-side-row" className={`text-ink flex items-stretch gap-3 ${className}`}>
       <Column entry={left} align="left" />
       {/* The ticket edge line: a dashed tear down the middle, same motif as the perforation. */}
       <span aria-hidden="true" className="border-l border-dashed border-ink/25 self-stretch" />
