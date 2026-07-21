@@ -61,8 +61,12 @@ const DOT: Record<string, string> = {
  * `Run it back` (right, affirmative per D-SW9) requests the rematch, `New fate` (left) lets the
  * engine deal a new stranger. Those two are the accessible axis-ordered controls; a
  * `SwipeBallot variant="verdict"` wraps them as the gesture in the DB-equipped session (the
- * buttons remain the keyboard/AT path either way). Presentational: omit the handlers for the
- * public spectator card.
+ * buttons remain the keyboard/AT path either way). Styled as the mockup's own `.hint` row
+ * (`docs/mockups/swipe-ux.html` line ~881: `← NEW FATE` / `RUN IT BACK →`) — plain arrow-prefixed
+ * text indicating swipe direction, not a bordered button box — while staying real `<button>`
+ * elements underneath for the keyboard/AT path (design-diff audit: an earlier version boxed
+ * these in a rounded border, which the mockup never does here). Presentational: omit the
+ * handlers for the public spectator card.
  */
 export function VerdictCard({
   outcome,
@@ -100,9 +104,9 @@ export function VerdictCard({
         type="button"
         data-testid="verdict-new-fate"
         onClick={onNewFate}
-        className="text-muted min-h-11 flex-1 rounded-lg border font-display text-sm font-bold tracking-wide uppercase"
+        className="text-muted flex min-h-11 flex-1 items-center font-mono text-[10px] font-semibold tracking-widest uppercase"
       >
-        {nemesisCopy.newFate}
+        ← {nemesisCopy.newFate}
       </button>
     ) : null,
     onRunItBack ? (
@@ -111,9 +115,9 @@ export function VerdictCard({
         type="button"
         data-testid="verdict-run-it-back"
         onClick={onRunItBack}
-        className="border-gold text-gold min-h-11 flex-1 rounded-lg border font-display text-sm font-bold tracking-wide uppercase"
+        className="text-gold flex min-h-11 flex-1 items-center justify-end font-mono text-[10px] font-semibold tracking-widest uppercase"
       >
-        {nemesisCopy.runItBack}
+        {nemesisCopy.runItBack} →
       </button>
     ) : null,
   );
