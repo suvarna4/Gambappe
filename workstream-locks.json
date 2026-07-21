@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-21T19:47:38.688Z",
+  "updated_at": "2026-07-21T19:52:08.424Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2149,12 +2149,12 @@
       ],
       "mock_start_ok": false,
       "note": "Spec: docs/journeys-plan.md §5 WS22-T2 (D-J7). Server-fetch through the lib (no self-HTTP); ISR 60s with viewer highlight hydrating client-side (INV-10); handles link to /p/[slug]; flips SHELL_ROUTES.crowd.",
-      "status": "in_review",
+      "status": "done",
       "owner": "claude-opus-fohjki-agentQ",
       "branch": null,
       "pr": null,
       "claimed_at": "2026-07-21T11:03:22.109Z",
-      "updated_at": "2026-07-21T11:21:23.777Z"
+      "updated_at": "2026-07-21T19:52:08.424Z"
     },
     "WS23-T1": {
       "title": "Journey E2E gate: six end-to-end journeys + reachability matrix, flags ON",
