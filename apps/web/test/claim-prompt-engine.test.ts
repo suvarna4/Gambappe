@@ -57,6 +57,24 @@ describe('determineClaimPromptTrigger (§11.3 exact triggers)', () => {
     ).toBe('fingerprint');
   });
 
+  it('WS21-T2: a pending incoming call-out triggers the fingerprint nudge (Save to get your nemesis)', () => {
+    expect(determineClaimPromptTrigger({ ...baseInput, incomingCallout: true })).toBe('fingerprint');
+    // and never for a claimed viewer, even with a call-out waiting.
+    expect(
+      determineClaimPromptTrigger({ ...baseInput, isGhost: false, incomingCallout: true }),
+    ).toBeNull();
+  });
+
+  it('WS21-T2: streak still wins over an incoming call-out (time-sensitive loss-aversion first)', () => {
+    expect(
+      determineClaimPromptTrigger({
+        ...baseInput,
+        streakCurrent: CLAIM_PROMPT_STREAK_THRESHOLD,
+        incomingCallout: true,
+      }),
+    ).toBe('streak');
+  });
+
   it('streak trigger takes priority when both conditions hold', () => {
     expect(
       determineClaimPromptTrigger({

@@ -24,6 +24,8 @@ import { SameSideState } from '@/components/nemesis/SameSideState';
 import { VerdictCard } from '@/components/nemesis/VerdictCard';
 import { DuoTandem } from '@/components/duo/DuoTandem';
 import ClaimPromptEngine from '@/components/claim/ClaimPromptEngine';
+import { SaveAskCard } from '@/components/save/SaveAskCard';
+import { CLAIM_NUDGE_COPY, CLAIM_PROMPT_CTA, CLAIM_PROMPT_DISMISS_LABEL, saveAskCopy } from '@/lib/copy';
 import { SweatRow } from '@/components/SweatRow';
 import type { SweatPosition } from '@/lib/sweat-feed';
 import ClaimSheetGalleryDemo from './ClaimSheetGalleryDemo';
@@ -447,6 +449,33 @@ export default function UiGalleryPage() {
         <div className="bg-bg rounded-md p-6">
           <div className="mx-auto max-w-[340px]">
             <DeparturesBoard positions={SWEAT_GALLERY_POSITIONS} />
+          </div>
+        </div>
+      </section>
+
+      {/* WS21-T2 (journeys-plan §5, D-J8): the neutral Save ask card (v3 artifact ch. 08-B) — the
+          shared paper `TicketFrame` backing the value-triggered nudge and the /you save row. Shown
+          on the dark stage (`bg-bg`) where its cream paper floats, exactly as it does in product.
+          NEUTRAL by construction: no gold/foil/win ink — the ask is never a win (D-J8). */}
+      <section data-testid="gallery-save-ask" className="space-y-3">
+        <h2 className="text-muted text-sm font-semibold uppercase">SaveAskCard (WS21-T2)</h2>
+        <div className="bg-bg rounded-md p-6">
+          <div className="mx-auto max-w-sm">
+            <SaveAskCard
+              testId="save-ask-gallery"
+              recordSummary={saveAskCopy.recordLine(3, 5)}
+              fact={CLAIM_NUDGE_COPY.streak}
+              actions={
+                <>
+                  <span className="bg-ink text-paper rounded px-4 py-1.5 text-sm font-semibold">
+                    {CLAIM_PROMPT_CTA}
+                  </span>
+                  <span className="text-ink/70 text-sm underline underline-offset-2">
+                    {CLAIM_PROMPT_DISMISS_LABEL}
+                  </span>
+                </>
+              }
+            />
           </div>
         </div>
       </section>

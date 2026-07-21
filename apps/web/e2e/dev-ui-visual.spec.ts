@@ -245,6 +245,12 @@ test.describe('SW10-T5 /dev/ui visual regression', () => {
     await expect(page.getByTestId('gallery-barcode')).toHaveScreenshot('barcode.png');
   });
 
+  // WS21-T2 (journeys-plan §5, D-J8): the neutral Save ask card — the shared paper TicketFrame
+  // backing the value nudge + the /you save row, on the dark stage. No gold/foil/win ink.
+  test('SaveAskCard (WS21-T2)', async ({ page }) => {
+    await expect(page.getByTestId('gallery-save-ask')).toHaveScreenshot('save-ask-card.png');
+  });
+
   test('ClaimPromptEngine banner (WS7-T5, streak trigger)', async ({ page }) => {
     // The banner is `position: fixed` (bottom-right), so it renders OUTSIDE the wrapping
     // `gallery-claim-prompt-streak` section's own box (that section's flow height is just its

@@ -18,8 +18,15 @@ import {
   markShownToday,
   type ClaimPromptInput,
 } from '@/lib/claim-prompt-engine';
-import { CLAIM_NUDGE_COPY, CLAIM_PROMPT_CTA, CLAIM_PROMPT_DISMISS_LABEL, type ClaimNudgeTrigger } from '@/lib/copy';
+import {
+  CLAIM_NUDGE_COPY,
+  CLAIM_PROMPT_CTA,
+  CLAIM_PROMPT_DISMISS_LABEL,
+  saveAskCopy,
+  type ClaimNudgeTrigger,
+} from '@/lib/copy';
 import { postAnalyticsEvent } from '@/lib/analytics-client';
+import { SaveAskCard } from '@/components/save/SaveAskCard';
 import ClaimSheet from './ClaimSheet';
 
 export interface ClaimPromptEngineProps extends ClaimPromptInput {
@@ -32,14 +39,29 @@ export default function ClaimPromptEngine({ enabledProviders, ...input }: ClaimP
   const [sheetOpen, setSheetOpen] = useState(false);
   const shownFiredRef = useRef(false);
 
-  const { isGhost, streakCurrent, pickCount, viewingNemesisOrDuoSurfaceAsGhost } = input;
+  const { isGhost, streakCurrent, pickCount, viewingNemesisOrDuoSurfaceAsGhost, incomingCallout } =
+    input;
 
   useEffect(() => {
     if (dismissed || sheetOpen) return;
     setTrigger(
-      evaluateClaimPrompt({ isGhost, streakCurrent, pickCount, viewingNemesisOrDuoSurfaceAsGhost }),
+      evaluateClaimPrompt({
+        isGhost,
+        streakCurrent,
+        pickCount,
+        viewingNemesisOrDuoSurfaceAsGhost,
+        incomingCallout,
+      }),
     );
-  }, [isGhost, streakCurrent, pickCount, viewingNemesisOrDuoSurfaceAsGhost, dismissed, sheetOpen]);
+  }, [
+    isGhost,
+    streakCurrent,
+    pickCount,
+    viewingNemesisOrDuoSurfaceAsGhost,
+    incomingCallout,
+    dismissed,
+    sheetOpen,
+  ]);
 
   useEffect(() => {
     if (trigger && !shownFiredRef.current) {
@@ -55,32 +77,42 @@ export default function ClaimPromptEngine({ enabledProviders, ...input }: ClaimP
     <>
       {showBanner && trigger && (
         // Sits ABOVE the shell's fixed bottom tab bar (WS17-T1, `z-50`, ~4rem tall): the bar
-        // reserves `pb-[calc(4rem+safe-area)]` on the content column, and if this banner stayed at
+        // reserves `pb-[calc(4rem+safe-area)]` on the content column, and if this card stayed at
         // `bottom-0` the bar would overlay it and swallow the CTA/dismiss clicks (the buttons became
         // untappable — Playwright's clicks hit `nav[data-testid=tab-bar]`). Offset by the bar height.
+        //
+        // WS21-T2 (D-J8): the nudge is now the neutral `SaveAskCard` (paper `TicketFrame`, no gold) —
+        // record summary line → the WS21-T1 fact copy → Save + Not now (v3 artifact ch. 08-B). Save
+        // opens the claim sheet; Not now dismisses (the 1/day cap already persisted on show).
         <div
-          className="bg-surface text-paper fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 flex items-center justify-between gap-3 p-4 shadow-xl sm:inset-x-auto sm:right-4 sm:bottom-[calc(5rem+env(safe-area-inset-bottom))] sm:max-w-sm sm:rounded-lg"
+          className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 px-4 sm:inset-x-auto sm:right-4 sm:bottom-[calc(5rem+env(safe-area-inset-bottom))] sm:max-w-sm"
           data-testid="claim-prompt-engine"
           data-trigger={trigger}
         >
-          <p className="text-sm">{CLAIM_NUDGE_COPY[trigger]}</p>
-          <div className="flex shrink-0 gap-2">
-            <button
-              type="button"
-              className="bg-side-a rounded px-3 py-1.5 text-xs font-semibold text-white"
-              onClick={() => setSheetOpen(true)}
-            >
-              {CLAIM_PROMPT_CTA}
-            </button>
-            <button
-              type="button"
-              className="text-muted text-xs"
-              onClick={() => setDismissed(true)}
-              aria-label={CLAIM_PROMPT_DISMISS_LABEL}
-            >
-              {CLAIM_PROMPT_DISMISS_LABEL}
-            </button>
-          </div>
+          <SaveAskCard
+            testId="claim-prompt-card"
+            recordSummary={saveAskCopy.recordLine(streakCurrent, pickCount)}
+            fact={CLAIM_NUDGE_COPY[trigger]}
+            actions={
+              <>
+                <button
+                  type="button"
+                  className="bg-ink text-paper rounded px-4 py-1.5 text-sm font-semibold"
+                  onClick={() => setSheetOpen(true)}
+                >
+                  {CLAIM_PROMPT_CTA}
+                </button>
+                <button
+                  type="button"
+                  className="text-ink/70 text-sm underline underline-offset-2"
+                  onClick={() => setDismissed(true)}
+                  aria-label={CLAIM_PROMPT_DISMISS_LABEL}
+                >
+                  {CLAIM_PROMPT_DISMISS_LABEL}
+                </button>
+              </>
+            }
+          />
         </div>
       )}
       <ClaimSheet open={sheetOpen} onOpenChange={setSheetOpen} enabledProviders={enabledProviders} />

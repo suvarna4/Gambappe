@@ -29,6 +29,14 @@ export interface ClaimPromptInput {
   streakCurrent: number;
   pickCount: number;
   viewingNemesisOrDuoSurfaceAsGhost: boolean;
+  /**
+   * WS21-T2 (journeys plan §5, D-J5/D-J8): the ghost is looking at a PENDING incoming call-out they
+   * must Save before they can accept (`IncomingCalloutCard`, WS20-T4). Time-boxed (24h expiry) and
+   * a strong "get your nemesis" hook, so it shares the `fingerprint` nudge copy — "Save your record
+   * to get your nemesis" is exactly what accepting a call-out does. Optional so existing callers and
+   * fixtures (which predate this trigger) stay valid.
+   */
+  incomingCallout?: boolean;
 }
 
 /**
@@ -43,6 +51,10 @@ export interface ClaimPromptInput {
 export function determineClaimPromptTrigger(input: ClaimPromptInput): ClaimNudgeTrigger | null {
   if (!input.isGhost) return null;
   if (input.streakCurrent >= CLAIM_PROMPT_STREAK_THRESHOLD) return 'streak';
+  // WS21-T2: a pending incoming call-out is time-boxed, so it ranks above the always-true
+  // fingerprint-readiness conditions below; it uses the same `fingerprint` copy ("…to get your
+  // nemesis"), which is exactly what accepting the call-out grants.
+  if (input.incomingCallout) return 'fingerprint';
   if (input.pickCount >= CLAIM_PROMPT_PICK_THRESHOLD) return 'fingerprint';
   if (input.viewingNemesisOrDuoSurfaceAsGhost) return 'fingerprint';
   return null;

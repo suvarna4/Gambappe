@@ -7,6 +7,7 @@ import {
   crowdCopy,
   departuresCopy,
   obituaryCopy,
+  saveAskCopy,
   shareCopy,
   stackCopy,
   sweatCopy,
@@ -104,6 +105,39 @@ describe('departures-board copy (WS24-T1)', () => {
   it('no copy references money words (§10.6/INV-8 review rule: bet|stake|wager|$)', () => {
     const allCopy = Object.values(departuresCopy).join(' ');
     expect(allCopy).not.toMatch(/\bbet\b|\bstake\b|\bwager\b|\$/i);
+  });
+});
+
+/** WS21-T2 (§5 D-J8) · the Save-ask copy block — its record line quotes a streak/pick count only,
+ * never a money amount, and it reuses (never edits) WS21-T1's pinned nudge strings + CTA. */
+describe('save-ask copy (WS21-T2)', () => {
+  it('builds the record-summary line from streak + pick counts, pluralizing correctly', () => {
+    expect(saveAskCopy.recordLine(3, 5)).toBe('3-day streak · 5 picks on this device');
+    expect(saveAskCopy.recordLine(1, 1)).toBe('1-day streak · 1 pick on this device');
+    expect(saveAskCopy.recordLine(0, 2)).toBe('2 picks on this device');
+    expect(saveAskCopy.recordLine(4, 0)).toBe('4-day streak on this device');
+    // Nothing yet — a fully-forming record still reads as neutral value framing.
+    expect(saveAskCopy.recordLine(0, 0)).toBe('Your record is forming on this device');
+  });
+
+  it('reuses WS21-T1 ticket chrome, never a new admit string', () => {
+    expect(saveAskCopy.admitLeft).toBe('GAMBAPPE');
+    expect(saveAskCopy.admitRight).toBe('SAVE YOUR RECORD');
+  });
+
+  it('no copy references money words (§10.6/INV-8 review rule: bet|stake|wager|$)', () => {
+    const allCopy = [
+      saveAskCopy.admitLeft,
+      saveAskCopy.admitRight,
+      saveAskCopy.recordLine(3, 5),
+      saveAskCopy.recordLine(0, 0),
+    ].join(' ');
+    expect(allCopy).not.toMatch(/\bbet\b|\bstake\b|\bwager\b|\$/i);
+  });
+
+  it('no Save-ask copy uses "claim" wording (D-J8 grep gate)', () => {
+    const allCopy = [saveAskCopy.recordLine(1, 1), saveAskCopy.admitRight].join(' ');
+    expect(allCopy).not.toMatch(/claim/i);
   });
 });
 

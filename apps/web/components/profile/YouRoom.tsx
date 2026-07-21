@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { MarketCategory } from '@receipts/core';
 import { GraveyardShelf } from '@/components/GraveyardShelf';
 import { TopicFollowChips } from '@/components/TopicFollowChips';
+import { SaveRow } from '@/components/save/SaveRow';
 import { ProfileHeaderStats } from './ProfileHeaderStats';
 import { ProfileStatGrid } from './ProfileStatGrid';
 import { ProfileTopicBars } from './ProfileTopicBars';
@@ -127,8 +128,13 @@ export function YouRoomGhost({ followed }: YouRoomGhostProps) {
         badges={[]}
       />
 
-      {/* Reserved slot the WS21-T2 save row fills — a neutral placeholder now, no save chip here. */}
-      <div data-testid="you-save-row-slot" />
+      {/* WS21-T2 fills this reserved slot with the neutral, ghost-only Save row (D-J8): same
+          `SaveAskCard` the value nudge uses, inline here as the record room's primary ask. It's a
+          client component (reads its own value from `GET /me`); a claimed/anonymous viewer or the
+          SSR pass renders nothing, keeping this room free of any gold ask. */}
+      <div data-testid="you-save-row-slot">
+        <SaveRow next="/you" />
+      </div>
 
       <section aria-labelledby="you-follow-heading" className="space-y-3">
         <h2

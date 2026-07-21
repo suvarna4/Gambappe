@@ -4,6 +4,7 @@ import { PRODUCT_NAME } from '@receipts/core';
 
 import './globals.css';
 import { AppShell } from '@/components/shell/AppShell';
+import { SaveChip } from '@/components/save/SaveChip';
 import { EIGHTEEN_PLUS_FOOTER_NOTICE } from '@/lib/copy';
 
 // SW0-T2 (D-SW2): the three product faces, self-hosted by next/font (no external CDN at
@@ -39,8 +40,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* WS17-T1 (seam 1): the app shell wraps every page — it mounts the five-room bottom tab
             bar (D-J6) once and reserves its height on the content column (no layout shift). The
             footer stays inside so INV-9's 18+ notice clears the fixed bar rather than sitting
-            under it. `saveChipSlot` (WS21-T2) is left empty for now. */}
-        <AppShell>
+            under it. `saveChipSlot` carries WS21-T2's neutral, value-gated Save chip (D-J8): it's a
+            self-contained client component (reads its own value from `GET /me`), so filling the slot
+            here keeps `layout.tsx` static — no page is made dynamic by it (seam 1). */}
+        <AppShell saveChipSlot={<SaveChip />}>
           {children}
           {/* INV-9: every page footer carries an 18+ notice — that invariant is about PRESENCE,
               not a specific size, so this stays on every page but shrinks on narrow viewports

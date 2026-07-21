@@ -712,6 +712,33 @@ export const youCopy = {
 } as const;
 
 /**
+ * WS21-T2 (journeys plan §5, D-J8) · The ambient Save asks — the value-triggered nudge card and
+ * the `/you` save row. This is WS21-T2's OWNED copy block; it never edits WS21-T1's pinned nudge
+ * strings, it COMPOSES them: the card's FACT line is `CLAIM_NUDGE_COPY[trigger]` (WS21-T1), the
+ * primary button is `CLAIM_PROMPT_CTA` ("Save"), the dismiss is `CLAIM_PROMPT_DISMISS_LABEL`, and
+ * the admit-bar chrome reuses WS21-T1's `SAVE YOUR RECORD` ticket header. Only the card's record-
+ * summary line is new here (v3 artifact ch. 08-B: record summary → fact → Save + Not now). Neutral,
+ * no gold (the ask is never a win — D-J8); no money words (INV-8) — `test/copy.test.ts` scans it.
+ */
+export const saveAskCopy = {
+  /** TicketFrame admit-bar slots — reuse WS21-T1's SAVE YOUR RECORD ticket chrome. */
+  admitLeft: CLAIM_SIGNIN_ADMIT_LEFT,
+  admitRight: CLAIM_SIGNIN_ADMIT_RIGHT,
+  /**
+   * ch. 08-B record-summary line: what's forming on this device, printed above the fact + Save.
+   * A streak count and a pick count only — never a money amount (INV-8: no bet/stake/wager/$).
+   */
+  recordLine: (streak: number, picks: number): string => {
+    const parts: string[] = [];
+    if (streak > 0) parts.push(streak === 1 ? '1-day streak' : `${streak}-day streak`);
+    if (picks > 0) parts.push(picks === 1 ? '1 pick' : `${picks} picks`);
+    return parts.length > 0
+      ? `${parts.join(' · ')} on this device`
+      : 'Your record is forming on this device';
+  },
+} as const;
+
+/**
  * WS22-T2 · `/crowd` (the boards, D-J7) copy — this task's OWNED block. Weekly leaderboards read
  * as receipts culture: "calls right" and "price beaten at entry", never money words (no
  * bet/stake/wager/$, INV-8). No gold anywhere (gold is for wins, D-J8) — the boards are an ambient
