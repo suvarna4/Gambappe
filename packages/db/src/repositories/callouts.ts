@@ -122,3 +122,49 @@ export async function acceptCallout(db: Db, input: AcceptCalloutInput): Promise<
     return { ok: true, callout: updated, pairing };
   });
 }
+
+export interface DeclineCalloutInput {
+  tokenHash: string;
+}
+
+export type DeclineCalloutResult =
+  | { ok: true; callout: CalloutRow }
+  | { ok: false; reason: 'not_found' | 'expired' | 'already_resolved' };
+
+/**
+ * Transactional decline (WS20-T3): locks the callout, validates it's still `pending` and
+ * unexpired, then flips it to `declined`. Idempotent/terminal-safe like `acceptCallout` — a
+ * second decline (or a decline of an already-accepted/-declined callout) sees a non-`pending`
+ * status and returns `already_resolved` without mutating anything; an expired-by-time callout is
+ * lazily marked `expired` and returns `expired`. Decline needs no opponent/season/pairing — it
+ * simply closes the challenge, so no `nemesis_pairings` row is ever created here.
+ */
+export async function declineCallout(db: Db, input: DeclineCalloutInput): Promise<DeclineCalloutResult> {
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .select()
+      .from(callouts)
+      .where(eq(callouts.tokenHash, input.tokenHash))
+      .limit(1)
+      .for('update');
+
+    if (!row) return { ok: false, reason: 'not_found' };
+    if (row.status !== 'pending') return { ok: false, reason: 'already_resolved' };
+    if (row.expiresAt.getTime() <= now().getTime()) {
+      await tx
+        .update(callouts)
+        .set({ status: 'expired', updatedAt: now() })
+        .where(eq(callouts.id, row.id));
+      return { ok: false, reason: 'expired' };
+    }
+
+    const [updated] = await tx
+      .update(callouts)
+      .set({ status: 'declined', updatedAt: now() })
+      .where(eq(callouts.id, row.id))
+      .returning();
+    if (!updated) throw new Error('declineCallout: no callout returned');
+
+    return { ok: true, callout: updated };
+  });
+}

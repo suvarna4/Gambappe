@@ -11,7 +11,8 @@
  * on its exact shape via the `@receipts/db` barrel.
  */
 import { and, asc, desc, eq, gte, inArray, lte, or, sql } from 'drizzle-orm';
-import type { MarketCategory } from '@receipts/core';
+import { addDaysToDateString, NEMESIS_SEASON_WEEKS, type MarketCategory } from '@receipts/core';
+import { uuidv7 } from 'uuidv7';
 import type { Db } from '../client.js';
 import {
   blocks,
@@ -53,6 +54,35 @@ export async function insertSeason(db: Db, row: NewSeasonRow): Promise<SeasonRow
   return inserted;
 }
 
+/**
+ * Get-or-create the `nemesis` season covering `dateStr` (YYYY-MM-DD) — the §8.4 step-0 season
+ * check ("assignment never silently no-ops on a season boundary"), extracted here so both
+ * `nemesis:assign` (which resolves the CURRENT week) and call-out accept (WS20-T3, which resolves
+ * a NEXT-week Monday) share one canonical get-or-create instead of duplicating it. A freshly
+ * created season starts at `dateStr` and runs `NEMESIS_SEASON_WEEKS` weeks, matching
+ * `nemesis-assign.ts`'s original inline shape. Returns `created` so the caller can log/notify.
+ *
+ * Not transactional against a concurrent creator (mirrors the original inline code — the weekly
+ * `nemesis:assign` cron is a pg-boss singleton, and call-out accepts are rare enough that a lost
+ * race just means a redundant season INSERT, which the caller can tolerate). If a stricter
+ * guarantee is ever needed, an advisory lock on `('nemesis-season', dateStr)` is the seam.
+ */
+export async function getOrCreateNemesisSeasonCovering(
+  db: Db,
+  dateStr: string,
+): Promise<{ season: SeasonRow; created: boolean }> {
+  const existing = await getNemesisSeasonCoveringDate(db, dateStr);
+  if (existing) return { season: existing, created: false };
+  const season = await insertSeason(db, {
+    id: uuidv7(),
+    kind: 'nemesis',
+    startsOn: dateStr,
+    endsOn: addDaysToDateString(dateStr, NEMESIS_SEASON_WEEKS * 7 - 1),
+    name: `Nemesis Season (${dateStr})`,
+  });
+  return { season, created: true };
+}
+
 // --- Eligible pool (§8.4) -----------------------------------------------------------------------
 
 export interface NemesisPoolRow {
@@ -77,11 +107,19 @@ export interface NemesisPoolRow {
  * fingerprints default neutrally (1500/350 rating, 0 style axes, `{}` category shares) when no
  * row exists yet — those nightly jobs (WS4-T7) may not have run for a freshly-eligible profile,
  * same zero-vector-guard spirit as `apps/worker/src/jobs/duo-matchmaker.ts`.
+ *
+ * WS20-T3 (D-J5) call-out guard: a profile that already holds a `scheduled`/`active`
+ * `nemesis_pairings` row for `weekStart` is excluded from the organic pool for that week — a
+ * call-out accepted last week mints exactly such a next-week pairing (canonical `nemesis_pairings`
+ * row), so this single `NOT EXISTS` clause keeps Monday matchmaking from double-assigning anyone
+ * who already has a locked-in opponent (via call-out OR a prior partial run) for the week being
+ * assigned. Uses the `nemesis_pairings_status_week_idx` (status, week_start) index.
  */
 export async function listNemesisEligiblePool(
   db: Db,
   botExcludeThreshold: number,
   minGradedPicks: number,
+  weekStart: string,
 ): Promise<NemesisPoolRow[]> {
   const rows = await db.execute(sql`
     SELECT
@@ -103,6 +141,12 @@ export async function listNemesisEligiblePool(
       AND p.bot_score < ${botExcludeThreshold}
       AND (p.settings->>'nemesis_paused')::boolean IS NOT TRUE
       AND (SELECT count(*) FROM picks pk WHERE pk.profile_id = p.id AND pk.result IN ('win', 'loss')) >= ${minGradedPicks}
+      AND NOT EXISTS (
+        SELECT 1 FROM nemesis_pairings np
+        WHERE np.week_start = ${weekStart}::date
+          AND np.status IN ('scheduled', 'active')
+          AND (np.profile_a_id = p.id OR np.profile_b_id = p.id)
+      )
   `);
   return rows.rows.map((r) => ({
     profileId: r['profile_id'] as string,

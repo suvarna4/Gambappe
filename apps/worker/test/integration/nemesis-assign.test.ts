@@ -276,14 +276,16 @@ describe('nemesis:assign — pool + matching AC (§19.3 WS5-T1)', () => {
     const [firstPairing] = await db.select().from(nemesisPairings);
     expect([firstPairing!.profileAId, firstPairing!.profileBId].sort()).toEqual([a.id, b.id].sort());
 
-    // Second run, same week: the pure matcher's own "not previously paired this season" check
-    // (fed by `listPairedProfilePairsForSeason`) means there's no eligible edge left between
-    // just these two profiles — 0 new pairings, both become leftovers, and (defense in depth)
-    // the DB's partial-unique index on (season, week, profile) would reject a duplicate insert
-    // outright if the matcher ever tried anyway.
+    // Second run, same week: both profiles already hold an `active` pairing for this week, so the
+    // WS20-T3 (D-J5) double-assignment guard in `listNemesisEligiblePool` now excludes them from
+    // the pool outright — they are not even candidates, hence 0 new pairings AND 0 leftovers (a
+    // leftover is an eligible-but-unmatched profile; these two are ineligible this week because
+    // they already have a pairing). The no-duplicate guarantee still holds (still exactly 1 row),
+    // now enforced one layer earlier than the matcher's "not previously paired this season" check
+    // and the DB's partial-unique index (both remain as defense in depth).
     const second = await runJob();
     expect(second.pairingsCreated).toBe(0);
-    expect(second.leftovers).toBe(2);
+    expect(second.leftovers).toBe(0);
     const allPairingsAfter = await db.select().from(nemesisPairings);
     expect(allPairingsAfter).toHaveLength(1);
   });

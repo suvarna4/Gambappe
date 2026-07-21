@@ -56,6 +56,13 @@ export const RATE_LIMIT_RULES = {
   // bucket so a follow spree can't drain another action's quota. Literal (not a §14.1 core
   // constant) because the journeys plan didn't pin a number and WS18-T2 owns no core file.
   topic_follow: { keyType: 'profile', limit: 60, windowSeconds: HOUR },
+  // Call-outs (journeys plan §5 WS20-T3): the §14.1 table predates the journeys plan and carries
+  // no call-out row, so these reuse the existing profile-keyed post-creation caps (their own
+  // bucket, distinct from `posts_*`) rather than adding a new `@receipts/core` constant — minting
+  // a link is a post-shaped social write, accept/decline are one-shot per link. WS23-T2 (rollout)
+  // is the place to promote these into a first-class §14.1 row if the caps need tuning.
+  callout_create: { keyType: 'profile', limit: RL_POST_PROFILE_D, windowSeconds: DAY },
+  callout_respond: { keyType: 'profile', limit: RL_POST_PROFILE_MIN, windowSeconds: MINUTE },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type RateLimitAction = keyof typeof RATE_LIMIT_RULES;

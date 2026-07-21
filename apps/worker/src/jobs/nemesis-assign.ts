@@ -28,8 +28,6 @@ import { uuidv7 } from 'uuidv7';
 import {
   BOT_EXCLUDE_THRESHOLD,
   NEMESIS_MIN_PICKS,
-  NEMESIS_SEASON_WEEKS,
-  addDaysToDateString,
   etDateString,
   isFlagEnabled,
   isoWeekMonday,
@@ -37,10 +35,9 @@ import {
 } from '@receipts/core';
 import { matchNemeses, narrate, type NemesisForcedPair, type NemesisPoolEntry } from '@receipts/engine';
 import {
-  getNemesisSeasonCoveringDate,
+  getOrCreateNemesisSeasonCovering,
   insertNemesisPairingRow,
   insertPairingQuestionRows,
-  insertSeason,
   listAcceptedRematchRequests,
   listAllBlockedPairs,
   listNemesisEligiblePool,
@@ -156,26 +153,18 @@ export async function runNemesisAssign(db: Db, boss: PgBoss, at: Date = now()): 
   const weekStart = isoWeekMonday(etDateString(at));
 
   // --- Step 0: season check (§8.4) ---------------------------------------------------------
-  let season = await getNemesisSeasonCoveringDate(db, weekStart);
-  let seasonCreated = false;
-  if (!season) {
-    const endsOn = addDaysToDateString(weekStart, NEMESIS_SEASON_WEEKS * 7 - 1);
-    season = await insertSeason(db, {
-      id: uuidv7(),
-      kind: 'nemesis',
-      startsOn: weekStart,
-      endsOn,
-      name: `Nemesis Season (${weekStart})`,
-    });
-    seasonCreated = true;
+  const { season, created: seasonCreated } = await getOrCreateNemesisSeasonCovering(db, weekStart);
+  if (seasonCreated) {
     // SPEC-GAP(ws5-t1): "(and notifies admins)" — no admin notification channel/audience exists
     // yet (mirrors WS3-T4's identical SPEC-GAP for reveal-delay admin escalation); logged loudly
     // instead so an ops dashboard/log alert can pick it up until WS10 grows one.
-    logger.warn({ seasonId: season.id, startsOn: weekStart, endsOn }, 'nemesis:assign — auto-created next nemesis season');
+    logger.warn({ seasonId: season.id, startsOn: season.startsOn, endsOn: season.endsOn }, 'nemesis:assign — auto-created next nemesis season');
   }
 
   // --- Pool (§8.4 eligible pool) ------------------------------------------------------------
-  const poolRows = await listNemesisEligiblePool(db, BOT_EXCLUDE_THRESHOLD, NEMESIS_MIN_PICKS);
+  // `weekStart` excludes anyone already holding a scheduled/active pairing for the week — the
+  // WS20-T3 call-out double-assignment guard (D-J5).
+  const poolRows = await listNemesisEligiblePool(db, BOT_EXCLUDE_THRESHOLD, NEMESIS_MIN_PICKS, weekStart);
   const poolById = new Map(poolRows.map((r) => [r.profileId, r]));
   const poolIds = new Set(poolRows.map((r) => r.profileId));
   const poolEntries: NemesisPoolEntry[] = poolRows.map((r) => toPoolEntry(r, at));
