@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-21T10:00:01.604Z",
+  "updated_at": "2026-07-21T10:01:27.361Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1932,12 +1932,12 @@
       ],
       "mock_start_ok": true,
       "note": "Spec: docs/journeys-plan.md §5 WS17-T1 (D-J6). Sole owner of layout.tsx. SHELL_ROUTES map lets later tasks flip one entry each; saveChipSlot reserved for WS21-T2. E2E: every room ≤2 taps from '/'.",
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-opus-fohjki-agentH",
+      "branch": "feat/ws17-t1-app-shell",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-21T08:22:30.580Z"
+      "claimed_at": "2026-07-21T10:01:27.361Z",
+      "updated_at": "2026-07-21T10:01:27.361Z"
     },
     "WS17-T2": {
       "title": "/rivals hub: segmented Nemesis·Duo, ghost save-gate instead of redirect",
