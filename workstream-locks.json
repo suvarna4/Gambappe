@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-21T08:32:42.518Z",
+  "updated_at": "2026-07-21T08:47:10.841Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1889,12 +1889,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": "Spec: docs/journeys-plan.md §5 WS16-T1 (+§4). Additive only, every new response field .nullish(), core-first PR with no consumer changes. New flags topic_markets/callouts/departures_board default false.",
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-opus-fohjki",
       "branch": "feat/ws16-t1-journeys-contracts",
-      "pr": null,
+      "pr": "https://github.com/Gambappe/Gambappe/pull/108",
       "claimed_at": "2026-07-21T08:32:40.799Z",
-      "updated_at": "2026-07-21T08:32:40.799Z"
+      "updated_at": "2026-07-21T08:47:10.840Z"
     },
     "WS16-T2": {
       "title": "DB: topic_follows + callouts tables, kind='topic', repositories + factories",
