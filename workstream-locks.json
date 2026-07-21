@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-21T19:53:21.979Z",
+  "updated_at": "2026-07-21T20:30:49.143Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2201,12 +2201,12 @@
       ],
       "mock_start_ok": false,
       "note": "Spec: docs/journeys-plan.md §5 WS24-T1. Flag departures_board; per-character flap cells with settle tick, reduced-motion static; receipts stay paper. Do not claim before JQ's required tasks are in review.",
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-opus-fohjki-agentS",
       "branch": null,
       "pr": null,
       "claimed_at": "2026-07-21T19:53:21.979Z",
-      "updated_at": "2026-07-21T19:53:21.979Z"
+      "updated_at": "2026-07-21T20:30:49.141Z"
     }
   }
 }
