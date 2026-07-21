@@ -5,6 +5,7 @@
 import type { Metadata } from 'next';
 import { isFlagEnabled, nowMs, PRODUCT_NAME } from '@receipts/core';
 import { QuestionStateView } from '@/components/QuestionStateView';
+import { DeckStageBridge } from '@/components/shell/DeckStageBridge';
 import { ViewerStrip } from '@/components/ViewerStrip';
 import { copy } from '@/lib/copy';
 import { getTodayQuestionPublic } from '@/lib/question-view';
@@ -38,8 +39,15 @@ export default async function HomePage({
   // so it doesn't affect INV-10; the client strips it after mount (SW7-T2).
   const arm = swipeBallot && (await searchParams).arm === '1';
 
+  // D-J6/WS17-T1: while today's question is on the full-screen deck (swipe_ballot on + open
+  // state), sink the bottom tab bar (D-SW4 ritual). `DeckStageBridge` renders no DOM and its
+  // `active` flag is flag/status-derived (not viewer data), so `/`'s HTML stays viewer-free
+  // (INV-10). Off-flag or any non-open state → bar stays put.
+  const deckOnStage = swipeBallot && question?.status === 'open';
+
   return (
     <main className="mx-auto max-w-xl space-y-6 px-6 py-10">
+      <DeckStageBridge active={deckOnStage} />
       <h1 className="text-2xl font-bold">{PRODUCT_NAME}</h1>
       {question ? (
         <QuestionStateView
