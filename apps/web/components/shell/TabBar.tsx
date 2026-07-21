@@ -15,7 +15,7 @@ import Link from 'next/link';
  */
 export const SHELL_ROUTES = {
   '/': '/',
-  '/sweat': '/q', // WS19-T2 flips → '/sweat'
+  '/sweat': '/sweat', // WS19-T2 · flipped to the real open-positions room
   '/rivals': '/nemesis', // WS17-T2 flips → '/rivals'
   '/crowd': '/q', // WS22-T2 flips → '/crowd'
   '/you': '/settings', // WS22-T1 flips → '/you'

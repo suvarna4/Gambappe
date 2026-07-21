@@ -66,6 +66,32 @@ describe('QuestionStateView — one render per §10.3 state', () => {
     expect(html).toContain('Yes 70%');
   });
 
+  // WS19-T2 (D-J3): the locked state no longer counts down to a synchronized reveal — it shows
+  // the settle-when line instead of the reveal countdown/hush.
+  it('locked: shows "settles when it settles", not a reveal countdown', () => {
+    const html = renderState({
+      ...base,
+      status: 'locked',
+      crowd: { yes: 70, no: 30, pct_yes: 70 },
+    });
+    expect(html).toContain('data-testid="settle-when"');
+    expect(html).toContain('SETTLES WHEN IT SETTLES');
+    expect(html).not.toContain('Reveal in');
+  });
+
+  // WS19-T2 (D-J3): the settled state stamps the real settle time (`revealed_at`).
+  it('revealed: stamps the settled time from revealed_at', () => {
+    const html = renderState({
+      ...base,
+      status: 'revealed',
+      outcome: 'yes',
+      revealed_at: '2026-07-20T00:00:00Z',
+      crowd: { yes: 70, no: 30, pct_yes: 70 },
+    });
+    expect(html).toContain('data-testid="settled-at"');
+    expect(html).toContain('SETTLED');
+  });
+
   it('revealed: names the outcome label', () => {
     const html = renderState({
       ...base,

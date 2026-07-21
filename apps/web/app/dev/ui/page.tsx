@@ -22,6 +22,8 @@ import { SameSideState } from '@/components/nemesis/SameSideState';
 import { VerdictCard } from '@/components/nemesis/VerdictCard';
 import { DuoTandem } from '@/components/duo/DuoTandem';
 import ClaimPromptEngine from '@/components/claim/ClaimPromptEngine';
+import { SweatRow } from '@/components/SweatRow';
+import type { SweatPosition } from '@/lib/sweat-feed';
 import ClaimSheetGalleryDemo from './ClaimSheetGalleryDemo';
 import ShareSheetGalleryDemo from './ShareSheetGalleryDemo';
 import SwipeBallotGalleryDemo from './SwipeBallotGalleryDemo';
@@ -31,6 +33,44 @@ import PlacementSwipeGalleryDemo from './PlacementSwipeGalleryDemo';
  * `/dev/ui` — the WS7-T1 design-system gallery (design doc §19.3 AC: "gallery renders all
  * states"). Not linked from product nav; a dev-only reference page for every token/motif.
  */
+/** WS19-T2 · Static sample positions for the SweatRow gallery tile (one per settle-when kind +
+ * an up/down drift). `closeIso` is fixed text so the tile's screenshot stays stable. */
+const SWEAT_GALLERY_POSITIONS: SweatPosition[] = [
+  {
+    pickId: 'gallery-sweat-1',
+    slug: 'fed-cuts-september',
+    headline: 'Fed cuts rates in September',
+    side: 'yes',
+    sideLabel: 'Cuts',
+    entryCents: 71,
+    drift: { cents: 6, direction: 'up' },
+    settleWhen: { kind: 'live', text: 'LIVE' },
+    closeIso: '2026-07-21T13:00:00Z',
+  },
+  {
+    pickId: 'gallery-sweat-2',
+    slug: 'world-cup-final',
+    headline: 'France win the World Cup final',
+    side: 'no',
+    sideLabel: 'No',
+    entryCents: 44,
+    drift: { cents: -9, direction: 'down' },
+    settleWhen: { kind: 'weekday', text: 'THU' },
+    closeIso: '2026-07-23T18:00:00Z',
+  },
+  {
+    pickId: 'gallery-sweat-3',
+    slug: 'election-outcome',
+    headline: 'Incumbent wins the general election',
+    side: 'yes',
+    sideLabel: 'Yes',
+    entryCents: 52,
+    drift: { cents: null, direction: 'unknown' },
+    settleWhen: { kind: 'month', text: '~NOV 2026' },
+    closeIso: '2026-11-03T23:00:00Z',
+  },
+];
+
 export default function UiGalleryPage() {
   const soon = new Date(Date.now() + 90 * 60 * 1000).toISOString();
   const past = new Date(Date.now() - 60 * 1000).toISOString();
@@ -368,6 +408,18 @@ export default function UiGalleryPage() {
       <section data-testid="gallery-share-sheet" className="space-y-3">
         <h2 className="text-muted text-sm font-semibold uppercase">ShareSheet (WS8-T2)</h2>
         <ShareSheetGalleryDemo />
+      </section>
+
+      {/* WS19-T2: the Sweat room's open-position row. Rendered on the dark stage (`bg-bg`) — the
+          drift's win/loss ink is AA-safe there and always ships a ▲/▼ glyph, so colour is never
+          the only signal (win/loss ink fails as text on cream `bg-paper`). */}
+      <section data-testid="gallery-sweatrow" className="space-y-3">
+        <h2 className="text-muted text-sm font-semibold uppercase">SweatRow (WS19-T2)</h2>
+        <div className="bg-bg rounded-md p-4">
+          {SWEAT_GALLERY_POSITIONS.map((position) => (
+            <SweatRow key={position.pickId} position={position} />
+          ))}
+        </div>
       </section>
     </main>
   );

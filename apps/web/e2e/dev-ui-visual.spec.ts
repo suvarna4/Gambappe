@@ -188,13 +188,13 @@ test.describe('SW10-T5 /dev/ui visual regression', () => {
   });
 
   // WS20-T2 (journeys-plan §5, D-J4): the same-side card state — pre-settle price edge + both
-  // post-settle framings, on the dark stage. BASELINE-TODO: `same-side-state.png` has NO committed
-  // baseline yet — this sandbox has no browser, so the baseline PNG must be regenerated from CI
-  // (the main session's CI-regen workflow: `playwright test e2e/dev-ui-visual.spec.ts
-  // --update-snapshots`, scoped to this file). Until then this assertion fails "missing snapshot"
-  // in CI on purpose, which is the signal to run the regen.
+  // post-settle framings, on the dark stage.
   test('SameSideState (WS20-T2)', async ({ page }) => {
     await expect(page.getByTestId('gallery-samesidestate')).toHaveScreenshot('same-side-state.png');
+  });
+
+  test('SweatRow (WS19-T2, live/weekday/month + up/down/unknown drift)', async ({ page }) => {
+    await expect(page.getByTestId('gallery-sweatrow')).toHaveScreenshot('sweatrow.png');
   });
 
   test('Stamp (all five variants)', async ({ page }) => {

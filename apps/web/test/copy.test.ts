@@ -7,6 +7,7 @@ import {
   obituaryCopy,
   shareCopy,
   stackCopy,
+  sweatCopy,
 } from '@/lib/copy';
 
 /**
@@ -42,6 +43,29 @@ describe('§10.6 pinned copy', () => {
 
   it('no copy references money words (§10.6/INV-8 review rule: bet|stake|wager|$)', () => {
     const allCopy = [CLAIM_PUBLICNESS_STATEMENT, ...Object.values(CLAIM_NUDGE_COPY)].join(' ');
+    expect(allCopy).not.toMatch(/\bbet\b|\bstake\b|\bwager\b|\$/i);
+  });
+});
+
+/** WS19-T2 (journeys-plan §5) · the sweat/settle copy block — same INV-8 money-word rule. Drift
+ * and entry are implied-probability cents ("¢"), never a stake or a dollar amount. */
+describe('WS19-T2 sweat/settle copy', () => {
+  it('quotes entry + drift in cents, never dollars (INV-8)', () => {
+    expect(sweatCopy.entryAt('Yes', 63)).toBe('Yes @ 63¢');
+    expect(sweatCopy.driftUp(4)).toBe('▲ 4¢');
+    expect(sweatCopy.driftDown(7)).toBe('▼ 7¢');
+    expect(sweatCopy.settledAt('4:00 PM PT')).toBe('SETTLED 4:00 PM PT');
+  });
+
+  it('no copy references money words (§10.6/INV-8 review rule: bet|stake|wager|$)', () => {
+    const allCopy = [
+      sweatCopy.entryAt('Cuts', 71),
+      sweatCopy.driftUp(3),
+      sweatCopy.driftDown(3),
+      sweatCopy.settlesWhenSub('4:00 PM PT'),
+      sweatCopy.settledAt('4:00 PM PT'),
+      ...Object.values(sweatCopy).filter((v: unknown): v is string => typeof v === 'string'),
+    ].join(' ');
     expect(allCopy).not.toMatch(/\bbet\b|\bstake\b|\bwager\b|\$/i);
   });
 });

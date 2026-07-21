@@ -398,6 +398,43 @@ export function buildObituaryFacts(
   return facts;
 }
 
+/**
+ * WS19-T2 (journeys-plan §5, seam 2 — the sweat/settle copy block, owned here): the Sweat room
+ * (`/sweat`, open positions by settle-time, D-J3) plus the settle-on-resolution presentation on
+ * the question page (locked → "settles when it settles", revealed → "SETTLED {time}"). No money
+ * words (INV-8): drift and entry are quoted in implied-probability cents ("¢"), never a stake or
+ * a dollar amount. The `copy.test.ts` money-word scan covers this whole object.
+ */
+export const sweatCopy = {
+  /** Page heading + the room's mono eyebrow. */
+  heading: 'The sweat',
+  eyebrow: 'OPEN POSITIONS',
+  /** Sub-line under the heading — plain framing of what the room is. */
+  intro: 'Everything you have riding, soonest to settle first.',
+  /** Empty state (no pending picks): affectionate nudge back to the stack. */
+  emptyTitle: 'Nothing riding right now.',
+  emptyBody: 'No open calls. Head back to the stack and make some.',
+  emptyCta: 'Back to the stack',
+
+  /** SweatRow · the held side + its stamped entry price ("YES @ 63¢"). */
+  entryAt: (sideLabel: string, cents: number) => `${sideLabel} @ ${cents}¢`,
+  /** SweatRow · signed price drift of the held side since entry; glyph pairs with the sign so
+   * colour is never the only signal (§10.4). `flat`/`unknown` stay neutral. */
+  driftUp: (cents: number) => `▲ ${cents}¢`,
+  driftDown: (cents: number) => `▼ ${cents}¢`,
+  driftFlat: '— even',
+  driftUnknown: '—',
+  /** SweatRow · the settle-when column caption. */
+  settleWhenCaption: 'Settles',
+
+  /** Question-page locked state (D-J3): replaces the reveal countdown. `{time}` is the target
+   * settle instant, rendered by the shared clock formatter. */
+  settlesWhenItSettles: 'SETTLES WHEN IT SETTLES',
+  settlesWhenSub: (time: string) => `Whenever the venue calls it — around ${time}.`,
+  /** Question-page settled (revealed) state header (D-J3): stamped with the real settle time. */
+  settledAt: (time: string) => `SETTLED ${time}`,
+} as const;
+
 export const shareCopy = {
   shareButtonLabel: 'Share your receipt',
   sheetHeading: 'Share this',

@@ -4,12 +4,11 @@ import {
   CountdownTicker,
   CrowdBar,
   PriceTag,
-  RevealHush,
   Stamp,
   TicketCard,
   sideAxisPair,
 } from '@receipts/ui';
-import { copy, hushCopy } from '@/lib/copy';
+import { copy, sweatCopy } from '@/lib/copy';
 import { formatClock } from '@/lib/format-et';
 import { DeckStage } from './DeckStage';
 import { DeckStates } from './DeckStates';
@@ -120,40 +119,46 @@ export function QuestionStateView({
           )}
 
           {question.status === 'locked' && (
-            <RevealHush
-              targetIso={question.reveal_at}
-              serverOffsetMs={serverOffsetMs}
-              // §2.6 F1: "already derivable from the reveal/percentile cache" — reusing the same
-              // crowd totals CrowdBar renders just below rather than adding a new field/endpoint.
-              // Formatted to a string here (not passed as a function) because `RevealHush` is a
-              // Client Component and this is a Server Component — functions can't cross that
-              // boundary as props.
-              roomCountText={
-                question.crowd ? hushCopy.roomCount(question.crowd.yes + question.crowd.no) : undefined
-              }
-              frozenLabel={hushCopy.frozenChip}
-            >
-              <div className="space-y-3" data-testid="question-locked">
-                {question.crowd ? (
-                  <CrowdBar
-                    yesCount={question.crowd.yes}
-                    noCount={question.crowd.no}
-                    yesLabel={question.yes_label}
-                    noLabel={question.no_label}
-                    surface="paper"
-                  />
-                ) : null}
-                <CountdownTicker
-                  targetIso={question.reveal_at}
-                  serverOffsetMs={serverOffsetMs}
-                  label={copy.question.revealInLabel}
-                />
+            // WS19-T2 (D-J3): settlement follows the venue, not a synchronized clock reveal — so
+            // the old countdown-to-reveal (and its T-10s hush ceremony) is replaced by a static
+            // "settles when it settles" line plus the lock-snapshot crowd (public at lock, §9.3).
+            // Viewer-free, so the ISR page stays INV-10-clean; `reveal_at` is the target settle
+            // instant rendered by the shared display-zone clock.
+            <div className="space-y-3" data-testid="question-locked">
+              <div data-testid="settle-when" className="space-y-1">
+                <p className="font-mono text-sm font-semibold tracking-wide uppercase">
+                  {sweatCopy.settlesWhenItSettles}
+                </p>
+                <p className="text-muted text-xs">
+                  {sweatCopy.settlesWhenSub(formatClock(question.reveal_at))}
+                </p>
               </div>
-            </RevealHush>
+              {question.crowd ? (
+                <CrowdBar
+                  yesCount={question.crowd.yes}
+                  noCount={question.crowd.no}
+                  yesLabel={question.yes_label}
+                  noLabel={question.no_label}
+                  surface="paper"
+                />
+              ) : null}
+            </div>
           )}
 
           {question.status === 'revealed' && (
             <div className="space-y-3" data-testid="question-revealed">
+              {/* WS19-T2 (D-J3): the settled header stamps the REAL settle time (`revealed_at`,
+                  set when the venue market resolved), replacing the "come back at reveal" framing.
+                  The reveal choreography (the stamp slam below) is unchanged — it just plays
+                  whenever the page first shows this settled state. */}
+              {question.revealed_at ? (
+                <p
+                  data-testid="settled-at"
+                  className="text-muted font-mono text-xs font-semibold tracking-wide uppercase"
+                >
+                  {sweatCopy.settledAt(formatClock(question.revealed_at))}
+                </p>
+              ) : null}
               {question.crowd ? (
                 <CrowdBar
                   yesCount={question.crowd.yes}

@@ -43,4 +43,10 @@ test('WS7-T1 design system gallery renders every component state', async ({ page
   await expect(streaks).toContainText('❄️');
 
   await expect(page.getByTestId('gallery-barcode')).toContainText('/q/2026-07-19-world-cup-final');
+
+  // WS19-T2: the SweatRow tile renders its sample positions with settle-when labels + drift.
+  const sweat = page.getByTestId('gallery-sweatrow');
+  await expect(sweat).toContainText('LIVE');
+  await expect(sweat).toContainText('~NOV 2026');
+  await expect(sweat.getByTestId('sweat-row').first()).toBeVisible();
 });

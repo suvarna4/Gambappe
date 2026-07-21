@@ -39,7 +39,7 @@ test.afterAll(async () => {
 /** The rooms in bar order, each with the route `SHELL_ROUTES` currently sends it to. */
 const ROOMS = [
   { key: 'stack', href: '/' },
-  { key: 'sweat', href: '/q' },
+  { key: 'sweat', href: '/sweat' },
   { key: 'rivals', href: '/nemesis' },
   { key: 'crowd', href: '/q' },
   { key: 'you', href: '/settings' },

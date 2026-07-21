@@ -27,10 +27,11 @@ import { SHELL_ROUTES, TabBar, resolveActiveTab } from '@/components/shell/TabBa
 const ROOMS = ['stack', 'sweat', 'rivals', 'crowd', 'you'] as const;
 
 describe('SHELL_ROUTES (seam 5)', () => {
-  it('points each room at today’s existing route until WS19/WS22 build them', () => {
+  it('points each room at its live destination (WS19-T2 flipped /sweat to its real room)', () => {
     expect(SHELL_ROUTES).toEqual({
       '/': '/',
-      '/sweat': '/q',
+      // WS19-T2 · Sweat now points at its own route; the other unbuilt rooms still alias today's.
+      '/sweat': '/sweat',
       '/rivals': '/nemesis',
       '/crowd': '/q',
       '/you': '/settings',
@@ -72,7 +73,7 @@ describe('TabBar', () => {
     // hrefs come from SHELL_ROUTES, not the canonical room paths (anchor carries both attrs).
     expect(html).toMatch(/href="\/nemesis"[^>]*data-testid="tab-rivals"/);
     expect(html).toMatch(/href="\/settings"[^>]*data-testid="tab-you"/);
-    expect(html).toMatch(/href="\/q"[^>]*data-testid="tab-sweat"/);
+    expect(html).toMatch(/href="\/sweat"[^>]*data-testid="tab-sweat"/);
     expect(html).toMatch(/href="\/"[^>]*data-testid="tab-stack"/);
     // the five rooms and nothing else (excluding the `tab-bar` nav itself).
     expect((html.match(/data-testid="tab-(?:stack|sweat|rivals|crowd|you)"/g) ?? []).length).toBe(
