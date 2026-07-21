@@ -68,8 +68,11 @@ function loserOpacity(outcome: VerdictOutcome): { viewer: string; opponent: stri
  * changes color by winner either, `.tug .ty`/`.tug .tn` are plain fixed yes/no colors). The
  * center badge keeps the real score (`4–1`), matching this exact exhibit, in the same bold
  * `font-display` face `NemesisAssignmentCard`'s "VS" badge uses (not `font-mono` — the mockup's
- * `.vbolt` inherits `.vsplit`'s display-type weight for both exhibits). Square split (no
- * `rounded-lg`), by explicit design feedback, rather than the mockup's own rounded `.vsplit`.
+ * `.vbolt` inherits `.vsplit`'s display-type weight for both exhibits).
+ *
+ * Design-diff audit (round 2): the eyebrow, split, and score-tug bar are one `rounded-lg`
+ * card (matching `NemesisAssignmentCard`'s own outer-boundary-only rounding) — corners live
+ * on the outermost edges of the whole unit, never on an inner piece independently.
  *
  * Still real-data-only: the mockup's own subtitle text for this exhibit is "3 right · edge +11"
  * — a fabricated per-day/edge stat that doesn't exist on `nemesisHistoryEntrySchema`
@@ -99,14 +102,18 @@ export function NemesisHeadToHeadBanner({
   const dim = loserOpacity(outcome);
 
   return (
-    <div dir="ltr" data-testid="head-to-head-banner" className={`space-y-2 ${className}`}>
+    <div
+      dir="ltr"
+      data-testid="head-to-head-banner"
+      className={`bg-bg overflow-hidden rounded-lg ${className}`}
+    >
       {weekStart ? (
-        <div className="flex items-center justify-between px-4 font-mono text-[10px] tracking-widest uppercase">
-          <span className="text-muted">{`Week of ${formatShortDate(weekStart)}`}</span>
-          <span className="text-gold font-semibold">Verdict</span>
+        <div className="flex items-center justify-between px-3 pt-2 font-mono text-[10px] uppercase">
+          <span className="text-paper font-semibold tracking-[0.16em]">{`Week of ${formatShortDate(weekStart)}`}</span>
+          <span className="text-gold tracking-[0.06em]">Verdict</span>
         </div>
       ) : null}
-      <div className="bg-bg relative flex h-24 overflow-hidden">
+      <div className={`relative flex h-24 overflow-hidden ${weekStart ? 'mt-2' : ''}`}>
         <div
           className={`flex min-w-0 flex-1 items-center px-4 pr-8 ${VIEWER_HALF.half} ${dim.viewer}`}
         >
@@ -132,7 +139,7 @@ export function NemesisHeadToHeadBanner({
       <div
         role="img"
         aria-label={`Score split: ${viewerHandle} ${viewerScore}, ${opponentHandle} ${opponentScore}`}
-        className="bg-surface flex h-2 w-full overflow-hidden rounded-full"
+        className="mx-3 my-3 flex h-2 overflow-hidden rounded-full bg-surface"
       >
         <span className={VIEWER_HALF.bar} style={{ width: `${viewerPct}%` }} />
         <span className={OPPONENT_HALF.bar} style={{ width: `${opponentPct}%` }} />

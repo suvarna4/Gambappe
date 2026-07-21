@@ -33,7 +33,11 @@ export interface NemesisAssignmentCardProps {
  * week-number concept anywhere), so the topbar eyebrow reuses the exact "Week of {short date}"
  * convention `lib/reveal-payload.ts`'s nemesis-flip narration already established for this same
  * mockup footer text, via `formatShortDate` (`lib/format-et.ts`) — one date-formatting
- * convention, not a hand-rolled second one.
+ * convention, not a hand-rolled second one. Emphasis follows the mockup's own `.topbar .brand`
+ * vs status-label split exactly (`docs/mockups/swipe-ux.html` lines 145-146, 817): the left
+ * (date) side is the bold/bright one (`text-paper font-semibold tracking-[0.16em]`, standing in
+ * for the mockup's `--cream`), the right (status) side is dimmer and tighter-tracked (`text-gold
+ * tracking-[0.06em]`, no bold) — not the other way around.
  *
  * Complete literal Tailwind class strings throughout (never `` `bg-${x}` `` concatenation) — see
  * `NemesisHeadToHeadBanner`'s header for why a dynamically-assembled class string gets silently
@@ -50,9 +54,9 @@ export function NemesisAssignmentCard({
       data-testid="nemesis-assignment-card"
       className={`bg-bg overflow-hidden rounded-lg shadow-[0_14px_34px_rgba(0,0,0,0.35)] ${className}`}
     >
-      <div className="flex items-center justify-between px-4 pt-3 font-mono text-[10px] tracking-widest uppercase">
-        <span className="text-muted">{`Week of ${formatShortDate(weekStart)}`}</span>
-        <span className="text-gold font-semibold">
+      <div className="flex items-center justify-between px-3 pt-2 font-mono text-[10px] uppercase">
+        <span className="text-paper font-semibold tracking-[0.16em]">{`Week of ${formatShortDate(weekStart)}`}</span>
+        <span className="text-gold tracking-[0.06em]">
           {isRematch ? 'Rematch day' : 'Assignment day'}
         </span>
       </div>

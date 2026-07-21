@@ -139,7 +139,11 @@ export default async function NemesisHomePage() {
 
   return (
     <main className="mx-auto max-w-xl space-y-8 px-6 py-10">
-      <h1 className="text-2xl font-bold">Your nemesis</h1>
+      {/* The mockup has no page-chrome heading of its own (it's a phone-frame exhibit, not a
+          real page) — this uses the same bold condensed `font-display` treatment the exhibits
+          below it use (VS badges, VerdictCard's "YOU TOOK THE WEEK"), not the generic
+          `text-2xl font-bold` sans heading every other page in this app defaults to. */}
+      <h1 className="font-display text-3xl leading-none font-bold uppercase">Your nemesis</h1>
 
       {pageState.kind === 'assignment' && pairing && opponentSide ? (
         <div data-testid="nemesis-assignment-state">
