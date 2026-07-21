@@ -670,3 +670,23 @@ export const calloutsCopy = {
   rematchAcceptedLine: "Rematch on — you're paired starting next week",
   rematchError: 'Could not request the rematch — try again.',
 } as const;
+
+/**
+ * WS22-T1 · `/you`, the signed-in record-first room (journeys plan D-J7 / §5). New owner block —
+ * no existing profile string fit the room's own chrome (the reused stat components carry their own
+ * labels). Neutral, no money words (INV-8), no gold ask (D-J8 — the ghost save row is WS21-T2's).
+ */
+export const youCopy = {
+  /** Claimed heading — the record is theirs and saved. */
+  heading: 'Your record',
+  /** Ghost/forming heading — the record exists on this device but isn't saved yet. */
+  ghostHeading: 'Your record so far',
+  /** Ghost subtext under the forming placeholders. No CTA here — the save row (WS21-T2) owns the ask. */
+  ghostForming: 'Your streak, accuracy, and edge are forming as you pick. Save to keep them.',
+  /** Ghost prompt above the topic-follow chips. */
+  followTopics: 'Follow topics to shape your stack',
+  /** Link out to the public-facing profile. */
+  publicProfileLink: 'View public profile',
+  /** Link to account settings. */
+  settingsLink: 'Settings',
+} as const;

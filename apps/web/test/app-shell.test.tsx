@@ -34,7 +34,7 @@ describe('SHELL_ROUTES (seam 5)', () => {
       '/sweat': '/sweat',
       '/rivals': '/nemesis',
       '/crowd': '/q',
-      '/you': '/settings',
+      '/you': '/you', // WS22-T1 flipped this entry (seam 5) — the record room is built.
     });
   });
 });
@@ -72,8 +72,8 @@ describe('TabBar', () => {
     }
     // hrefs come from SHELL_ROUTES, not the canonical room paths (anchor carries both attrs).
     expect(html).toMatch(/href="\/nemesis"[^>]*data-testid="tab-rivals"/);
-    expect(html).toMatch(/href="\/settings"[^>]*data-testid="tab-you"/);
-    expect(html).toMatch(/href="\/sweat"[^>]*data-testid="tab-sweat"/);
+    expect(html).toMatch(/href="\/you"[^>]*data-testid="tab-you"/); // WS22-T1 flip (seam 5)
+    expect(html).toMatch(/href="\/sweat"[^>]*data-testid="tab-sweat"/); // WS19-T2 flip
     expect(html).toMatch(/href="\/"[^>]*data-testid="tab-stack"/);
     // the five rooms and nothing else (excluding the `tab-bar` nav itself).
     expect((html.match(/data-testid="tab-(?:stack|sweat|rivals|crowd|you)"/g) ?? []).length).toBe(

@@ -18,7 +18,7 @@ export const SHELL_ROUTES = {
   '/sweat': '/sweat', // WS19-T2 · flipped to the real open-positions room
   '/rivals': '/nemesis', // WS17-T2 flips → '/rivals'
   '/crowd': '/q', // WS22-T2 flips → '/crowd'
-  '/you': '/settings', // WS22-T1 flips → '/you'
+  '/you': '/you', // WS22-T1 flipped → '/you' (record-first room, D-J7)
 } as const;
 
 export type ShellRoute = keyof typeof SHELL_ROUTES;

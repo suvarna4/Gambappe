@@ -21,8 +21,11 @@ import type { Metadata } from 'next';
 import { PRODUCT_NAME } from '@receipts/core';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Barcode, PriceTag, Stamp, StreakFlame, TicketCard } from '@receipts/ui';
+import { Barcode, PriceTag, Stamp, TicketCard } from '@receipts/ui';
 import { GraveyardShelf } from '@/components/GraveyardShelf';
+import { ProfileHeaderStats } from '@/components/profile/ProfileHeaderStats';
+import { ProfileStatGrid } from '@/components/profile/ProfileStatGrid';
+import { topPercentDisplay } from '@/components/profile/format';
 import { getDb } from '@/lib/stores';
 import { getProfilePageModel, getProfilePublicView, toPickPublic } from '@/lib/profile-page';
 import type { ProfilePublic } from '@/lib/profile-page';
@@ -44,11 +47,6 @@ interface PageProps {
 
 function appUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
-}
-
-/** §8.6 display convention: "Top X%" where X = 100 − percentile, min display "Top 1%". */
-function topPercentDisplay(percentile: number): string {
-  return `Top ${Math.max(1, Math.round(100 - percentile))}%`;
 }
 
 /** One-line public record summary (§10.5 og:description convention) from whatever the public
@@ -118,53 +116,23 @@ export default async function ProfilePage({ params, searchParams }: PageProps) {
     <main className="mx-auto max-w-2xl space-y-8 px-4 py-10">
       <header className="space-y-3">
         <h1 className="text-2xl font-bold">{profile.handle}</h1>
-        <div className="flex flex-wrap items-center gap-4">
-          <StreakFlame
-            count={profile.currentStreak}
-            frozen={profile.currentStreak === 0 && profile.freezeBank > 0}
-          />
-          {stats.rating?.accuracy_percentile != null && (
-            <span className="text-muted font-mono text-sm">
-              {topPercentDisplay(stats.rating.accuracy_percentile)} accuracy
-            </span>
-          )}
-          {stats.wallet?.verified && <span className="text-muted text-sm">verified wallet</span>}
-        </div>
+        <ProfileHeaderStats
+          currentStreak={profile.currentStreak}
+          freezeBank={profile.freezeBank}
+          accuracyPercentile={stats.rating?.accuracy_percentile ?? null}
+          walletVerified={stats.wallet?.verified ?? false}
+        />
       </header>
 
-      <TicketCard>
-        <dl className="grid grid-cols-2 gap-4 font-mono text-sm sm:grid-cols-4">
-          <div>
-            <dt className="text-muted text-xs uppercase">Streak</dt>
-            <dd>
-              {profile.currentStreak}{' '}
-              <span className="text-muted">(best {profile.bestStreak})</span>
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted text-xs uppercase">Win streak</dt>
-            <dd>
-              {profile.currentWinStreak}{' '}
-              <span className="text-muted">(best {profile.bestWinStreak})</span>
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted text-xs uppercase">Rating</dt>
-            <dd>{stats.rating ? Math.round(stats.rating.glicko_rating) : '—'}</dd>
-          </div>
-          <div>
-            <dt className="text-muted text-xs uppercase">Nemesis record</dt>
-            <dd>
-              {stats.nemesisSummary.wins}-{stats.nemesisSummary.losses}-{stats.nemesisSummary.draws}
-            </dd>
-          </div>
-        </dl>
-        {stats.badges.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {stats.badges.includes('called_it') && <Stamp variant="called_it" />}
-          </div>
-        )}
-      </TicketCard>
+      <ProfileStatGrid
+        currentStreak={profile.currentStreak}
+        bestStreak={profile.bestStreak}
+        currentWinStreak={profile.currentWinStreak}
+        bestWinStreak={profile.bestWinStreak}
+        rating={stats.rating ? stats.rating.glicko_rating : null}
+        nemesis={stats.nemesisSummary}
+        badges={stats.badges}
+      />
 
       {/* SW9-T3: the graveyard shelf (swipe-ux-plan §2.7 P3), fed by the lengths-only
           `ProfilePublic.graveyard` block. Rendered ONLY when the block exists — an empty
