@@ -131,7 +131,7 @@ describe('NemesisHeadToHeadBanner', () => {
         dayResults={['win', 'loss', 'neutral', 'pending', 'win']}
       />,
     );
-    expect(withDots.match(/rounded-full border-\[1\.5px\]/g)?.length).toBe(5);
+    expect(withDots.match(/rounded-full border-2/g)?.length).toBe(5);
 
     const withoutDots = renderToStaticMarkup(
       <NemesisHeadToHeadBanner
@@ -142,6 +142,6 @@ describe('NemesisHeadToHeadBanner', () => {
         outcome="won"
       />,
     );
-    expect(withoutDots).not.toContain('rounded-full border-[1.5px]');
+    expect(withoutDots).not.toContain('rounded-full border-2');
   });
 });

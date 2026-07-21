@@ -114,12 +114,19 @@ const DOT: Record<DayResult, string> = {
  * to primary content — so the strip has no trailing label here, just "DAYS" + the dots.
  *
  * Design-diff audit (round 3): the eyebrow's padding now matches the mockup's own `.topbar
- * {padding:8px 14px 4px}` exactly (`px-[14px] pt-2 pb-1`, was `px-3` with no vertical padding at
- * all). The caller (`app/nemesis/page.tsx`) now filters `dayResults` to `kind === 'daily'`
- * before computing it — this strip was briefly rendering 6 dots instead of 5, because
- * `deriveDayResults` deliberately INCLUDES the nemesis_bonus row (it counts toward the real
- * score) — a calendar-day strip and a scored-row list aren't the same thing, even though they
- * share a data source.
+ * {padding:8px 14px 4px}` proportionally (not literally — see round 4 below). The caller
+ * (`app/nemesis/page.tsx`) now derives `dayResults` via `deriveWeekDayResults`, always exactly
+ * `NEMESIS_SHARED_WEEK_DAYS` (7) entries keyed by calendar date — this strip was briefly
+ * rendering a different dot count than `NemesisAssignmentCard`'s own "THE WEEK" strip, because
+ * the old row-order-based derivation could under- or over-count depending on which real
+ * scoreboard rows an environment happened to have.
+ *
+ * Design-diff audit (round 4): every measurement here is the mockup's own px value scaled ×1.4,
+ * not copied literally — see `NemesisAssignmentCard`'s own round-4 note for why (this app's real
+ * mobile content column, ≈340-350px, is meaningfully wider than the mockup's 250px demo phone
+ * screen; copying its pixel values 1:1 reproduces the LAYOUT at roughly 70% of its actual
+ * physical size). `em`-based letter-spacing and percentage widths are already scale-invariant
+ * and stay as-is.
  *
  * Pure/presentational — mounted directly above `RematchPanel` for the promoted `verdict` state
  * on `/nemesis` (`app/nemesis/page.tsx`), the only remaining caller now that the plain lifetime
@@ -145,30 +152,30 @@ export function NemesisHeadToHeadBanner({
   return (
     <div dir="ltr" data-testid="head-to-head-banner" className={`space-y-2 ${className}`}>
       {weekStart ? (
-        <div className="flex items-center justify-between px-[14px] pt-2 pb-1 font-mono text-[9.5px] uppercase">
+        <div className="flex items-center justify-between px-5 pt-[11px] pb-[6px] font-mono text-[13px] uppercase">
           <span className="text-paper font-semibold tracking-[0.16em]">{`Week of ${formatShortDate(weekStart)}`}</span>
           <span className="text-gold tracking-[0.06em]">Verdict</span>
         </div>
       ) : null}
-      <div className="bg-bg relative mx-3 mt-2 flex h-[78px] overflow-hidden rounded-[10px]">
+      <div className="bg-bg relative mx-[17px] mt-[11px] flex h-[109px] overflow-hidden rounded-[14px]">
         <div
-          className={`flex min-w-0 flex-1 items-center px-4 pr-8 ${VIEWER_HALF.half} ${dim.viewer}`}
+          className={`flex min-w-0 flex-1 items-center px-5 pr-[45px] ${VIEWER_HALF.half} ${dim.viewer}`}
         >
-          <span className="font-display min-w-0 truncate text-lg leading-none font-bold uppercase">
+          <span className="font-display min-w-0 truncate text-2xl leading-none font-bold uppercase">
             {viewerHandle}
           </span>
         </div>
         <div
           aria-hidden="true"
-          className="bg-paper text-ink absolute top-0 left-1/2 flex h-full w-[34px] -translate-x-1/2 items-center justify-center font-display text-[12px] font-bold"
+          className="bg-paper text-ink absolute top-0 left-1/2 flex h-full w-[48px] -translate-x-1/2 items-center justify-center font-display text-[17px] font-bold"
           style={{ clipPath: 'polygon(28% 0, 100% 0, 72% 100%, 0 100%)' }}
         >
           {viewerScore}–{opponentScore}
         </div>
         <div
-          className={`flex min-w-0 flex-1 items-center justify-end px-4 pl-8 text-right ${OPPONENT_HALF.half} ${dim.opponent}`}
+          className={`flex min-w-0 flex-1 items-center justify-end pr-5 pl-[45px] text-right ${OPPONENT_HALF.half} ${dim.opponent}`}
         >
-          <span className="font-display min-w-0 truncate text-lg leading-none font-bold uppercase">
+          <span className="font-display min-w-0 truncate text-2xl leading-none font-bold uppercase">
             {opponentHandle}
           </span>
         </div>
@@ -176,7 +183,7 @@ export function NemesisHeadToHeadBanner({
       <div
         role="img"
         aria-label={`Score split: ${viewerHandle} ${viewerScore}, ${opponentHandle} ${opponentScore}`}
-        className="bg-surface mx-3 flex h-[13px] overflow-hidden rounded-[4px]"
+        className="bg-surface mx-[17px] flex h-[18px] overflow-hidden rounded-[6px]"
       >
         <span className={VIEWER_HALF.bar} style={{ width: `${viewerPct}%` }} />
         <span className={OPPONENT_HALF.bar} style={{ width: `${opponentPct}%` }} />
@@ -185,11 +192,11 @@ export function NemesisHeadToHeadBanner({
         <div
           dir="ltr"
           aria-hidden="true"
-          className="text-muted flex items-center gap-[5px] px-3 font-mono text-[8px] uppercase"
+          className="text-muted flex items-center gap-[7px] px-5 font-mono text-[11px] uppercase"
         >
           <span>Days</span>
           {dayResults.map((r, i) => (
-            <span key={i} className={`h-[11px] w-[11px] rounded-full border-[1.5px] ${DOT[r]}`} />
+            <span key={i} className={`h-[15px] w-[15px] rounded-full border-2 ${DOT[r]}`} />
           ))}
         </div>
       ) : null}

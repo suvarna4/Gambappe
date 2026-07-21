@@ -59,18 +59,18 @@ function OutcomeStamp({ outcome, className }: { outcome: VerdictOutcome; classNa
 
 /** Radial-dot "ticket perforation" strip (design-diff audit: `docs/mockups/swipe-ux.html`'s
  * `.perf` — `background-image:radial-gradient(circle at center,var(--ink) 40%,transparent 46%);
- * background-size:10px 10px`). Punches through to this app's own page background (`bg-bg`
- * `#0B0B0D`, the same token the mockup's `--ink` stands in for) so the holes read as real cut-outs
- * regardless of what's actually behind the card. Bleeds edge-to-edge via a negative margin that
- * exactly cancels the card's own 15px horizontal padding, inset from the card's own top/bottom
- * edge by the exact mockup values too (`margin-top:-8px` against 16px top padding = 8px inset;
- * `margin-bottom:-5px` against 13px bottom padding = 8px inset — same visual result, different
- * numbers, because the mockup's own top/bottom padding aren't equal either). */
+ * background-size:10px 10px`, scaled ×1.4 — see this file's own round-4 header note). Punches
+ * through to this app's own page background (`bg-bg` `#0B0B0D`, the same token the mockup's
+ * `--ink` stands in for) so the holes read as real cut-outs regardless of what's actually behind
+ * the card. Bleeds edge-to-edge via a negative margin that exactly cancels the card's own
+ * horizontal padding, inset from the card's own top/bottom edge by the scaled mockup values too
+ * (top and bottom insets land at the same ≈11px net regardless, because the mockup's own
+ * top/bottom padding aren't equal either — 22-11=11, 18-7=11). */
 function Perforation({ edge }: { edge: 'top' | 'bottom' }) {
   return (
     <div
       aria-hidden="true"
-      className={`-mx-[15px] h-[5px] shrink-0 bg-[radial-gradient(circle_at_center,#0B0B0D_40%,transparent_46%)] bg-center [background-size:10px_10px] ${edge === 'top' ? '-mt-2' : '-mb-[5px]'}`}
+      className={`-mx-[21px] h-[7px] shrink-0 bg-[radial-gradient(circle_at_center,#0B0B0D_40%,transparent_46%)] bg-center [background-size:14px_14px] ${edge === 'top' ? '-mt-[11px]' : '-mb-[7px]'}`}
     />
   );
 }
@@ -103,13 +103,23 @@ function Perforation({ edge }: { edge: 'top' | 'bottom' }) {
  * strip below its score-tug bar — the mockup's `.dots` row sits between `.tug` and the loser's
  * card, never inside it.
  *
- * Design-diff audit (round 3): the card face is now `max-w-[80%] mx-auto` — the mockup's own
- * loser's card is 180px inside a 250px phone screen (≈80% of the vsplit's own inset width), a
- * deliberately narrower, more compact "ticket" than the full-bleed panel an earlier pass had.
- * The action row is now a `fixed inset-x-0 bottom-0` bar (matching the mockup's own
- * `.hint{position:absolute;bottom:9px}` — anchored to the bottom of the screen, not just
- * trailing the card in normal flow) — `app/nemesis/page.tsx` reserves matching bottom space so
- * the fixed bar never covers real content.
+ * Design-diff audit (round 3): the card face is `max-w-[80%] mx-auto` — the mockup's own loser's
+ * card is 180px inside a 250px phone screen (≈80% of the vsplit's own inset width, a
+ * scale-invariant ratio — see round 4 below), a deliberately narrower, more compact "ticket"
+ * than the full-bleed panel an earlier pass had. The action row is a `fixed inset-x-0 bottom-0`
+ * bar (matching the mockup's own `.hint{position:absolute;bottom:9px}` — anchored to the bottom
+ * of the screen, not just trailing the card in normal flow) — `app/nemesis/page.tsx` reserves
+ * matching bottom space so the fixed bar never covers real content.
+ *
+ * Design-diff audit (round 4): every absolute measurement here (padding, radius, perforation,
+ * qcat/heading font-sizes) is the mockup's own px value scaled ×1.4, not copied literally — an
+ * earlier pass matched the mockup's raw pixels 1:1, which reproduces its layout at roughly 70%
+ * of its actual physical size on a real mobile content column (≈340-350px) versus the mockup's
+ * own 250px demo phone screen. Percentage widths (`max-w-[80%]`) and `em`-based tracking are
+ * already scale-invariant and stay as-is. The heading's font-size is the mockup's own
+ * EXHIBIT-SPECIFIC override for this card (15.5px, not the 22.5px base `.qh` rule — the mockup
+ * shrinks the headline for this specific loser's-card instance) scaled the same way (×1.4 ≈
+ * 22px).
  *
  * Not reproduced: the mockup's own bespoke headline for this exhibit ("Dropped 3–2. Third
  * straight week.") bakes in a losing-streak count this app doesn't track anywhere, and its body
@@ -153,7 +163,7 @@ export function VerdictCard({
         type="button"
         data-testid="verdict-new-fate"
         onClick={onNewFate}
-        className="text-muted flex min-h-11 flex-1 items-center font-mono text-[10px] font-semibold tracking-widest uppercase"
+        className="text-muted flex min-h-11 flex-1 items-center font-mono text-[13px] font-semibold tracking-widest uppercase"
       >
         ← {nemesisCopy.newFate}
       </button>
@@ -164,7 +174,7 @@ export function VerdictCard({
         type="button"
         data-testid="verdict-run-it-back"
         onClick={onRunItBack}
-        className="text-gold flex min-h-11 flex-1 items-center justify-end font-mono text-[10px] font-semibold tracking-widest uppercase"
+        className="text-gold flex min-h-11 flex-1 items-center justify-end font-mono text-[13px] font-semibold tracking-widest uppercase"
       >
         {nemesisCopy.runItBack} →
       </button>
@@ -177,18 +187,18 @@ export function VerdictCard({
         ref={dragSurfaceRef}
         data-testid="verdict-card-face"
         data-armed={dragSurfaceArmed ? 'true' : 'false'}
-        className={`bg-paper text-ink relative mx-auto flex max-w-[80%] flex-col gap-2 overflow-hidden rounded-[10px] px-[15px] pt-4 pb-[13px] shadow-[0_14px_34px_rgba(0,0,0,0.5)] [background-image:linear-gradient(rgba(20,20,20,0.028)_1px,transparent_1px)] [background-size:100%_26px] ${dragSurfaceHandlers ? 'touch-none select-none' : ''}`}
+        className={`bg-paper text-ink relative mx-auto flex max-w-[80%] flex-col gap-3 overflow-hidden rounded-[14px] px-[21px] pt-[22px] pb-[18px] shadow-[0_14px_34px_rgba(0,0,0,0.5)] [background-image:linear-gradient(rgba(20,20,20,0.028)_1px,transparent_1px)] [background-size:100%_26px] ${dragSurfaceHandlers ? 'touch-none select-none' : ''}`}
         style={dragSurfaceStyle}
         {...dragSurfaceHandlers}
       >
         <Perforation edge="top" />
 
-        <div className="text-ink/50 flex items-center justify-between font-mono text-[8.5px] tracking-[0.2em] uppercase">
+        <div className="text-ink/50 flex items-center justify-between font-mono text-xs tracking-[0.2em] uppercase">
           <span>The verdict</span>
           <span>{nemesisCopy.verdictScore(youWins, opponentWins)}</span>
         </div>
 
-        <h2 className="font-display text-2xl leading-none font-bold uppercase">{heading}</h2>
+        <h2 className="font-display text-[22px] leading-none font-bold uppercase">{heading}</h2>
 
         <p className="text-ink/70 font-mono text-[11px] leading-relaxed">{line}</p>
 
@@ -199,7 +209,7 @@ export function VerdictCard({
 
       {interactive ? (
         <div className="border-surface bg-bg fixed inset-x-0 bottom-0 z-10 border-t">
-          <div dir="ltr" className="mx-auto flex max-w-xl gap-2 px-6 py-3">
+          <div dir="ltr" className="mx-auto flex max-w-xl gap-3 px-6 py-4">
             {leftAction}
             {rightAction}
           </div>

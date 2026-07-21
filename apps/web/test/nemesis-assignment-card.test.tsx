@@ -65,13 +65,13 @@ describe('NemesisAssignmentCard', () => {
 
   it('renders one empty dot per shared day, real (not fabricated) bonus flag included', () => {
     const html = renderToStaticMarkup(<NemesisAssignmentCard {...BASE} sharedDayCount={5} hasBonusQuestion />);
-    expect(html.match(/rounded-full border-\[1\.5px\]/g)?.length).toBe(5);
+    expect(html.match(/rounded-full border-2/g)?.length).toBe(5);
     expect(html.toLowerCase()).toContain('bonus');
   });
 
   it('renders no day strip, and no bonus flag, when sharedDayCount is zero', () => {
     const html = renderToStaticMarkup(<NemesisAssignmentCard {...BASE} sharedDayCount={0} hasBonusQuestion />);
-    expect(html).not.toContain('rounded-full border-[1.5px]');
+    expect(html).not.toContain('rounded-full border-2');
     expect(html.toLowerCase()).not.toContain('bonus');
   });
 });

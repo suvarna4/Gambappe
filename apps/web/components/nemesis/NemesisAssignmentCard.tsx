@@ -37,11 +37,12 @@ export interface NemesisAssignmentCardProps {
  *      BEFORE any picks land, so there's nothing to score yet (the verdict exhibit's "4–1" badge
  *      is a later moment in the same week).
  *   2. Neither half dims — there's no winner/loser yet either.
- *   3. The badge is 15px (the mockup's `.vbolt` base rule, unoverridden here) — the verdict
- *      exhibit's own badge shrinks to 12px instead, an inversion an earlier pass had backwards.
- * The split itself is inset 12px from the card edges with `rounded-[10px]` corners
- * (`.vsplit{margin:8px 12px 0;border-radius:10px}`), not flush/square — a structural detail an
- * earlier pass dropped.
+ *   3. The badge text is the mockup's `.vbolt` base rule scaled (15px × 1.4 ≈ 21px), unoverridden
+ *      here — the verdict exhibit's own badge shrinks to 12px (×1.4 ≈ 17px) instead, an inversion
+ *      an earlier pass had backwards.
+ * The split itself is inset from the card edges with rounded corners
+ * (`.vsplit{margin:8px 12px 0;border-radius:10px}`, scaled), not flush/square — a structural
+ * detail an earlier pass dropped.
  *
  * No fictional "WEEK 30"-style number: this codebase tracks only `week_start` dates (no
  * week-number concept anywhere), so the topbar eyebrow reuses the exact "Week of {short date}"
@@ -62,14 +63,22 @@ export interface NemesisAssignmentCardProps {
  * gold rather than the generic yes-color well, matching this app's own convention of reserving
  * gold for ritual/CTA moments.
  *
- * Design-diff audit (round 3): the topbar's padding now matches the mockup's own `.topbar
- * {padding:8px 14px 4px}` exactly (`px-[14px] pt-2 pb-1`, was `px-3 pt-2` with no bottom
- * padding) — the mockup's own vsplit margin (12px) is genuinely 2px narrower than its topbar
- * padding (14px), so this small horizontal mismatch between the eyebrow text and the split
- * below it is faithful, not an oversight. The "THE WEEK" day-count strip (`sharedDayCount` empty
- * dots, `hasBonusQuestion` real bonus flag) now renders too — an earlier pass skipped it as
- * needing data this app doesn't model, which turned out to be wrong: the pairing's scoreboard
- * already carries every shared question the moment it's assigned.
+ * Design-diff audit (round 3): the topbar's padding matches the mockup's own `.topbar
+ * {padding:8px 14px 4px}` proportionally (not literally — see round 4 below). The "THE WEEK"
+ * day-count strip (`sharedDayCount` empty dots, `hasBonusQuestion` real bonus flag) now renders
+ * too — an earlier pass skipped it as needing data this app doesn't model, which turned out to
+ * be wrong: the pairing's scoreboard already carries every shared question the moment it's
+ * assigned.
+ *
+ * Design-diff audit (round 4): every measurement here is the mockup's own px value scaled ×1.4,
+ * not copied literally. The mockup's phone screen (`.ph .scr`) is 250px wide — a demo-frame
+ * convenience, not this app's real target — while this card renders in a real mobile content
+ * column (`max-w-xl` minus `px-6`, ≈340-350px on a typical phone). Copying the mockup's pixel
+ * values 1:1 (an earlier pass's mistake) reproduces its LAYOUT at roughly 70% of its actual
+ * physical size, since a real phone viewport is meaningfully wider than the demo frame. ×1.4
+ * (350/250) restores the mockup's own proportions — every width, height, padding, margin, and
+ * font-size below is `Math.round(mockupPx * 1.4)` — while `em`-based letter-spacing and
+ * percentage widths (already scale-invariant) are untouched.
  *
  * Not reproduced (design-diff audit, flagged rather than silently dropped): the mockup's
  * per-player style-tag subtitle ("longshot chaser · early locker") and the "THE ENGINE'S CASE
@@ -94,28 +103,28 @@ export function NemesisAssignmentCard({
       data-testid="nemesis-assignment-card"
       className={`bg-bg overflow-hidden rounded-lg shadow-[0_14px_34px_rgba(0,0,0,0.35)] ${className}`}
     >
-      <div className="flex items-center justify-between px-[14px] pt-2 pb-1 font-mono text-[9.5px] uppercase">
+      <div className="flex items-center justify-between px-5 pt-[11px] pb-[6px] font-mono text-[13px] uppercase">
         <span className="text-paper font-semibold tracking-[0.16em]">{`Week of ${formatShortDate(weekStart)}`}</span>
         <span className="text-gold tracking-[0.06em]">
           {isRematch ? 'Rematch day' : 'Assignment day'}
         </span>
       </div>
 
-      <div className="relative mx-3 mt-2 flex h-[104px] overflow-hidden rounded-[10px]">
-        <div className="flex min-w-0 flex-1 items-center bg-side-a/15 px-4">
-          <span className="font-display text-side-a min-w-0 truncate text-lg leading-none font-bold uppercase">
+      <div className="relative mx-[17px] mt-[11px] flex h-[146px] overflow-hidden rounded-[14px]">
+        <div className="flex min-w-0 flex-1 items-center bg-side-a/15 px-5">
+          <span className="font-display text-side-a min-w-0 truncate text-2xl leading-none font-bold uppercase">
             You
           </span>
         </div>
         <div
           aria-hidden="true"
-          className="bg-paper text-ink absolute top-0 left-1/2 flex h-full w-[34px] -translate-x-1/2 items-center justify-center font-display text-[15px] font-bold uppercase"
+          className="bg-paper text-ink absolute top-0 left-1/2 flex h-full w-[48px] -translate-x-1/2 items-center justify-center font-display text-[21px] font-bold uppercase"
           style={{ clipPath: 'polygon(28% 0, 100% 0, 72% 100%, 0 100%)' }}
         >
           VS
         </div>
-        <div className="flex min-w-0 flex-1 items-center justify-end bg-side-b/15 px-4 text-right">
-          <span className="font-display text-side-b min-w-0 truncate text-lg leading-none font-bold uppercase">
+        <div className="flex min-w-0 flex-1 items-center justify-end bg-side-b/15 px-5 text-right">
+          <span className="font-display text-side-b min-w-0 truncate text-2xl leading-none font-bold uppercase">
             {opponent.handle}
           </span>
         </div>
@@ -125,19 +134,19 @@ export function NemesisAssignmentCard({
         <div
           dir="ltr"
           aria-hidden="true"
-          className="text-muted mx-3 mt-1.5 flex items-center gap-[5px] font-mono text-[8px] uppercase"
+          className="text-muted mx-[17px] mt-2 flex items-center gap-[7px] font-mono text-[11px] uppercase"
         >
           <span>The week</span>
           {Array.from({ length: sharedDayCount }, (_, i) => (
-            <span key={i} className="border-muted h-[11px] w-[11px] rounded-full border-[1.5px]" />
+            <span key={i} className="border-muted h-[15px] w-[15px] rounded-full border-2" />
           ))}
           {hasBonusQuestion ? <span className="ml-auto">+1 bonus</span> : null}
         </div>
       ) : null}
 
-      <div className="space-y-2 px-4 pt-3 pb-4">
+      <div className="space-y-3 px-5 pt-4 pb-5">
         {opponent.rating ? (
-          <p className="font-mono text-sm">
+          <p className="font-mono text-base">
             {Math.round(opponent.rating.glicko_rating)}
             <span className="text-muted"> rating</span>
             {opponent.rating.accuracy_percentile !== null ? (
@@ -145,19 +154,19 @@ export function NemesisAssignmentCard({
             ) : null}
           </p>
         ) : null}
-        <p className="text-muted text-sm">
+        <p className="text-muted text-base">
           {nemesisCopy.assignmentBody(opponent.handle, isRematch)}
         </p>
-        <div className="flex gap-2 pt-1">
+        <div className="flex gap-[11px] pt-1">
           <Link
             href="/settings"
-            className="border-muted text-muted flex-1 rounded-[9px] border-[1.5px] py-2 text-center font-display text-[12.5px] font-bold tracking-[0.08em] uppercase"
+            className="border-muted text-muted flex-1 rounded-[13px] border-2 py-[11px] text-center font-display text-[18px] font-bold tracking-[0.08em] uppercase"
           >
             {nemesisCopy.pauseWeeksCta}
           </Link>
           <Link
             href="/nemesis/matchup"
-            className="border-gold text-gold flex-1 rounded-[9px] border-[1.5px] py-2 text-center font-display text-[12.5px] font-bold tracking-[0.08em] uppercase"
+            className="border-gold text-gold flex-1 rounded-[13px] border-2 py-[11px] text-center font-display text-[18px] font-bold tracking-[0.08em] uppercase"
           >
             {nemesisCopy.viewMatchupCta}
           </Link>
