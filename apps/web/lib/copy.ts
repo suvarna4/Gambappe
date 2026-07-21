@@ -12,8 +12,11 @@
  * Rules enforced in review (§10.6):
  *  - No money amounts, "bets", stake sizes, or venue balances (INV-8) — say "pick"/"call".
  *  - Mechanic names are plain words (P11): nemesis, duo, streak, freeze, receipt, called it.
- *  - The two claim-nudge strings and the publicness sentence below are PINNED VERBATIM —
+ *  - The two Save-nudge strings and the publicness sentence below are PINNED VERBATIM —
  *    do not paraphrase them (§11.3, §13.3 both point back at this file for the rendered text).
+ *    D-J8 (WS21-T1): the sign-in ask is the single word "Save"; the nudge strings were amended
+ *    off the old "claim" wording per `docs/journeys-plan.md` §5 (WS21-T1) + the owner decision
+ *    of 2026-07-21. The new text is re-pinned verbatim in `test/copy.test.ts`.
  */
 import { DAILY_OPEN_LOCAL, PAIRING_REACTION_SET, PRODUCT_NAME, SCHEDULE_TZ } from '@receipts/core';
 import { zonedTimeToUtc } from './curation';
@@ -40,50 +43,65 @@ export const CLAIM_PUBLICNESS_STATEMENT =
  * is ready" and share the fingerprint copy; only the streak trigger gets its own pinned string.
  * SPEC-GAP(WS7-T5): §10.6 doesn't say this explicitly — flagging in case a future edit adds a
  * dedicated 5th-pick string.
+ *
+ * D-J8 (WS21-T1): "Sign-in is Save." These two strings were amended off the old "claim it"/"claim
+ * your record" wording — the mechanic is unchanged, only the verb (`docs/journeys-plan.md` §5,
+ * owner decision 2026-07-21). Pinned verbatim: re-asserted in `test/copy.test.ts`, no gold on the
+ * ask (the surface that renders them stays neutral — D-J8).
  */
 export const CLAIM_NUDGE_COPY = {
-  streak: 'Your ghost has a 3-day streak. Claim it before this device loses it.',
-  fingerprint: 'Your fingerprint is ready. Claim your record to get assigned your nemesis.',
+  streak: 'Your streak lives on this device. Save it — free, ten seconds.',
+  fingerprint: 'Your fingerprint is ready. Save your record to get your nemesis.',
 } as const;
 
 export type ClaimNudgeTrigger = keyof typeof CLAIM_NUDGE_COPY;
 
-export const CLAIM_PROMPT_CTA = 'Claim your account';
+export const CLAIM_PROMPT_CTA = 'Save';
 export const CLAIM_PROMPT_DISMISS_LABEL = 'Not now';
 
 /**
- * Shared-device guard (§6.3): "You're claiming **{handle}** — {streak}-day streak, {picks}
- * picks. That you?" — the design doc gives this as an illustrative example inside §6.3's prose,
- * not a §10.6-pinned string, so it's implemented as a template here rather than copied verbatim.
+ * Shared-device guard (§6.3): the "that you?" confirm before saving a ghost's record on a
+ * possibly-shared device. The design doc gives this as an illustrative example inside §6.3's
+ * prose, not a §10.6-pinned string, so it's a template here. D-J8 (WS21-T1): amended off "claiming
+ * {handle}" — the ask is "Save", never "claim".
  */
 export function ghostConfirmationCopy(handle: string, streak: number, gradedPicks: number): string {
   const streakPart = streak > 0 ? `${streak}-day streak` : 'no streak yet';
   const picksPart = gradedPicks === 1 ? '1 pick' : `${gradedPicks} picks`;
-  return `You're claiming ${handle} — ${streakPart}, ${picksPart}. That you?`;
+  return `You're about to save ${handle} — ${streakPart}, ${picksPart}. That you?`;
 }
 
 export const CLAIM_CONFIRM_YES_LABEL = "That's me — continue";
 export const CLAIM_CONFIRM_NOT_ME_LABEL = "This isn't me";
 
-export const CLAIM_SIGNIN_HEADING = 'Claim your account';
+/**
+ * D-J8 (WS21-T1): the /claim sign-in screen, restyled as a neutral TicketFrame "SAVE YOUR RECORD"
+ * ticket (`docs/journeys-plan.md` §5). The admit bar is split into the frame's two header slots
+ * (brand left, context right); the heading + subheading carry the "nothing to buy, never costs
+ * money" reassurance. No gold anywhere on this ask.
+ */
+export const CLAIM_SIGNIN_ADMIT_LEFT = 'GAMBAPPE';
+export const CLAIM_SIGNIN_ADMIT_RIGHT = 'SAVE YOUR RECORD';
+export const CLAIM_SIGNIN_HEADING = "Nothing to buy. Just don't lose your record.";
+export const CLAIM_SIGNIN_SUBHEADING = 'Free — email, Google, or passkey. Nothing here ever costs money.';
 export const CLAIM_SIGNIN_GOOGLE_LABEL = 'Continue with Google';
 export const CLAIM_SIGNIN_X_LABEL = 'Continue with X';
 export const CLAIM_SIGNIN_EMAIL_LABEL = 'Continue with email';
 export const CLAIM_SIGNIN_EMAIL_PLACEHOLDER = 'you@example.com';
-export const CLAIM_SIGNIN_EMAIL_SUBMIT_LABEL = 'Send me a link';
+export const CLAIM_SIGNIN_EMAIL_SUBMIT_LABEL = 'Save';
 export const CLAIM_SIGNIN_EMAIL_SENT =
   "Check your email for a sign-in link. You can close this and come back once you've clicked it.";
 
 /** INV-9 (§6.2 step 0 wording: "an explicit 'I'm 18+' confirm"). */
 export const CLAIM_AGE_ATTEST_HEADING = 'One more thing';
 export const CLAIM_AGE_ATTEST_LABEL = "I'm 18 or older";
-export const CLAIM_AGE_ATTEST_SUBMIT_LABEL = 'Confirm & claim';
+export const CLAIM_AGE_ATTEST_SUBMIT_LABEL = 'Confirm & save';
 export const CLAIM_AGE_ATTEST_FOOTNOTE = `${PRODUCT_NAME} never holds money — picks are for competition, not wagers.`;
 
-export const CLAIM_SUCCESS_HEADING = "You're claimed";
+export const CLAIM_SUCCESS_HEADING = 'Saved. This record is yours now.';
 export const CLAIM_SUCCESS_CASE_B_CTA = 'Answer a few quick questions to get placed';
-export const CLAIM_ALREADY_CLAIMED = 'This account is already claimed. Nothing to do here.';
-export const CLAIM_GENERIC_ERROR = 'Something went wrong claiming your account. Try again.';
+export const CLAIM_ALREADY_CLAIMED = "You've already saved this record. Nothing to do here.";
+export const CLAIM_GENERIC_ERROR = 'Something went wrong saving your record. Try again.';
 
 export const EIGHTEEN_PLUS_FOOTER_NOTICE = `18+ only. ${PRODUCT_NAME} never holds money — picks are for competition, not wagers.`;
 

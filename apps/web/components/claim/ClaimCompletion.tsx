@@ -83,15 +83,15 @@ export default function ClaimCompletion() {
 
   if (phase === 'submitting') {
     return (
-      <div className="mx-auto w-full max-w-sm space-y-4 rounded-lg p-6" data-testid="claim-completion" data-phase={phase}>
-        <p className="text-muted text-sm">Finishing up…</p>
+      <div className="w-full space-y-4 text-ink" data-testid="claim-completion" data-phase={phase}>
+        <p className="text-ink/70 text-sm">Finishing up…</p>
       </div>
     );
   }
 
   if (phase === 'age-attest') {
     return (
-      <div className="mx-auto w-full max-w-sm space-y-4 rounded-lg p-6" data-testid="claim-completion" data-phase={phase}>
+      <div className="w-full space-y-4 text-ink" data-testid="claim-completion" data-phase={phase}>
         <h2 className="text-lg font-bold">{CLAIM_AGE_ATTEST_HEADING}</h2>
         <label className="flex items-center gap-2 text-sm">
           <input
@@ -101,12 +101,12 @@ export default function ClaimCompletion() {
           />
           {CLAIM_AGE_ATTEST_LABEL}
         </label>
-        <p className="text-muted text-xs">{CLAIM_AGE_ATTEST_FOOTNOTE}</p>
+        <p className="text-ink/70 text-xs">{CLAIM_AGE_ATTEST_FOOTNOTE}</p>
         <button
           type="button"
           disabled={!ageChecked}
           onClick={confirmAgeAndClaim}
-          className="bg-side-a rounded px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+          className="bg-ink rounded px-4 py-2 text-sm font-semibold text-paper disabled:opacity-40"
         >
           {CLAIM_AGE_ATTEST_SUBMIT_LABEL}
         </button>
@@ -116,7 +116,7 @@ export default function ClaimCompletion() {
 
   if (phase === 'error') {
     return (
-      <div className="mx-auto w-full max-w-sm space-y-4 rounded-lg p-6" data-testid="claim-completion" data-phase={phase}>
+      <div className="w-full space-y-4 text-ink" data-testid="claim-completion" data-phase={phase}>
         <p className="text-loss text-sm">{errorMessage ?? CLAIM_GENERIC_ERROR}</p>
       </div>
     );
@@ -124,7 +124,7 @@ export default function ClaimCompletion() {
 
   // phase === 'done'
   return (
-    <div className="mx-auto w-full max-w-sm space-y-4 rounded-lg p-6" data-testid="claim-completion" data-phase="done" data-case={result?.case}>
+    <div className="w-full space-y-4 text-ink" data-testid="claim-completion" data-phase="done" data-case={result?.case}>
       <h2 className="text-lg font-bold">{CLAIM_SUCCESS_HEADING}</h2>
       {result && (
         <p className="font-mono text-sm">
@@ -132,7 +132,7 @@ export default function ClaimCompletion() {
         </p>
       )}
       {result?.case === 'B' && (
-        <a href="/placement" className="bg-side-a inline-block rounded px-4 py-2 text-sm font-semibold text-white">
+        <a href="/placement" className="bg-ink inline-block rounded px-4 py-2 text-sm font-semibold text-paper">
           {CLAIM_SUCCESS_CASE_B_CTA}
         </a>
       )}
