@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-21T20:30:49.143Z",
+  "updated_at": "2026-07-21T20:30:51.455Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2119,12 +2119,12 @@
       ],
       "mock_start_ok": false,
       "note": "Spec: docs/journeys-plan.md §5 WS21-T2. Fills WS17-T1's saveChipSlot: neutral one-word 'Save' chip only when there's value to lose; triggered card uses WS21-T1 copy in neutral TicketFrame; dismissals persist; unit-assert no gold token classnames in ask components.",
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-opus-fohjki-agentR",
       "branch": null,
       "pr": null,
       "claimed_at": "2026-07-21T19:53:20.115Z",
-      "updated_at": "2026-07-21T19:53:20.115Z"
+      "updated_at": "2026-07-21T20:30:51.455Z"
     },
     "WS22-T1": {
       "title": "/you: record-first room (stats trio, topic bars, graveyard, ghost save row)",
