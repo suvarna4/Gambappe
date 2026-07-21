@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-21T10:18:41.332Z",
+  "updated_at": "2026-07-21T10:19:10.686Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2056,12 +2056,12 @@
       ],
       "mock_start_ok": true,
       "note": "Spec: docs/journeys-plan.md §5 WS20-T2. Uses SameSideRow/TapeLabel from WS16-T3; sealed rules unchanged pre-lock; pre-settle edge line + post-settle both-right/both-wrong framing; owns its copy.ts block; gallery tile + baseline.",
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-opus-fohjki-agentK",
+      "branch": "feat/ws20-t2-same-side-ui",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-21T08:22:30.580Z"
+      "claimed_at": "2026-07-21T10:19:10.686Z",
+      "updated_at": "2026-07-21T10:19:10.686Z"
     },
     "WS20-T3": {
       "title": "Call-outs API: create signed link, public preview, accept→pairing, decline, expiry",
