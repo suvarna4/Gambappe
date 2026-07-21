@@ -1,7 +1,9 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent, Ref } from 'react';
 import { sideAxisPair, Stamp } from '@receipts/ui';
+import type { SameSide } from '@receipts/core';
 import { nemesisCopy } from '@/lib/copy';
 import { DrawBadge } from './DrawBadge';
+import { SameSideState, type SameSideSettled } from './SameSideState';
 
 export type VerdictOutcome = 'won' | 'lost' | 'drew';
 
@@ -25,6 +27,15 @@ export interface VerdictCardProps {
    * nemesis history entry; this is plain score margin, which does). Powers the loser card's
    * richer line (P3). */
   scoreMargin: number;
+  /**
+   * WS20-T2 (D-J4) · The viewer-relative same-side day result, straight off the reveal payload's
+   * `viewer.nemesis_flip.same_side`. Non-null only on a same-side day — renders the SAME SIDE tape,
+   * dual stamps, edge line, and day-winner footer on the verdict face; opposite-side days leave it
+   * null and this card renders exactly as before. Viewer-scoped data only (never the ISR shell).
+   */
+  sameSide?: SameSide | null;
+  /** Objective shared-pick outcome for the same-side day above (`null` pre-settle). */
+  sameSideSettled?: SameSideSettled;
   /** The week's closing swipe (rematch-by-swipe): right = run it back, left = new fate. Omit for
    * a static/spectator card. */
   onRunItBack?: () => void;
@@ -154,6 +165,8 @@ export function VerdictCard({
   youWins,
   opponentWins,
   scoreMargin,
+  sameSide = null,
+  sameSideSettled = null,
   onRunItBack,
   onNewFate,
   className = '',
@@ -227,6 +240,18 @@ export function VerdictCard({
         <p className="text-ink/70 font-mono text-[11px] leading-relaxed">{line}</p>
 
         <OutcomeStamp outcome={outcome} className="w-fit" />
+
+        {/* WS20-T2 (D-J4): the same-side state on the verdict face — only on a same-side day
+            (non-null `sameSide`); opposite-side weeks skip it and the face stays byte-identical.
+            This is the paper card face, so `surface="paper"`. */}
+        {sameSide ? (
+          <SameSideState
+            sameSide={sameSide}
+            opponentHandle={opponentHandle}
+            settled={sameSideSettled}
+            surface="paper"
+          />
+        ) : null}
 
         <Perforation edge="bottom" />
       </div>

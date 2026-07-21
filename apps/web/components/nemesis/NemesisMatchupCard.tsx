@@ -1,5 +1,5 @@
 import { CountdownTicker, Stamp, TicketCard } from '@receipts/ui';
-import type { PairingReactionEmoji } from '@receipts/core';
+import type { PairingReactionEmoji, SameSide } from '@receipts/core';
 import { nemesisConcludeAt } from '@/lib/nemesis/clock';
 import { sideOutcome } from '@/lib/nemesis/verdict';
 import type { PairingPublic, PairingSide } from '@/lib/nemesis/types';
@@ -7,6 +7,7 @@ import { DrawBadge } from './DrawBadge';
 import { NemesisScoreboard } from './NemesisScoreboard';
 import { ReactionStamps } from './ReactionStamps';
 import { ReactionStampsPanel } from './ReactionStampsPanel';
+import { SameSideState, type SameSideSettled } from './SameSideState';
 
 export interface NemesisMatchupCardProps {
   pairing: PairingPublic;
@@ -16,6 +17,16 @@ export interface NemesisMatchupCardProps {
   viewerProfileId: string | null;
   /** §9.1 `x-server-time` clock-offset convention, threaded down to `CountdownTicker`. */
   serverOffsetMs?: number;
+  /**
+   * WS20-T2 (D-J4) · The viewer-relative same-side day result for THIS matchup's current reveal,
+   * straight off the reveal payload's `viewer.nemesis_flip.same_side`. Non-null only on a same-side
+   * day; opposite-side/solo days leave it null and this card renders exactly as before. Passed ONLY
+   * from a viewer-scoped, post-reveal context — never from the ISR/spectator shell (which passes
+   * `viewerProfileId={null}` and no `sameSide`), so the sealed opponent stays sealed pre-lock.
+   */
+  sameSide?: SameSide | null;
+  /** Objective shared-pick outcome for the same-side day above (`null` pre-settle). */
+  sameSideSettled?: SameSideSettled;
   className?: string;
 }
 
@@ -85,6 +96,8 @@ export function NemesisMatchupCard({
   sides,
   viewerProfileId,
   serverOffsetMs = 0,
+  sameSide = null,
+  sameSideSettled = null,
   className = '',
 }: NemesisMatchupCardProps) {
   const viewerSide: 'a' | 'b' | null =
@@ -93,6 +106,9 @@ export function NemesisMatchupCard({
       : viewerProfileId === pairing.b.profile_id
         ? 'b'
         : null;
+  // The rival is whichever side isn't the viewer's. `sameSide` is viewer-relative and only ever
+  // arrives with a real viewer, so `viewerSide` is set here; fall back to side b defensively.
+  const opponentHandle = viewerSide === 'a' ? sides.b.handle : sides.a.handle;
 
   return (
     <TicketCard className={className}>
@@ -124,6 +140,19 @@ export function NemesisMatchupCard({
 
       {pairing.is_rematch ? (
         <p className="text-muted mt-2 text-xs uppercase tracking-wide">Rematch</p>
+      ) : null}
+
+      {/* WS20-T2 (D-J4): the same-side state — SAME SIDE tape + dual stamps + edge line. Renders
+          only on a same-side day (non-null `sameSide`); opposite-side days skip it entirely and
+          this card's markup stays byte-identical. On this paper card, so `surface="paper"`. */}
+      {sameSide ? (
+        <SameSideState
+          sameSide={sameSide}
+          opponentHandle={opponentHandle}
+          settled={sameSideSettled}
+          surface="paper"
+          className="mt-3"
+        />
       ) : null}
 
       <div className="mt-3">
