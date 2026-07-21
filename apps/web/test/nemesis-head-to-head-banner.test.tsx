@@ -62,8 +62,8 @@ describe('NemesisHeadToHeadBanner', () => {
     );
     // Fixed by position (mockup's own scheme for this exhibit): viewer's half is always
     // side-a-tinted, opponent's is always side-b-tinted, regardless of who won.
-    expect(html).toContain('from-side-a/45');
-    expect(html).toContain('from-side-b/45');
+    expect(html).toContain('bg-side-a/20');
+    expect(html).toContain('bg-side-b/20');
     // The ONLY outcome-driven visual: the loser's whole half dialed down via opacity, the
     // winner's left untouched. Here the viewer won, so only the opponent's half carries the
     // dim class.

@@ -29,21 +29,27 @@ interface SideVisual {
 }
 
 /** Fixed by POSITION, not by outcome — this is the mockup's actual scheme for this exhibit
- * (`docs/mockups/swipe-ux.html`'s `.vsplit .a`/`.vsplit .b`: a dark navy gradient + bright
- * `--yes-hot` blue on the left, a dark maroon gradient + bright `--no-hot` orange on the right,
- * same left/right pairing regardless of who's who). Reusing this app's own `side-a`/`side-b`
- * tokens (already `#3B82F6`/`#F97316`, functionally the same "voltage" blue/orange the mockup's
- * custom `--yes-hot`/`--no-hot` values approximate) rather than inventing a third color pair —
- * one match instead of a near-miss. Complete literal Tailwind class strings throughout (never
- * `` `bg-${x}` `` template concatenation): Tailwind's compiler statically greps source files for
- * whole class names, so a dynamically-assembled string is invisible to it and gets purged from
- * the production CSS, silently rendering unstyled. */
+ * (`docs/mockups/swipe-ux.html`'s `.vsplit .a`/`.vsplit .b`: dark navy on the left, dark maroon
+ * on the right, bright `--yes-hot`/`--no-hot` text on top of each, same left/right pairing
+ * regardless of who's who). The mockup's own halves are technically a two-stop
+ * `linear-gradient`, but between two near-identical dark shades (`#12203c`→`#0e1526`,
+ * `#33190a`→`#1d1008`) — visually a flat fill, not a fade. A flat `bg-side-a/20`/`bg-side-b/20`
+ * tint (no `bg-gradient-to-*` at all) reads the same way — solid colored panel, bright text on
+ * top — without the more dramatic to-transparent glow-fade an earlier pass used (explicit
+ * design feedback: "the colored banner in the mockup doesn't use a gradient either"). Reusing
+ * this app's own `side-a`/`side-b` tokens (already `#3B82F6`/`#F97316`, functionally the same
+ * "voltage" blue/orange the mockup's custom `--yes-hot`/`--no-hot` values approximate) rather
+ * than inventing a third color pair — one match instead of a near-miss. Complete literal
+ * Tailwind class strings throughout (never `` `bg-${x}` `` template concatenation): Tailwind's
+ * compiler statically greps source files for whole class names, so a dynamically-assembled
+ * string is invisible to it and gets purged from the production CSS, silently rendering
+ * unstyled. */
 const VIEWER_HALF: SideVisual = {
-  half: 'bg-gradient-to-br from-side-a/45 via-side-a/15 to-transparent text-side-a',
+  half: 'bg-side-a/20 text-side-a',
   bar: 'bg-side-a',
 };
 const OPPONENT_HALF: SideVisual = {
-  half: 'bg-gradient-to-bl from-side-b/45 via-side-b/15 to-transparent text-side-b',
+  half: 'bg-side-b/20 text-side-b',
   bar: 'bg-side-b',
 };
 
@@ -70,9 +76,12 @@ function loserOpacity(outcome: VerdictOutcome): { viewer: string; opponent: stri
  * `font-display` face `NemesisAssignmentCard`'s "VS" badge uses (not `font-mono` — the mockup's
  * `.vbolt` inherits `.vsplit`'s display-type weight for both exhibits).
  *
- * Design-diff audit (round 2): the eyebrow, split, and score-tug bar are one `rounded-lg`
- * card (matching `NemesisAssignmentCard`'s own outer-boundary-only rounding) — corners live
- * on the outermost edges of the whole unit, never on an inner piece independently.
+ * Structure mirrors the mockup's own three independent pieces, not one wrapping card: the
+ * eyebrow is plain text with no box of its own, the split is its own `rounded-lg` rectangle
+ * (`.vsplit{border-radius:10px}`), and the score-tug bar is its own separately-rounded pill
+ * (`.tug{border-radius:4px}`) below it — each with its own corners, the way
+ * `docs/mockups/swipe-ux.html` actually lays these out (`.vsplit`/`.tug` both get their own
+ * `margin` and `border-radius`, neither sits inside a shared card).
  *
  * Still real-data-only: the mockup's own subtitle text for this exhibit is "3 right · edge +11"
  * — a fabricated per-day/edge stat that doesn't exist on `nemesisHistoryEntrySchema`
@@ -102,18 +111,14 @@ export function NemesisHeadToHeadBanner({
   const dim = loserOpacity(outcome);
 
   return (
-    <div
-      dir="ltr"
-      data-testid="head-to-head-banner"
-      className={`bg-bg overflow-hidden rounded-lg ${className}`}
-    >
+    <div dir="ltr" data-testid="head-to-head-banner" className={`space-y-2 ${className}`}>
       {weekStart ? (
-        <div className="flex items-center justify-between px-3 pt-2 font-mono text-[10px] uppercase">
+        <div className="flex items-center justify-between px-3 font-mono text-[10px] uppercase">
           <span className="text-paper font-semibold tracking-[0.16em]">{`Week of ${formatShortDate(weekStart)}`}</span>
           <span className="text-gold tracking-[0.06em]">Verdict</span>
         </div>
       ) : null}
-      <div className={`relative flex h-24 overflow-hidden ${weekStart ? 'mt-2' : ''}`}>
+      <div className="bg-bg relative flex h-24 overflow-hidden rounded-lg">
         <div
           className={`flex min-w-0 flex-1 items-center px-4 pr-8 ${VIEWER_HALF.half} ${dim.viewer}`}
         >
@@ -139,7 +144,7 @@ export function NemesisHeadToHeadBanner({
       <div
         role="img"
         aria-label={`Score split: ${viewerHandle} ${viewerScore}, ${opponentHandle} ${opponentScore}`}
-        className="mx-3 my-3 flex h-2 overflow-hidden rounded-full bg-surface"
+        className="bg-surface flex h-2 w-full overflow-hidden rounded-full"
       >
         <span className={VIEWER_HALF.bar} style={{ width: `${viewerPct}%` }} />
         <span className={OPPONENT_HALF.bar} style={{ width: `${opponentPct}%` }} />

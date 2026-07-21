@@ -19,7 +19,7 @@ export interface NemesisAssignmentCardProps {
  * plain `TicketCard` text block; this redesign gives it the mockup's actual bold header
  * treatment instead.
  *
- * Reuses the SAME diamond-clip-path badge + fixed-position side-a/side-b gradient-half
+ * Reuses the SAME diamond-clip-path badge + fixed-position side-a/side-b flat-tint-half
  * technique `NemesisHeadToHeadBanner` built for the Friday verdict exhibit (git log that file
  * for the "match the mockup's visual weight" series) — one visual language for both nemesis-week
  * "split header" moments, not two near-misses. Two differences from that banner, both real
@@ -62,7 +62,7 @@ export function NemesisAssignmentCard({
       </div>
 
       <div className="relative mt-2 flex h-24 overflow-hidden">
-        <div className="flex min-w-0 flex-1 items-center bg-gradient-to-br from-side-a/45 via-side-a/15 to-transparent px-4">
+        <div className="flex min-w-0 flex-1 items-center bg-side-a/20 px-4">
           <span className="font-display text-side-a min-w-0 truncate text-lg leading-none font-bold uppercase">
             You
           </span>
@@ -74,7 +74,7 @@ export function NemesisAssignmentCard({
         >
           VS
         </div>
-        <div className="flex min-w-0 flex-1 items-center justify-end bg-gradient-to-bl from-side-b/45 via-side-b/15 to-transparent px-4 text-right">
+        <div className="flex min-w-0 flex-1 items-center justify-end bg-side-b/20 px-4 text-right">
           <span className="font-display text-side-b min-w-0 truncate text-lg leading-none font-bold uppercase">
             {opponent.handle}
           </span>
