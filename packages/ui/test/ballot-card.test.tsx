@@ -88,6 +88,20 @@ describe('BallotCard', () => {
     expect(html).toMatch(/40%,\s*transparent 46%/); // .perf gradient falloff, not the old 42%
     expect(html).toContain('14px 14px'); // .perf background-size 10px × 1.4
   });
+
+  it('colors the whole price chip by side and sizes its lines to the mockup\'s own inherited line-height, not the app\'s default', () => {
+    const html = renderToStaticMarkup(<BallotCard {...base} />);
+    // .pt.yes{color:#1d4fa8} / .pt.no{color:#b34d0a} — the whole chip's text, not just the border.
+    expect(html).toContain('text-[#1d4fa8]');
+    expect(html).toContain('text-[#b34d0a]');
+    // Design-diff audit: mockup's html/body sets line-height:1.6 and nothing on `.pt .l`/`.pt .v`
+    // overrides it; this app's own global line-height (1.5) silently shrank the chip below the
+    // mockup's own proportions until these were pinned explicitly — read by a user as "the
+    // stamps appear to be taller [in the mockup]".
+    expect(html).toContain('leading-[1.6]');
+    // .pt .v{margin-top:1px} × 1.4.
+    expect(html).toContain('mt-[1.4px]');
+  });
 });
 
 describe('UnderCard', () => {

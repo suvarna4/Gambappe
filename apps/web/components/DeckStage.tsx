@@ -70,38 +70,56 @@ export function DeckStage({ question, viewerSlot, underLabel, streakSlot }: Deck
     >
       <DeckTopbar streakSlot={streakSlot} />
 
-      {/* Side rails — the persistent tutorial (§2.5). Static chrome; the hint arrows that fade
-          with experience live in SwipeBallot. */}
-      <div
-        aria-hidden="true"
-        data-testid="rail-against"
-        className="pointer-events-none absolute inset-y-0 left-0 flex w-9 font-mono text-[13px] tracking-[0.28em] uppercase opacity-70"
-        style={{ background: 'linear-gradient(90deg, rgba(249,115,22,0.14), transparent)' }}
-      >
-        {leftRail}
-      </div>
-      <div
-        aria-hidden="true"
-        data-testid="rail-for"
-        className="pointer-events-none absolute inset-y-0 right-0 flex w-9 justify-end font-mono text-[13px] tracking-[0.28em] uppercase opacity-70"
-        style={{ background: 'linear-gradient(-90deg, rgba(59,130,246,0.14), transparent)' }}
-      >
-        {rightRail}
-      </div>
+      {/* Design-diff audit: the "stage" (rails + card column) is its own wrapper, scoped to start
+          right where the mockup's own `.stage` does — immediately AFTER `.topbar`, never behind
+          it (`.rail-l`/`.rail-r` are `position:absolute` relative to `.stage`, not `.scr`, so the
+          mockup's rail tint never reaches the topbar row at all). An earlier pass positioned the
+          rails `absolute inset-y-0` against the WHOLE deck-stage container instead, so they
+          technically extended behind the topbar too — at 14% opacity that read as neither a clean
+          contiguous band starting right at the topbar's edge (the mockup) nor a visible bleed all
+          the way up, just an inert dead zone at the very top. Scoping rails to this wrapper (which
+          starts exactly where the topbar ends) fixes that. */}
+      <div className="relative flex flex-1 flex-col overflow-hidden">
+        {/* Side rails — the persistent tutorial (§2.5). Static chrome; the hint arrows that fade
+            with experience live in SwipeBallot. */}
+        <div
+          aria-hidden="true"
+          data-testid="rail-against"
+          className="pointer-events-none absolute inset-y-0 left-0 flex w-9 font-mono text-[13px] tracking-[0.28em] uppercase opacity-70"
+          style={{ background: 'linear-gradient(90deg, rgba(249,115,22,0.14), transparent)' }}
+        >
+          {leftRail}
+        </div>
+        <div
+          aria-hidden="true"
+          data-testid="rail-for"
+          className="pointer-events-none absolute inset-y-0 right-0 flex w-9 justify-end font-mono text-[13px] tracking-[0.28em] uppercase opacity-70"
+          style={{ background: 'linear-gradient(-90deg, rgba(59,130,246,0.14), transparent)' }}
+        >
+          {rightRail}
+        </div>
 
-      {/* The card column. The under-card peeks from behind so finishing today reveals tomorrow.
-          `justify-center` on this flex-1 column centers the (shrink-wrapped) card+wells+hints
-          block within whatever height the stage actually has — `BallotCard` sizes itself via a
-          fixed aspect ratio now (design-diff audit — see that component's header), not by
-          stretching to consume all available space, so there's deliberately real dark space left
-          around it on a stage taller than the card needs, matching the mockup's own restraint. */}
-      <div className="relative z-10 mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-9 py-8">
-        <div className="relative">
-          <UnderCard
-            label={underLabel}
-            className="absolute inset-x-3 -top-3 -z-10 scale-95 opacity-80"
-          />
-          {viewerSlot}
+        {/* The card column. `flex-1` (no `justify-center` at this level — the actual centering
+            now happens one level down, inside `viewerSlot` itself, design-diff audit) passes
+            real height down so `SwipeBallot`'s own wells row can pin to the true bottom of the
+            stage instead of just trailing wherever the card happens to end (the mockup's own
+            `.wells` sits flush against `.scr`'s bottom edge, `.stage{flex:1}` absorbing all the
+            leftover space above it) — see `SwipeBallot.tsx`'s own note for the rest of this
+            chain. No top padding here (the mockup's own `.stage` has none either — its card is
+            centered purely by `.stage`'s own `align-items:center`, no extra inset on top of that)
+            and only `pb-[17px]` at the bottom, matching the mockup's own `.wells{padding:0 14px
+            12px}` bottom inset (12px × 1.4) — an earlier pass used a uniform `py-8` here, which
+            padded the BOTTOM of the whole column on top of `.wells`'s own inset, pushing the wells
+            row well short of the true bottom edge instead of flush against it. The under-card
+            still peeks from behind so finishing today reveals tomorrow. */}
+        <div className="relative z-10 mx-auto flex w-full max-w-sm flex-1 flex-col px-9 pb-[17px]">
+          <div className="relative flex flex-1 flex-col justify-center">
+            <UnderCard
+              label={underLabel}
+              className="absolute inset-x-3 -top-3 -z-10 scale-95 opacity-80"
+            />
+            {viewerSlot}
+          </div>
         </div>
       </div>
     </div>

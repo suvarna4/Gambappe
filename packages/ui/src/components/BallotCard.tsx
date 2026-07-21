@@ -28,24 +28,42 @@ interface SidePriceProps {
 
 /**
  * One side's printed price chip. Side identity is carried by the colored border + dot (UI
- * elements, AA at 3:1) while the label and cents render in `ink` on paper (AA at 4.5:1) —
- * so the chip is unmistakably side-colored without relying on side hues for text contrast,
- * which #3B82F6 / #F97316 on paper would fail. `data-side` anchors the axis-order tests.
+ * elements, AA at 3:1) — the label and cents used to render in flat `ink` regardless of side, to
+ * avoid relying on side hues for text contrast, since the bright #3B82F6/#F97316 tokens fail AA
+ * on paper. Design-diff audit: the mockup's own `.pt.yes{color:#1d4fa8}`/`.pt.no{color:#b34d0a}`
+ * (`docs/mockups/swipe-ux.html`) colors the WHOLE chip's text by side too, not just the border —
+ * these are the same darkened, AA-safe (~6:1) side variants `PriceTag.tsx` already established
+ * for exactly this reason (its own header has the contrast math), just not applied here yet.
+ * `data-side` anchors the axis-order tests.
+ *
+ * Design-diff audit: `leading-[1.6]` on both lines and `mt-[1.4px]` on the value line match the
+ * mockup's own inherited `html,body{line-height:1.6}` (nothing on `.pt .l`/`.pt .v` overrides it)
+ * and `.v{margin-top:1px}` (×1.4). Padding/border/font-size here already matched the mockup's own
+ * `.pt{padding:5px 7px 4px;border:1.5px solid}`/`.l{font-size:8px}`/`.v{font-size:15px}` values
+ * scaled ×1.4 exactly — but this file's spans had no explicit `leading-*`, so they fell back to
+ * the app's own global line-height (1.5, not the mockup's 1.6) and had no gap between the two
+ * lines at all, measurably shrinking the chip below the mockup's own proportions (measured: mockup
+ * `.pt` is 79.5×48.8 at its own scale, h/w≈0.614; the live chip measured 130×65, h/w≈0.5, before
+ * this fix) — read by the user as "the stamps appear to be taller [in the mockup]".
  */
 function SidePrice({ side, label, yesProbability }: SidePriceProps) {
   const cents = impliedCents(side, yesProbability);
   const accent = side === 'yes' ? 'border-side-a' : 'border-side-b';
   const dot = side === 'yes' ? 'bg-side-a' : 'bg-side-b';
+  const text = side === 'yes' ? 'text-[#1d4fa8]' : 'text-[#b34d0a]';
   return (
     <div
       data-side={side}
-      className={`${accent} text-ink flex flex-1 flex-col rounded-[8px] border-2 px-[10px] pt-[7px] pb-[6px]`}
+      className={`${accent} ${text} flex flex-1 flex-col rounded-[8px] border-2 px-[10px] pt-[7px] pb-[6px]`}
     >
-      <span className="flex items-center gap-1.5 font-mono text-[11px] font-semibold tracking-wider uppercase">
+      <span className="flex items-center gap-1.5 font-mono text-[11px] leading-[1.6] font-normal tracking-wider uppercase">
         <span aria-hidden="true" className={`${dot} h-2 w-2 rounded-full`} />
         {label}
       </span>
-      <span className="font-mono text-[21px] font-semibold" aria-label={`${label}: ${cents}% implied`}>
+      <span
+        className="mt-[1.4px] font-mono text-[21px] leading-[1.6] font-semibold"
+        aria-label={`${label}: ${cents}% implied`}
+      >
         @ {cents}¢
       </span>
     </div>

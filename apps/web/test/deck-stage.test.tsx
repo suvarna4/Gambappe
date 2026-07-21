@@ -64,6 +64,36 @@ describe('DeckStage', () => {
     expect(html).toContain('min-h-[70dvh]');
   });
 
+  // Design-diff audit: the mockup's own `.rail-l`/`.rail-r` are `position:absolute` against
+  // `.stage`, which starts only after `.topbar` — the rail tint never reaches the topbar row. An
+  // earlier pass scoped the rails' `absolute inset-y-0` to the whole deck-stage container
+  // (starting at y=0, behind the topbar) instead, so at low opacity the tint read as a dead zone
+  // at the very top rather than a clean band starting right at the topbar's edge — caught by a
+  // user screenshot comparison, not this suite. This pins the rail markup strictly after the
+  // topbar's own closing tag so a regression back to the old (wrong) scope fails here too.
+  it('scopes the rails to the stage wrapper that starts after the topbar, not the whole deck', () => {
+    const html = renderToStaticMarkup(<DeckStage question={base} viewerSlot={null} />);
+    // `DeckTopbar`'s own closing content ("Today</span>") must come strictly before the rail
+    // markup — the rail's `absolute inset-y-0` is scoped to a wrapper that starts immediately
+    // after `DeckTopbar`, not the whole deck-stage root, so it can never span behind the topbar.
+    const topbarCloseIdx = html.indexOf('Today</span>');
+    const railIdx = html.indexOf('data-testid="rail-against"');
+    expect(topbarCloseIdx).toBeGreaterThan(0);
+    expect(railIdx).toBeGreaterThan(topbarCloseIdx);
+  });
+
+  // Design-diff audit: the mockup's `.wells` is a sibling AFTER `.stage` (which is `flex:1`), so
+  // it naturally sits flush against `.scr`'s bottom edge — an earlier pass centered the card AND
+  // wells together as one shrink-wrapped block, leaving a large unwanted gap below the wells
+  // instead. `pb-[17px]` (the mockup's own `.wells{padding:0 14px 12px}` bottom inset × 1.4) on
+  // the card column, with no top padding (centering alone gives the vertical breathing room),
+  // is what pins the wells to the true bottom now.
+  it('gives the card column a bottom inset matching the mockup\'s own .wells padding, not a symmetric one', () => {
+    const html = renderToStaticMarkup(<DeckStage question={base} viewerSlot={null} />);
+    expect(html).toContain('pb-[17px]');
+    expect(html).not.toContain('py-8');
+  });
+
   it('renders the persistent topbar and threads the streak slot into it, empty when omitted', () => {
     const withSlot = renderToStaticMarkup(
       <DeckStage

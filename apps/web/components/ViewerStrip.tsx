@@ -276,7 +276,13 @@ export function ViewerStrip({
   // and error slot as the button flow.
   if (swipeBallot && question.status === 'open') {
     return (
-      <div className="space-y-2" data-testid="viewer-strip-swipe">
+      // Design-diff audit: `flex flex-1 flex-col justify-center` (not `space-y-2`) passes real,
+      // stretched height down to `SwipeBallot`'s own root, which needs it to pin its wells row to
+      // the true bottom of the stage (see that file's own note). `justify-center` keeps the
+      // receipt/loading-skeleton branches (neither sets `flex-1` on themselves) centered within
+      // that space exactly as before, since a `flex-1` child (the interactive branch) claims all
+      // available space and makes `justify-center` a no-op for it specifically.
+      <div className="flex flex-1 flex-col justify-center gap-2" data-testid="viewer-strip-swipe">
         <SwipeBallot
           question={question}
           ageGateRequired={me.status === 'ready' ? needsAgeGate(me.ageAttested) : true}
