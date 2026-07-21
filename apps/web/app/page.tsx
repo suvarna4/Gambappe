@@ -4,11 +4,13 @@
  */
 import type { Metadata } from 'next';
 import { isFlagEnabled, nowMs, PRODUCT_NAME } from '@receipts/core';
+import { DeckQueue } from '@/components/DeckQueue';
 import { QuestionStateView } from '@/components/QuestionStateView';
 import { DeckStageBridge } from '@/components/shell/DeckStageBridge';
 import { ViewerStrip } from '@/components/ViewerStrip';
 import { copy } from '@/lib/copy';
 import { getTodayQuestionPublic } from '@/lib/question-view';
+import { assembleStackFeed } from '@/lib/stack-feed';
 import { getDb } from '@/lib/stores';
 
 export const metadata: Metadata = {
@@ -35,9 +37,34 @@ export default async function HomePage({
   // SW10-T3(a): same server-side, non-viewer flag posture as `swipeBallot` above — gates whether
   // `ViewerStrip` bothers fetching the viewer's active duo for the sealed partner chip.
   const duoQueue = isFlagEnabled('duo_queue');
+  // WS18-T3 (D-J2): the topic supply flag. The mixed stack deck needs both this AND `swipe_ballot`
+  // (it is built on the swipe deck). `stack-feed.ts` already forces `topics: []` when this is off.
+  const topicMarkets = isFlagEnabled('topic_markets');
   // SW2-T4: pre-armed deep link (notification/unfurl). `arm` is not viewer data (a URL param),
   // so it doesn't affect INV-10; the client strips it after mount (SW7-T2).
   const arm = swipeBallot && (await searchParams).arm === '1';
+
+  // WS18-T3 (D-J2, seam 6): the single mixed stack deck on `/`. It replaces the single-question
+  // render ONLY when both `swipe_ballot` and `topic_markets` are on. With `topic_markets` off the
+  // condition is false and control falls through to the untouched single-question path below —
+  // that is the "flag off ⇒ `/` byte-identical to today" guarantee (asserted in
+  // `e2e/stack-deck.spec.ts`). The feed is assembled viewer-free (INV-10: no `viewerProfileId`, so
+  // the ghost/all-categories default is used and `/`'s HTML is identical for every visitor);
+  // `DeckQueue` owns `deckOnStage` itself (D-J6), so there is no `DeckStageBridge` on this path.
+  if (swipeBallot && topicMarkets) {
+    const feed = await assembleStackFeed(getDb(), { nowMsValue });
+    return (
+      <main className="mx-auto max-w-xl space-y-6 px-6 py-10">
+        <h1 className="text-2xl font-bold">{PRODUCT_NAME}</h1>
+        <DeckQueue
+          feed={feed}
+          serverOffsetMs={serverOffsetMs}
+          arm={arm}
+          duoQueue={duoQueue}
+        />
+      </main>
+    );
+  }
 
   // D-J6/WS17-T1: while today's question is on the full-screen deck (swipe_ballot on + open
   // state), sink the bottom tab bar (D-SW4 ritual). `DeckStageBridge` renders no DOM and its

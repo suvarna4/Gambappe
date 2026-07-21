@@ -6,6 +6,7 @@ import {
   CLAIM_PUBLICNESS_STATEMENT,
   obituaryCopy,
   shareCopy,
+  stackCopy,
 } from '@/lib/copy';
 
 /**
@@ -49,6 +50,24 @@ describe('§10.6 pinned copy', () => {
 describe('§10.5 share sheet copy', () => {
   it('no copy references money words (§10.6/INV-8 review rule: bet|stake|wager|$)', () => {
     const allCopy = Object.values(shareCopy).join(' ');
+    expect(allCopy).not.toMatch(/\bbet\b|\bstake\b|\bwager\b|\$/i);
+  });
+});
+
+/** WS18-T3 (journeys plan §5) stack-deck copy — same INV-8 money-word rule. */
+describe('stack-deck copy (WS18-T3)', () => {
+  it('no copy references money words (§10.6/INV-8 review rule: bet|stake|wager|$)', () => {
+    const allCopy = [
+      stackCopy.progress(1, 2),
+      stackCopy.streakRides,
+      stackCopy.rivalSealed('rival'),
+      stackCopy.headlinerSkipCaveat,
+      stackCopy.clearedTitle,
+      stackCopy.clearedThrown(1),
+      stackCopy.clearedSkipped(1),
+      stackCopy.clearedBlurb,
+      stackCopy.sweatLink,
+    ].join(' ');
     expect(allCopy).not.toMatch(/\bbet\b|\bstake\b|\bwager\b|\$/i);
   });
 });

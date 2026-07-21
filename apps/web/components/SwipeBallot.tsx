@@ -1,7 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
+import type {
+  KeyboardEvent as ReactKeyboardEvent,
+  PointerEvent as ReactPointerEvent,
+  ReactNode,
+} from 'react';
 import type { MarketSide, QuestionPeek, QuestionPublic } from '@receipts/core';
 import {
   BallotCard,
@@ -70,7 +74,26 @@ export interface SwipeBallotProps {
    * comment in `packages/core` for why the wire shape has nothing else to show anyway.
    */
   tomorrowPeek?: QuestionPeek | null;
+  /**
+   * WS18-T3 (journeys plan §5, D-J2, seam 3): when set, the ballot is a card in the single mixed
+   * stack on `/` and can be SKIPPED — up-swipe past the commit threshold, or the keyboard
+   * `ArrowUp`/`S` (a11y parity with the `←`/`→` picks, `docs/a11y-swipe-ux.md`). Skip animates the
+   * card up-and-out and calls this; `DeckQueue` re-enqueues it at the back. A skip NEVER routes to
+   * `onPick` — it is not a pick and never hits the pick API. Omitted (every existing call site,
+   * incl. the `/dev/ui` gallery) → no skip affordance and byte-identical behavior to before.
+   */
+  onSkip?: () => void;
+  /**
+   * WS18-T3 (seam 3): extra content printed in the card footer — the stack uses it for the
+   * headliner's `STREAK RIDES THIS` line + rival chip. Rendered in both the interactive and the
+   * receipt state so it stays put across a pick. Omitted (every existing call site) renders
+   * nothing, so the footer is byte-identical to before.
+   */
+  footerSlot?: ReactNode;
 }
+
+/** WS18-T3: minimum upward pointer travel (px) that counts as a skip on release (D-J2). */
+const SKIP_UP_THRESHOLD_PX = 80;
 
 function readCount(key: string): number {
   if (typeof window === 'undefined') return 0;
@@ -100,12 +123,16 @@ export function SwipeBallot({
   arm = false,
   partnerLocked = null,
   tomorrowPeek = null,
+  onSkip,
+  footerSlot = null,
 }: SwipeBallotProps) {
   const [reducedMotion] = useState(() => prefersReducedMotion());
   const [pendingAge, setPendingAge] = useState<MarketSide | null>(null);
   // Input method that triggered a pending age-gate, so the eventual confirm reports it (SW8-T3).
   const pendingSource = useRef<PickInputSource>('swipe');
   const [flingSide, setFlingSide] = useState<MarketSide | null>(null);
+  // WS18-T3: the up-and-out skip animation is playing (mirrors `flingSide`'s horizontal exit).
+  const [skipping, setSkipping] = useState(false);
   const [nudge, setNudge] = useState(false);
   const [pickCount, setPickCount] = useState(0);
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -200,10 +227,49 @@ export function SwipeBallot({
   const { cardRef, dx, dragging, armed, progress } = drag;
   const activeSide = dragging || flingSide ? (flingSide ?? dragSide(dx)) : null;
 
+  // WS18-T3: skip = "not now" — the card leaves the deck upward and re-enqueues at the back
+  // (`onSkip`), never a pick. Fire it once, animate up-and-out (reduced-motion → instant), and
+  // guard against a double-fire while the exit animation is mid-flight.
+  const triggerSkip = useCallback(() => {
+    if (!onSkip || disabled || pick || pendingAge) return;
+    haptic(HAPTIC_COMMIT);
+    if (reducedMotion) {
+      onSkip();
+      return;
+    }
+    setSkipping(true);
+    window.setTimeout(() => {
+      setSkipping(false);
+      onSkip();
+    }, FLING_MS);
+  }, [onSkip, disabled, pick, pendingAge, reducedMotion]);
+
+  // Vertical drag tracked alongside the horizontal drag engine (`useDragCommit` owns x): an
+  // upward release past the threshold that dominates the horizontal travel is a skip.
+  const skipStartY = useRef(0);
+  const skipDy = useRef(0);
+
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (dragBlocked) return;
     setNudge(false);
+    skipStartY.current = e.clientY;
+    skipDy.current = 0;
     drag.onPointerDown(e);
+  };
+
+  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (onSkip) skipDy.current = e.clientY - skipStartY.current;
+    drag.onPointerMove(e);
+  };
+
+  const onPointerUp = () => {
+    const dy = skipDy.current;
+    // Up-swipe skip: released beyond the threshold upward AND more vertical than horizontal, so a
+    // normal left/right throw is never misread as a skip. Reset the vertical tracker either way.
+    const isSkip = Boolean(onSkip) && dy <= -SKIP_UP_THRESHOLD_PX && Math.abs(dy) > Math.abs(dx);
+    skipDy.current = 0;
+    drag.onPointerUp();
+    if (isSkip) triggerSkip();
   };
 
   const handleUndo = useCallback(() => {
@@ -274,17 +340,21 @@ export function SwipeBallot({
           {copy.question.comeBackAt(formatClock(question.reveal_at))}
         </p>
         {partnerChip}
+        {footerSlot}
       </div>
     );
   }
 
   // ---- Interactive open state. ----
   const flingTransform =
-    flingSide && !reducedMotion
-      ? `translate(${flingSide === 'yes' ? 140 : -140}%, -8%) rotate(${flingSide === 'yes' ? 26 : -26}deg)`
-      : dragging && !reducedMotion
-        ? `translate(${dx}px, ${dx * 0.25 * 0.25}px) rotate(${Math.max(-12, Math.min(12, dx * 0.09))}deg)`
-        : undefined;
+    skipping && !reducedMotion
+      ? // WS18-T3: skip exits straight up-and-out (D-J2), distinct from the left/right pick fling.
+        'translate(0, -140%) rotate(-4deg)'
+      : flingSide && !reducedMotion
+        ? `translate(${flingSide === 'yes' ? 140 : -140}%, -8%) rotate(${flingSide === 'yes' ? 26 : -26}deg)`
+        : dragging && !reducedMotion
+          ? `translate(${dx}px, ${dx * 0.25 * 0.25}px) rotate(${Math.max(-12, Math.min(12, dx * 0.09))}deg)`
+          : undefined;
 
   const showPreview = progress > 0.04 || (reducedMotion && progress >= 0.6);
   const previewSide = dragSide(dx);
@@ -301,6 +371,11 @@ export function SwipeBallot({
     } else if (e.key === 'ArrowLeft') {
       e.preventDefault();
       submit('no', 'key');
+    } else if (onSkip && (e.key === 'ArrowUp' || e.key === 's' || e.key === 'S')) {
+      // WS18-T3: keyboard skip parity with the `←`/`→` picks (a11y-swipe-ux.md) — `↑`/`S` on
+      // either well skips the card. Never routes to `submit` (a skip is not a pick).
+      e.preventDefault();
+      triggerSkip();
     }
   };
 
@@ -363,17 +438,18 @@ export function SwipeBallot({
           data-testid="ballot-card-interactive"
           data-armed={armed ? 'true' : 'false'}
           onPointerDown={onPointerDown}
-          onPointerMove={drag.onPointerMove}
-          onPointerUp={drag.onPointerUp}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
           onPointerCancel={drag.onPointerCancel}
           className={`relative touch-none select-none ${nudge ? 'motion-safe:[animation:ballot-nudge_2.6s_ease-in-out_2]' : ''}`}
           style={{
             transform: flingTransform,
-            transition: flingSide
-              ? `transform ${FLING_MS}ms cubic-bezier(.3,.6,.4,1)`
-              : dragging
-                ? 'none'
-                : 'transform 400ms cubic-bezier(.28,1.6,.5,1)',
+            transition:
+              flingSide || skipping
+                ? `transform ${FLING_MS}ms cubic-bezier(.3,.6,.4,1)`
+                : dragging
+                  ? 'none'
+                  : 'transform 400ms cubic-bezier(.28,1.6,.5,1)',
             cursor: dragging ? 'grabbing' : 'grab',
           }}
         >
@@ -466,8 +542,11 @@ export function SwipeBallot({
         className="text-muted mt-1 hidden text-center font-mono text-[10px] tracking-wide [@media(pointer:fine)]:block"
       >
         {ballotCopy.againstArrow} {noLabel} · {yesLabel} {ballotCopy.forArrow}
+        {/* WS18-T3: stack cards also advertise the up-swipe / ↑ / S skip (a11y parity). */}
+        {onSkip ? ` · ${ballotCopy.skipArrow} ${ballotCopy.skipHint}` : ''}
       </p>
       {partnerChip}
+      {footerSlot}
     </div>
   );
 }

@@ -300,6 +300,9 @@ export const ballotCopy = {
   /** Rail + hint arrows (side name is appended/prepended by the component). */
   againstArrow: '←',
   forArrow: '→',
+  /** WS18-T3: the stack's up-swipe skip affordance (D-J2) — glyph + short label for the key hint. */
+  skipArrow: '↑',
+  skipHint: 'SKIP',
   /** Tap wells — the always-present accessible fallback (D-SW7). Glyphs pair with the label. */
   wellForGlyph: '✓',
   wellAgainstGlyph: '✕',
@@ -322,6 +325,29 @@ export const ballotCopy = {
    * `UnderCard`'s flat fallback (`copy.question.tomorrowTeaser`) covers every other case —
    * curation hasn't reached tomorrow yet, or the fetch fails. */
   tomorrowPeekLabel: (time: string) => `TOMORROW · opens ${time}`,
+} as const;
+
+/**
+ * WS18-T3 · The single mixed stack deck on `/` (journeys plan §5, D-J2). Progress chip, the
+ * headliner's streak/rival footer, the skip caveat, and the cleared end-state. No money words
+ * (INV-8) — asserted in `test/copy.test.ts`.
+ */
+export const stackCopy = {
+  /** Topbar progress chip: which of the M dealt cards you're on. */
+  progress: (n: number, m: number) => `${n} of ${m}`,
+  /** Headliner footer — only the daily headliner carries the streak (D-J2). */
+  streakRides: 'STREAK RIDES THIS',
+  /** Headliner rival chip, lit when the viewer's active nemesis has a sealed pick on the shared
+   * question (`rival_sealed` on the feed). `{handle}` is the rival's handle. */
+  rivalSealed: (handle: string) => `⚔ ${handle} IS IN · SEALED`,
+  /** One-line reassurance shown after the headliner is skipped: it re-enqueues and comes back. */
+  headlinerSkipCaveat: 'Headliner parked — it comes back before lock.',
+  /** Cleared end-state (foil moment). */
+  clearedTitle: 'Stack cleared',
+  clearedThrown: (n: number) => `${n} thrown`,
+  clearedSkipped: (n: number) => `${n} skipped`,
+  clearedBlurb: 'Nothing left on the deck. Come back for the next drop.',
+  sweatLink: "See what you're sweating",
 } as const;
 
 /**

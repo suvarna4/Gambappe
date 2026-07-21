@@ -52,6 +52,18 @@ export interface ViewerStripProps {
    * this task.
    */
   duoQueue?: boolean;
+  /**
+   * WS18-T3 (journeys plan §5, D-J2): when this island is a card in the `/` stack deck, these wire
+   * the deck through the existing pick machinery instead of forking it. All optional — omitted
+   * (the `/q/[slug]` host and every other call site) keeps behavior byte-identical.
+   *
+   * `onSkip`/`footerSlot` are forwarded straight to `SwipeBallot` (the open swipe state). `onPicked`
+   * fires once a pick commits, so `DeckQueue` can advance the deck (throw the card). A skip never
+   * touches `onPicked` — it is not a pick.
+   */
+  onSkip?: () => void;
+  footerSlot?: React.ReactNode;
+  onPicked?: () => void;
 }
 
 type MeState =
@@ -77,6 +89,9 @@ export function ViewerStrip({
   swipeBallot = false,
   arm: armProp,
   duoQueue = false,
+  onSkip,
+  footerSlot = null,
+  onPicked,
 }: ViewerStripProps) {
   const [me, setMe] = useState<MeState>({ status: 'loading' });
   const [pick, setPick] = useState<CachedPick | null>(null);
@@ -221,6 +236,9 @@ export function ViewerStrip({
         if (typeof window !== 'undefined')
           writeCachedPick(window.localStorage, question.id, cached);
         setPick(cached);
+        // WS18-T3: a committed pick is a "throw" — let the stack deck (if this island is a card in
+        // it) advance to the next card. No-op off the deck. Fires only on a real pick, never a skip.
+        onPicked?.();
         // SW8-T3: fire-and-forget the input-method analytics (never awaited, never load-bearing).
         // Powers the PRD §10 swipe-share-of-picks / >40%-one-throw readout.
         postAnalyticsEvent('pick_created', { source });
@@ -233,7 +251,7 @@ export function ViewerStrip({
         setBusy(false);
       }
     },
-    [question.id],
+    [question.id, onPicked],
   );
 
   const handleUndo = useCallback(async () => {
@@ -288,6 +306,8 @@ export function ViewerStrip({
           arm={arm}
           partnerLocked={partnerLocked}
           tomorrowPeek={tomorrowPeek}
+          onSkip={onSkip}
+          footerSlot={footerSlot}
         />
         {error ? (
           <p className="text-loss text-xs" data-testid="viewer-strip-error">
