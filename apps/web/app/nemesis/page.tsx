@@ -98,6 +98,15 @@ export default async function NemesisHomePage() {
     };
   }
 
+  // Design-diff audit: the assignment card's "THE WEEK" day-count strip (empty dots for the
+  // week ahead, no picks landed yet) — real data, not fabricated: `pairing.scoreboard` already
+  // carries every shared question for the whole week the moment the pairing exists (masking
+  // only nulls the RESULTS, not the rows themselves), so the daily-row count and whether a
+  // nemesis_bonus question exists this week are both known on assignment day, before anyone
+  // picks.
+  const sharedDayCount = pairing ? pairing.scoreboard.filter((row) => row.kind === 'daily').length : 0;
+  const hasBonusQuestion = pairing ? pairing.scoreboard.some((row) => row.kind === 'nemesis_bonus') : false;
+
   const promotedEntry = pageState.kind === 'verdict' ? pageState.entry : null;
 
   // SW10-T2: the head-to-head banner's day-strip dots come from the promoted entry's own pairing
@@ -105,10 +114,20 @@ export default async function NemesisHomePage() {
   // (`nemesisHistoryEntrySchema`) carries no per-day data. Only fetched for the promoted entry
   // (not every history entry) now that the aggregate list itself lives at `/nemesis/history` —
   // that route derives its own day-results independently for whichever entries it renders.
+  // Filtered to `kind === 'daily'` before deriving: `deriveDayResults` itself deliberately
+  // INCLUDES the nemesis_bonus row (it counts toward the real score, so the scorer treats it as
+  // just another graded row) — but the mockup's "DAYS" strip is specifically a calendar-day
+  // count, and a per-week bonus question isn't a day. Filtering here, not in
+  // `deriveDayResults`, keeps that function's own score-aligned contract (and its existing
+  // tests) intact for whatever else reads it.
   const promotedPairing = promotedEntry ? await getPairingPublicById(db, promotedEntry.pairing_id, at) : null;
   const promotedDayResults: ReadonlyArray<DayResult> =
     promotedEntry && promotedPairing
-      ? deriveDayResults(promotedPairing.scoreboard, viewerProfileId, promotedPairing)
+      ? deriveDayResults(
+          promotedPairing.scoreboard.filter((row) => row.kind === 'daily'),
+          viewerProfileId,
+          promotedPairing,
+        )
       : [];
 
   const promotedVerdict: RematchVerdict | null = promotedEntry
@@ -134,6 +153,8 @@ export default async function NemesisHomePage() {
             opponent={opponentSide}
             isRematch={pairing.is_rematch}
             weekStart={pairing.week_start}
+            sharedDayCount={sharedDayCount}
+            hasBonusQuestion={hasBonusQuestion}
           />
         </div>
       ) : null}
@@ -163,6 +184,10 @@ export default async function NemesisHomePage() {
             }
             verdict={promotedVerdict}
           />
+          {/* Reserves the space `VerdictCard`'s own fixed-to-the-viewport-bottom action row
+              occupies, so it never covers this block's own tail content (or the layout's
+              footer) once scrolled to the bottom — see that component's header. */}
+          <div aria-hidden="true" className="h-20" />
         </div>
       ) : null}
 

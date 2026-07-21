@@ -102,6 +102,14 @@ function Perforation({ edge }: { edge: 'top' | 'bottom' }) {
  * strip below its score-tug bar — the mockup's `.dots` row sits between `.tug` and the loser's
  * card, never inside it.
  *
+ * Design-diff audit (round 3): the card face is now `max-w-[80%] mx-auto` — the mockup's own
+ * loser's card is 180px inside a 250px phone screen (≈80% of the vsplit's own inset width), a
+ * deliberately narrower, more compact "ticket" than the full-bleed panel an earlier pass had.
+ * The action row is now a `fixed inset-x-0 bottom-0` bar (matching the mockup's own
+ * `.hint{position:absolute;bottom:9px}` — anchored to the bottom of the screen, not just
+ * trailing the card in normal flow) — `app/nemesis/page.tsx` reserves matching bottom space so
+ * the fixed bar never covers real content.
+ *
  * Not reproduced: the mockup's own bespoke headline for this exhibit ("Dropped 3–2. Third
  * straight week.") bakes in a losing-streak count this app doesn't track anywhere, and its body
  * line ("...by 11 points of edge...") uses the exact "edge" framing this card's own copy is
@@ -168,7 +176,7 @@ export function VerdictCard({
         ref={dragSurfaceRef}
         data-testid="verdict-card-face"
         data-armed={dragSurfaceArmed ? 'true' : 'false'}
-        className={`bg-paper text-ink relative flex flex-col gap-2 overflow-hidden rounded-lg px-4 py-4 shadow-[0_14px_34px_rgba(0,0,0,0.5)] [background-image:linear-gradient(rgba(20,20,20,0.028)_1px,transparent_1px)] [background-size:100%_26px] ${dragSurfaceHandlers ? 'touch-none select-none' : ''}`}
+        className={`bg-paper text-ink relative mx-auto flex max-w-[80%] flex-col gap-2 overflow-hidden rounded-lg px-4 py-4 shadow-[0_14px_34px_rgba(0,0,0,0.5)] [background-image:linear-gradient(rgba(20,20,20,0.028)_1px,transparent_1px)] [background-size:100%_26px] ${dragSurfaceHandlers ? 'touch-none select-none' : ''}`}
         style={dragSurfaceStyle}
         {...dragSurfaceHandlers}
       >
@@ -189,9 +197,11 @@ export function VerdictCard({
       </div>
 
       {interactive ? (
-        <div dir="ltr" className="flex gap-2">
-          {leftAction}
-          {rightAction}
+        <div className="border-surface bg-bg fixed inset-x-0 bottom-0 z-10 border-t">
+          <div dir="ltr" className="mx-auto flex max-w-xl gap-2 px-6 py-3">
+            {leftAction}
+            {rightAction}
+          </div>
         </div>
       ) : null}
     </div>

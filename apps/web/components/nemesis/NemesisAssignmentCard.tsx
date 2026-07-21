@@ -9,6 +9,15 @@ export interface NemesisAssignmentCardProps {
   /** The pairing's `week_start` (`YYYY-MM-DD`) — powers the topbar eyebrow's real date, in place
    * of a fictional week number (see this file's header). */
   weekStart: string;
+  /** Real count of `kind === 'daily'` rows on this pairing's own scoreboard (`app/nemesis/
+   * page.tsx`) — the shared questions are already linked the moment the pairing exists (masking
+   * only nulls RESULTS, not rows), so this is known before anyone picks. Powers the "THE WEEK"
+   * empty-dot strip (design-diff audit — an earlier pass skipped this as needing data that
+   * turned out to already be available). */
+  sharedDayCount: number;
+  /** Whether this week has a `nemesis_bonus` row — real, not the mockup's fabricated "+2 BONUS"
+   * count. */
+  hasBonusQuestion: boolean;
   className?: string;
 }
 
@@ -53,11 +62,20 @@ export interface NemesisAssignmentCardProps {
  * gold rather than the generic yes-color well, matching this app's own convention of reserving
  * gold for ritual/CTA moments.
  *
+ * Design-diff audit (round 3): the topbar's padding now matches the mockup's own `.topbar
+ * {padding:8px 14px 4px}` exactly (`px-[14px] pt-2 pb-1`, was `px-3 pt-2` with no bottom
+ * padding) — the mockup's own vsplit margin (12px) is genuinely 2px narrower than its topbar
+ * padding (14px), so this small horizontal mismatch between the eyebrow text and the split
+ * below it is faithful, not an oversight. The "THE WEEK" day-count strip (`sharedDayCount` empty
+ * dots, `hasBonusQuestion` real bonus flag) now renders too — an earlier pass skipped it as
+ * needing data this app doesn't model, which turned out to be wrong: the pairing's scoreboard
+ * already carries every shared question the moment it's assigned.
+ *
  * Not reproduced (design-diff audit, flagged rather than silently dropped): the mockup's
- * per-player style-tag subtitle ("longshot chaser · early locker"), the "THE ENGINE'S CASE
- * FILE" narrative box, the "THE WEEK" day-count/bonus-question strip, and the footer disclaimer
- * line all either need data this app doesn't model (`PairingSide` has no style-tag or
- * lock-time-habit fields) or a product decision this task doesn't own.
+ * per-player style-tag subtitle ("longshot chaser · early locker") and the "THE ENGINE'S CASE
+ * FILE" narrative box need data this app doesn't model (`PairingSide` has no style-tag or
+ * lock-time-habit fields); the footer disclaimer line is a product-copy decision this task
+ * doesn't own.
  *
  * Complete literal Tailwind class strings throughout (never `` `bg-${x}` `` concatenation) — see
  * `NemesisHeadToHeadBanner`'s header for why a dynamically-assembled class string gets silently
@@ -67,6 +85,8 @@ export function NemesisAssignmentCard({
   opponent,
   isRematch,
   weekStart,
+  sharedDayCount,
+  hasBonusQuestion,
   className = '',
 }: NemesisAssignmentCardProps) {
   return (
@@ -74,7 +94,7 @@ export function NemesisAssignmentCard({
       data-testid="nemesis-assignment-card"
       className={`bg-bg overflow-hidden rounded-lg shadow-[0_14px_34px_rgba(0,0,0,0.35)] ${className}`}
     >
-      <div className="flex items-center justify-between px-3 pt-2 font-mono text-[10px] uppercase">
+      <div className="flex items-center justify-between px-[14px] pt-2 pb-1 font-mono text-[9.5px] uppercase">
         <span className="text-paper font-semibold tracking-[0.16em]">{`Week of ${formatShortDate(weekStart)}`}</span>
         <span className="text-gold tracking-[0.06em]">
           {isRematch ? 'Rematch day' : 'Assignment day'}
@@ -100,6 +120,20 @@ export function NemesisAssignmentCard({
           </span>
         </div>
       </div>
+
+      {sharedDayCount > 0 ? (
+        <div
+          dir="ltr"
+          aria-hidden="true"
+          className="text-muted mx-3 mt-1.5 flex items-center gap-[5px] font-mono text-[8px] uppercase"
+        >
+          <span>The week</span>
+          {Array.from({ length: sharedDayCount }, (_, i) => (
+            <span key={i} className="border-muted h-[11px] w-[11px] rounded-full border-[1.5px]" />
+          ))}
+          {hasBonusQuestion ? <span className="ml-auto">+1 bonus</span> : null}
+        </div>
+      ) : null}
 
       <div className="space-y-2 px-4 pt-3 pb-4">
         {opponent.rating ? (

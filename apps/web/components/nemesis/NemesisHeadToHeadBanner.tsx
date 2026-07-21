@@ -113,6 +113,14 @@ const DOT: Record<DayResult, string> = {
  * equivalent for a concluded week either — every day is already final by the time this promotes
  * to primary content — so the strip has no trailing label here, just "DAYS" + the dots.
  *
+ * Design-diff audit (round 3): the eyebrow's padding now matches the mockup's own `.topbar
+ * {padding:8px 14px 4px}` exactly (`px-[14px] pt-2 pb-1`, was `px-3` with no vertical padding at
+ * all). The caller (`app/nemesis/page.tsx`) now filters `dayResults` to `kind === 'daily'`
+ * before computing it — this strip was briefly rendering 6 dots instead of 5, because
+ * `deriveDayResults` deliberately INCLUDES the nemesis_bonus row (it counts toward the real
+ * score) — a calendar-day strip and a scored-row list aren't the same thing, even though they
+ * share a data source.
+ *
  * Pure/presentational — mounted directly above `RematchPanel` for the promoted `verdict` state
  * on `/nemesis` (`app/nemesis/page.tsx`), the only remaining caller now that the plain lifetime
  * history list (`/nemesis/history`) dropped this banner for a compact read-only row instead.
@@ -137,7 +145,7 @@ export function NemesisHeadToHeadBanner({
   return (
     <div dir="ltr" data-testid="head-to-head-banner" className={`space-y-2 ${className}`}>
       {weekStart ? (
-        <div className="flex items-center justify-between px-3 font-mono text-[10px] uppercase">
+        <div className="flex items-center justify-between px-[14px] pt-2 pb-1 font-mono text-[9.5px] uppercase">
           <span className="text-paper font-semibold tracking-[0.16em]">{`Week of ${formatShortDate(weekStart)}`}</span>
           <span className="text-gold tracking-[0.06em]">Verdict</span>
         </div>
