@@ -232,7 +232,10 @@ export default function UiGalleryPage() {
 
       <section data-testid="gallery-samesiderow" className="space-y-3">
         <h2 className="text-muted text-sm font-semibold uppercase">SameSideRow (WS16-T3)</h2>
-        <div className="bg-paper rounded-md px-4 py-4">
+        {/* On the dark stage: win/loss stamps carry their outcome hue at AA there (they fail as
+            text on cream — SameSideRow inherits the page's light ink, its real paper hosts wrap it
+            in TicketFrame which supplies `text-ink`). */}
+        <div className="bg-bg rounded-md px-4 py-4">
           <SameSideRow
             left={{ owner: 'YOU', caption: '@ 71¢', stamp: <Stamp variant="win" /> }}
             right={{ owner: 'MARIA O.', caption: '@ 74¢', stamp: <Stamp variant="loss" /> }}
