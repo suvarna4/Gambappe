@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-21T09:58:52.329Z",
+  "updated_at": "2026-07-21T09:58:54.190Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2014,7 +2014,7 @@
       "branch": "feat/ws19-t1-settlement-pipeline",
       "pr": "https://github.com/Gambappe/Gambappe/pull/114",
       "claimed_at": "2026-07-21T09:07:39.317Z",
-      "updated_at": "2026-07-21T09:48:23.581Z"
+      "updated_at": "2026-07-21T09:58:54.190Z"
     },
     "WS19-T2": {
       "title": "Sweat surfaces: /sweat page + settled-state presentation on question pages",
