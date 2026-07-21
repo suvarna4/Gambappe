@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-21T20:41:16.398Z",
+  "updated_at": "2026-07-21T21:24:56.468Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2170,12 +2170,12 @@
       ],
       "mock_start_ok": false,
       "note": "Spec: docs/journeys-plan.md §5 WS23-T1. Journeys: stack→sweat, settle→streak/obituary, ghost→Save→nemesis, same-side week, call-out loop, ≤2-taps reachability. journeys flags ON via playwright.config.ts env defaults; one deliberate visual-baseline refresh; <1% flake over 20 runs.",
-      "status": "claimed",
+      "status": "done",
       "owner": "claude-opus-fohjki-agentT",
       "branch": null,
       "pr": null,
       "claimed_at": "2026-07-21T20:41:16.398Z",
-      "updated_at": "2026-07-21T20:41:16.398Z"
+      "updated_at": "2026-07-21T21:24:56.467Z"
     },
     "WS23-T2": {
       "title": "Rollout: flip flags in envs, delete dead reveal-ceremony code, amend PRD/design-doc/§10.6",
