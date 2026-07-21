@@ -174,6 +174,59 @@ describe('matchNemeses — leftover priority', () => {
   });
 });
 
+describe('matchNemeses — grudge boost (WS20-T4, D-J5)', () => {
+  it('raises the edge score of a standing 1–1+ grudge pair above the same pair without a grudge', () => {
+    const pool = [entry({ profileId: 'a' }), entry({ profileId: 'b' })];
+    const history = { blockedPairs: [], pairedThisSeason: [] } as const;
+
+    const withoutGrudge = matchNemeses(pool, history, { forcedPairs: [] });
+    const withGrudge = matchNemeses(
+      pool,
+      { ...history, grudgePairs: [['b', 'a']] }, // direction-agnostic — canonicalized internally
+      { forcedPairs: [] },
+    );
+
+    expect(withGrudge.pairings).toHaveLength(1);
+    expect(withGrudge.pairings[0]!.score).toBeGreaterThan(withoutGrudge.pairings[0]!.score);
+  });
+
+  it('is bounded: the boost prefers a grudge rematch over a same-distance stranger, nothing more', () => {
+    // b is in-band with both a and c at equal style distance. Without a grudge the tie breaks on
+    // the canonical pair key (a|b < b|c), pairing a-b. A standing grudge between b and c flips the
+    // preference to b-c — one bounded nudge is enough to reorder a genuine tie, and c would
+    // otherwise be the leftover.
+    const pool = [
+      entry({ profileId: 'a' }),
+      entry({ profileId: 'b' }),
+      entry({ profileId: 'c' }),
+    ];
+    const result = matchNemeses(
+      pool,
+      { blockedPairs: [], pairedThisSeason: [], grudgePairs: [['b', 'c']] },
+      { forcedPairs: [] },
+    );
+    expect(result.pairings).toHaveLength(1);
+    expect(new Set([result.pairings[0]!.profileAId, result.pairings[0]!.profileBId])).toEqual(
+      new Set(['b', 'c']),
+    );
+    expect(result.leftoverProfileIds).toEqual(['a']);
+  });
+
+  it('never overrides eligibility gates — an out-of-band grudge pair still cannot be matched', () => {
+    const pool = [
+      entry({ profileId: 'a', rating: 1500, rd: 50 }),
+      entry({ profileId: 'b', rating: 1500 + NEMESIS_BAND_BASE * 5, rd: 50 }), // far out of band
+    ];
+    const result = matchNemeses(
+      pool,
+      { blockedPairs: [], pairedThisSeason: [], grudgePairs: [['a', 'b']] },
+      { forcedPairs: [] },
+    );
+    expect(result.pairings).toHaveLength(0);
+    expect(result.leftoverProfileIds.sort()).toEqual(['a', 'b']);
+  });
+});
+
 describe('matchNemeses — fairness telemetry', () => {
   it('returns a Glicko expected win probability per pairing', () => {
     const pool: NemesisPoolEntry[] = [entry({ profileId: 'a', rating: 1600 }), entry({ profileId: 'b', rating: 1500 })];

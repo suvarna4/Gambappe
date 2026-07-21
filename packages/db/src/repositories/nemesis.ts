@@ -168,6 +168,27 @@ export async function listAllBlockedPairs(db: Db): Promise<Array<readonly [strin
   return rows.map((r) => [r.a, r.b] as const);
 }
 
+/**
+ * Canonical (`a < b`) profile pairs that carry a standing "1–1+" head-to-head record — each side
+ * has decisively beaten the other at least once across `completed` nemesis weeks (journeys plan §5
+ * WS20-T4, D-J5: "grudges seed matchmaking"). Draws (`winner_profile_id IS NULL`) and cancelled
+ * weeks contribute nothing; only genuine back-and-forth rivalries qualify. The `nemesis:assign`
+ * job feeds these to the pure matcher as `grudgePairs` so an eligible grudge gets `GRUDGE_BONUS`.
+ * Pairings already store the winner in canonical `profile_a < profile_b` order (§5.5), so the
+ * GROUP BY needs no per-row re-canonicalization.
+ */
+export async function listStandingGrudgePairs(db: Db): Promise<Array<readonly [string, string]>> {
+  const rows = await db.execute(sql`
+    SELECT np.profile_a_id AS a, np.profile_b_id AS b
+    FROM nemesis_pairings np
+    WHERE np.status = 'completed' AND np.winner_profile_id IS NOT NULL
+    GROUP BY np.profile_a_id, np.profile_b_id
+    HAVING count(*) FILTER (WHERE np.winner_profile_id = np.profile_a_id) > 0
+       AND count(*) FILTER (WHERE np.winner_profile_id = np.profile_b_id) > 0
+  `);
+  return rows.rows.map((r) => [r['a'] as string, r['b'] as string] as const);
+}
+
 /** Every profile pair already paired this season (any status) — §8.4 step 1 "not previously
  * paired this season" (repeats are excluded from ORGANIC matching; rematches deliberately
  * bypass this via `constraints.forcedPairs`, which the pure matcher never checks against it). */

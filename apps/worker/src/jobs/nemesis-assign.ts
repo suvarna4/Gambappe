@@ -43,6 +43,7 @@ import {
   listNemesisEligiblePool,
   listOpenRematchRequestIds,
   listPairedProfilePairsForSeason,
+  listStandingGrudgePairs,
   markRematchRequestsExpired,
   sendNotification,
   setMatchmakingPriority,
@@ -178,7 +179,12 @@ export async function runNemesisAssign(db: Db, boss: PgBoss, at: Date = now()): 
 
   // --- Steps 1-3: matching (WS4-T4 pure function) -------------------------------------------
   const pairedThisSeason = await listPairedProfilePairsForSeason(db, season.id);
-  const matchResult = matchNemeses(poolEntries, { blockedPairs, pairedThisSeason }, { forcedPairs });
+  // D-J5 grudge boost (WS20-T4): standing 1–1+ head-to-head pairs get a bounded edge bump so an
+  // eligible grudge is preferred over a same-distance stranger. Pairs already excluded from this
+  // week's pool (paired/blocked, or one side absent) simply never form a candidate edge, so
+  // passing the full grudge set is safe — the matcher only ever consults it for eligible pairs.
+  const grudgePairs = await listStandingGrudgePairs(db);
+  const matchResult = matchNemeses(poolEntries, { blockedPairs, pairedThisSeason, grudgePairs }, { forcedPairs });
 
   // --- Persist pairings, bonus questions, notifications -------------------------------------
   let bonusQuestionsCreated = 0;

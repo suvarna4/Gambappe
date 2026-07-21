@@ -508,3 +508,66 @@ export const duoCopy = {
   partnerLockedChip: (partnerHandle: string, hoursAgo: number) =>
     `▣ ${partnerHandle} LOCKED · ${hoursAgo}h AGO`,
 } as const;
+
+/**
+ * WS20-T4 (journeys plan §5, D-J5) · Call-outs + grudge book. This is the ONLY block this task
+ * owns in `copy.ts` (§7 seam 2: "WS20-T4 (call-outs)") — it never edits another task's block.
+ * Every surface here is stamp/preset copy only, no free-text input anywhere (§5 AC). No money
+ * words (INV-8: no bet/stake/wager/$ — say "call", "pick", "record").
+ */
+export const calloutsCopy = {
+  // --- "Call someone out" panel ---------------------------------------------------------------
+  panelHeading: 'Call someone out',
+  panelBody:
+    'Challenge a past rival to a head-to-head week. Share the link — whoever opens it and accepts becomes your nemesis next week.',
+  /** Shown when the viewer has no nemesis history yet to draw rival candidates from. */
+  candidatesEmpty: 'No past rivals yet — call-out candidates show up once you have a nemesis history.',
+  /** Per-candidate share button. `navigator.share` on capable devices, clipboard copy otherwise. */
+  shareCta: 'Call out',
+  sharing: 'Preparing link…',
+  /** Clipboard fallback confirmation (no native share sheet). */
+  linkCopied: 'Link copied — send it to your rival.',
+  shareError: 'Could not create the call-out link — try again.',
+
+  // --- Incoming call-out card -----------------------------------------------------------------
+  incomingTapeLabel: "YOU'VE BEEN CALLED OUT",
+  incomingBody: (challengerHandle: string) => `${challengerHandle} wants a head-to-head week.`,
+  challengerRecordCta: 'See their record',
+  acceptCta: 'Accept the duel',
+  declineCta: 'Decline',
+  accepting: 'Locking it in…',
+  declining: 'Declining…',
+  /** Accept while a ghost: the button routes through Save (D-J8) with a `?next=` return. This is
+   * the affordance hint; the post-save return itself is the claim-flow's job (WS21-T2's incoming
+   * call-out trigger). */
+  acceptGhostHint: 'Save your record first — you land right back here to accept.',
+  acceptedLine: (opponentHandle: string) => `Locked in — you face ${opponentHandle} next week.`,
+  declinedLine: 'Call-out declined.',
+  expiredLine: 'This call-out link has expired.',
+  notFoundLine: 'This call-out link is no longer valid.',
+  respondError: 'Could not respond to the call-out — try again.',
+
+  // --- Locked-in confirmation (both sides' /rivals hubs after accept) --------------------------
+  lockedInTapeLabel: 'LOCKED IN',
+  lockedInLine: (opponentHandle: string) => `You face ${opponentHandle} next week — call-out accepted.`,
+
+  // --- Grudge book (lifetime per-rival aggregate) ---------------------------------------------
+  grudgeHeading: 'Grudge book',
+  grudgeEmpty: 'No grudges yet — settle a nemesis week to start your record.',
+  /** Lifetime head-to-head line per rival (§5: "they lead 2–1"). Draws are shown separately. */
+  grudgeRecordLine: (myWins: number, theirWins: number) =>
+    myWins > theirWins
+      ? `you lead ${myWins}–${theirWins}`
+      : myWins < theirWins
+        ? `they lead ${theirWins}–${myWins}`
+        : `even ${myWins}–${theirWins}`,
+  grudgeDrawsNote: (draws: number) => (draws === 1 ? '· 1 draw' : `· ${draws} draws`),
+  grudgeWeeksNote: (weeks: number) => (weeks === 1 ? '1 week' : `${weeks} weeks`),
+  /** The existing rematch affordance, surfaced in the grudge book as a stamp (§5). */
+  rematchCta: 'REMATCH',
+  rematchSending: 'Requesting…',
+  rematchPendingLine: (opponentHandle: string) => `Rematch requested — waiting on ${opponentHandle}`,
+  rematchIncomingLine: (opponentHandle: string) => `${opponentHandle} wants to run it back`,
+  rematchAcceptedLine: "Rematch on — you're paired starting next week",
+  rematchError: 'Could not request the rematch — try again.',
+} as const;

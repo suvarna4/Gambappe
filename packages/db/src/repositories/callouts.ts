@@ -5,7 +5,7 @@
  * nemesis pairing atomically, in canonical `a < b` profile order (matching every other
  * pairing-producing path).
  */
-import { eq } from 'drizzle-orm';
+import { and, desc, eq, or } from 'drizzle-orm';
 import { now } from '@receipts/core';
 import { uuidv7 } from 'uuidv7';
 import type { Db } from '../client.js';
@@ -45,6 +45,26 @@ export async function getCalloutByTokenHash(db: Db, tokenHash: string): Promise<
     .where(eq(callouts.tokenHash, tokenHash))
     .limit(1);
   return row ?? null;
+}
+
+/**
+ * Every `accepted` call-out where `profileId` is either the challenger or the accepting opponent
+ * (journeys plan §5 WS20-T4, D-J5). Powers the "locked in — you face {handle} next week"
+ * confirmation both sides' `/rivals` hubs show after a call-out is accepted (the accepted call-out
+ * mints a `scheduled` next-week pairing, which the current-week nemesis surface doesn't render).
+ * Newest first. The caller resolves the "other side" profile (challenger vs opponent) for display.
+ */
+export async function listAcceptedCalloutsForProfile(db: Db, profileId: string): Promise<CalloutRow[]> {
+  return db
+    .select()
+    .from(callouts)
+    .where(
+      and(
+        eq(callouts.status, 'accepted'),
+        or(eq(callouts.challengerProfileId, profileId), eq(callouts.opponentProfileId, profileId)),
+      ),
+    )
+    .orderBy(desc(callouts.createdAt));
 }
 
 export interface AcceptCalloutInput {

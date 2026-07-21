@@ -54,4 +54,31 @@ describe('NemesisHistoryList', () => {
     const html = renderToStaticMarkup(<NemesisHistoryList entries={[entry({ outcome: 'cancelled' })]} />);
     expect(html).toContain('Cancelled');
   });
+
+  // WS20-T4 (journeys plan §5, D-J5): grudge-book mode folds the same entries into one lifetime
+  // aggregate per rival with the REMATCH affordance.
+  it('grudge mode: renders a lifetime aggregate row per rival with the REMATCH affordance', () => {
+    const html = renderToStaticMarkup(
+      <NemesisHistoryList
+        variant="grudges"
+        viewerProfileId="me"
+        entries={[
+          entry({ pairing_id: 'p-2' as NemesisHistoryEntry['pairing_id'], outcome: 'win' }),
+          entry({ pairing_id: 'p-1' as NemesisHistoryEntry['pairing_id'], outcome: 'loss' }),
+        ]}
+      />,
+    );
+    expect(html).toContain('data-testid="grudge-book"');
+    expect(html).toContain('even 1–1'); // 1 win, 1 loss vs the same rival
+    expect(html).toContain('REMATCH');
+    // Links to the newest pairing (p-2), not the older one.
+    expect(html).toContain('href="/vs/p-2"');
+  });
+
+  it('grudge mode: shows the empty-state copy when there are no settled weeks', () => {
+    const html = renderToStaticMarkup(
+      <NemesisHistoryList variant="grudges" viewerProfileId="me" entries={[]} />,
+    );
+    expect(html.toLowerCase()).toContain('no grudges yet');
+  });
 });

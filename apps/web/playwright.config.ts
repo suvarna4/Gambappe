@@ -24,6 +24,11 @@ process.env.FLAG_DUO_QUEUE ??= 'true';
 // unflagged SSR page — so it never needed this default; the flag still gated it implicitly
 // since that page's own data functions don't check it, only the `/api/v1/*` route handlers do.)
 process.env.FLAG_NEMESIS ??= 'true';
+// WS20-T4 callouts-loop.spec.ts exercises the `/rivals` call-out surfaces + the real
+// `/api/v1/callouts*` routes — all behind the `callouts` flag (journeys plan §4, default off until
+// WS23-T2's E2E gate). This task's own e2e flipping it on here mirrors FLAG_NEMESIS/FLAG_DUO_QUEUE
+// above (same inherit-into-webServer mechanism).
+process.env.FLAG_CALLOUTS ??= 'true';
 // WS14-T1 golden-loop.spec.ts calls the real `POST /internal/revalidate` (§9.2) to force fresh
 // ISR after directly advancing question state (lock/reveal) via repository calls instead of the
 // real worker cron — same "harmless test-only default" rationale as the stopgap token above.

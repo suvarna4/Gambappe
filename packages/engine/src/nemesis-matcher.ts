@@ -28,6 +28,18 @@ export interface NemesisPoolEntry extends StyleInputs {
   matchmakingPriority: boolean;
 }
 
+/**
+ * Grudge boost (journeys plan §5 WS20-T4, D-J5: "grudges seed matchmaking"). A small, BOUNDED
+ * edge-score bump applied once to a candidate pair when the two profiles already carry a standing
+ * back-and-forth record (each has beaten the other at least once — a "1–1+" grudge). Kept
+ * engine-local (not a `packages/core` tuning constant) and deliberately small — comparable to
+ * `PRIORITY_BONUS` (0.1) — so it nudges an otherwise-viable grudge rematch toward the front of the
+ * candidate ordering WITHOUT ever overriding the rating-band / category-overlap eligibility gates
+ * or swamping the style-distance signal. Applied at most once per pair (a single membership test),
+ * so it can never compound.
+ */
+const GRUDGE_BONUS = 0.15;
+
 /** An unordered profile-pair key, canonicalized so direction never matters. */
 function pairKey(a: string, b: string): string {
   return a < b ? `${a}|${b}` : `${b}|${a}`;
@@ -37,6 +49,12 @@ function pairKey(a: string, b: string): string {
 export interface NemesisMatchHistory {
   blockedPairs: ReadonlyArray<readonly [string, string]>;
   pairedThisSeason: ReadonlyArray<readonly [string, string]>;
+  /**
+   * Direction-agnostic pairs with a standing 1–1+ head-to-head record (journeys plan §5 WS20-T4,
+   * D-J5). Optional/additive: existing callers that don't thread grudge data behave exactly as
+   * before. Membership grants the pair's edge score a one-time `GRUDGE_BONUS`.
+   */
+  grudgePairs?: ReadonlyArray<readonly [string, string]>;
 }
 
 /** A mutually-accepted rematch, decided before this run (§8.4 step 0). */
@@ -89,12 +107,19 @@ function isEligiblePair(
   return true;
 }
 
-function edgeScore(a: NemesisPoolEntry, b: NemesisPoolEntry, styleVectorOf: ReadonlyMap<string, StyleVector>): number {
+function edgeScore(
+  a: NemesisPoolEntry,
+  b: NemesisPoolEntry,
+  styleVectorOf: ReadonlyMap<string, StyleVector>,
+  grudgeKeys: ReadonlySet<string>,
+): number {
   const va = styleVectorOf.get(a.profileId) ?? buildStyleVector(a);
   const vb = styleVectorOf.get(b.profileId) ?? buildStyleVector(b);
   let score = styleDistance(va, vb) - RD_PENALTY * Math.abs(a.rating - b.rating);
   if (tzBonusApplies(a, b)) score += TZ_BONUS;
   if (a.matchmakingPriority || b.matchmakingPriority) score += PRIORITY_BONUS;
+  // D-J5: a standing 1–1+ grudge gets a bounded, one-time nudge toward being re-paired (WS20-T4).
+  if (grudgeKeys.has(pairKey(a.profileId, b.profileId))) score += GRUDGE_BONUS;
   return score;
 }
 
@@ -144,6 +169,7 @@ export function matchNemeses(
 
   const blockedKeys = new Set(history.blockedPairs.map(([a, b]) => pairKey(a, b)));
   const pairedKeys = new Set(history.pairedThisSeason.map(([a, b]) => pairKey(a, b)));
+  const grudgeKeys = new Set((history.grudgePairs ?? []).map(([a, b]) => pairKey(a, b)));
 
   const edges: CandidateEdge[] = [];
   for (let i = 0; i < remaining.length; i++) {
@@ -156,7 +182,7 @@ export function matchNemeses(
         aId: a.profileId,
         bId: b.profileId,
         key: pairKey(a.profileId, b.profileId),
-        score: edgeScore(a, b, styleVectorOf),
+        score: edgeScore(a, b, styleVectorOf, grudgeKeys),
       });
     }
   }
@@ -198,10 +224,11 @@ export function matchNemeses(
         if (!a || !b || !c || !d) continue;
 
         const currentTotal =
-          (scoreOf.get(p1.key) ?? edgeScore(a, b, styleVectorOf)) + (scoreOf.get(p2.key) ?? edgeScore(c, d, styleVectorOf));
+          (scoreOf.get(p1.key) ?? edgeScore(a, b, styleVectorOf, grudgeKeys)) +
+          (scoreOf.get(p2.key) ?? edgeScore(c, d, styleVectorOf, grudgeKeys));
 
-        const optionAC_BD = tryImprove(a, c, b, d, currentTotal, blockedKeys, pairedKeys, styleVectorOf);
-        const optionAD_BC = tryImprove(a, d, b, c, currentTotal, blockedKeys, pairedKeys, styleVectorOf);
+        const optionAC_BD = tryImprove(a, c, b, d, currentTotal, blockedKeys, pairedKeys, styleVectorOf, grudgeKeys);
+        const optionAD_BC = tryImprove(a, d, b, c, currentTotal, blockedKeys, pairedKeys, styleVectorOf, grudgeKeys);
 
         let best = optionAC_BD;
         if (optionAD_BC && (!best || optionAD_BC.total > best.total)) best = optionAD_BC;
@@ -230,11 +257,12 @@ export function matchNemeses(
     blocked: ReadonlySet<string>,
     paired: ReadonlySet<string>,
     vectors: ReadonlyMap<string, StyleVector>,
+    grudges: ReadonlySet<string>,
   ): { pair1: [NemesisPoolEntry, NemesisPoolEntry]; pair2: [NemesisPoolEntry, NemesisPoolEntry]; score1: number; score2: number; total: number } | null {
     if (a.profileId === c.profileId || b.profileId === d.profileId) return null;
     if (!isEligiblePair(a, c, blocked, paired) || !isEligiblePair(b, d, blocked, paired)) return null;
-    const score1 = edgeScore(a, c, vectors);
-    const score2 = edgeScore(b, d, vectors);
+    const score1 = edgeScore(a, c, vectors, grudges);
+    const score2 = edgeScore(b, d, vectors, grudges);
     const total = score1 + score2;
     if (total <= currentTotal + 1e-9) return null;
     return { pair1: [a, c], pair2: [b, d], score1, score2, total };
@@ -248,7 +276,7 @@ export function matchNemeses(
     pairings.push({
       profileAId,
       profileBId,
-      score: scoreOf.get(pair.key) ?? edgeScore(a, b, styleVectorOf),
+      score: scoreOf.get(pair.key) ?? edgeScore(a, b, styleVectorOf, grudgeKeys),
       isRematch: false,
       expectedScoreA: expectedScore(a, b),
     });
