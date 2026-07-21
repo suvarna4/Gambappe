@@ -3,6 +3,7 @@ import { Barlow_Condensed, IBM_Plex_Mono, Inter } from 'next/font/google';
 import { PRODUCT_NAME } from '@receipts/core';
 
 import './globals.css';
+import { AppShell } from '@/components/shell/AppShell';
 import { EIGHTEEN_PLUS_FOOTER_NOTICE } from '@/lib/copy';
 
 // SW0-T2 (D-SW2): the three product faces, self-hosted by next/font (no external CDN at
@@ -35,16 +36,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={fontVariables}>
       <body className="bg-bg text-paper font-ui flex min-h-screen flex-col">
-        {children}
-        {/* INV-9: every page footer carries an 18+ notice — that invariant is about PRESENCE,
-            not a specific size, so this stays on every page but shrinks on narrow viewports
-            (design-diff audit: on a short page, e.g. /nemesis's single card, the footer's full
-            desktop padding/text-size read as disproportionately loud on mobile). Mobile-first:
-            the compact values are the unprefixed base, `sm:` restores the original spacious
-            desktop treatment. */}
-        <footer className="text-muted border-surface border-t px-4 py-3 text-xs sm:py-6 sm:text-sm">
-          <p>{EIGHTEEN_PLUS_FOOTER_NOTICE}</p>
-        </footer>
+        {/* WS17-T1 (seam 1): the app shell wraps every page — it mounts the five-room bottom tab
+            bar (D-J6) once and reserves its height on the content column (no layout shift). The
+            footer stays inside so INV-9's 18+ notice clears the fixed bar rather than sitting
+            under it. `saveChipSlot` (WS21-T2) is left empty for now. */}
+        <AppShell>
+          {children}
+          {/* INV-9: every page footer carries an 18+ notice — that invariant is about PRESENCE,
+              not a specific size, so this stays on every page but shrinks on narrow viewports
+              (design-diff audit: on a short page, e.g. /nemesis's single card, the footer's full
+              desktop padding/text-size read as disproportionately loud on mobile). Mobile-first:
+              the compact values are the unprefixed base, `sm:` restores the original spacious
+              desktop treatment. */}
+          <footer className="text-muted border-surface border-t px-4 py-3 text-xs sm:py-6 sm:text-sm">
+            <p>{EIGHTEEN_PLUS_FOOTER_NOTICE}</p>
+          </footer>
+        </AppShell>
       </body>
     </html>
   );
