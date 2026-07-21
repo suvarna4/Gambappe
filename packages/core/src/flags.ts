@@ -31,6 +31,22 @@ export const FLAG_DEFAULTS = {
    * flag-off CI lane stays green.
    */
   swipe_ballot: false,
+  /**
+   * Topic-market stack supply (journeys plan §4, WS16-T1/WS18). Off → `GET /api/v1/stack`
+   * returns `topics: []`, the admin "publish as topic" affordance is hidden, and `/` shows only
+   * the daily headliner (byte-identical to today, INV-10). Flipped by WS23-T2 via env, not code.
+   */
+  topic_markets: false,
+  /**
+   * Call-out challenge links + grudge book (journeys plan §4/§5 WS20-T3/T4). Off → the call-out
+   * API 404s/hides and no challenge surfaces render. Flipped by WS23-T2 via env.
+   */
+  callouts: false,
+  /**
+   * Departures-board skin pilot on `/sweat` (journeys plan §5 WS24-T1, STRETCH). Off → `/sweat`
+   * renders as paper receipts. Stays off; the board skin is a flagged stretch pilot only.
+   */
+  departures_board: false,
 } as const;
 
 export type FlagName = keyof typeof FLAG_DEFAULTS;

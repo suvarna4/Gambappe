@@ -11,7 +11,7 @@ import {
 } from '../enums.js';
 import { zPairingId, zPickId, zProfileId, zQuestionId } from '../ids.js';
 import { zDateOnly, zProbability, zSlug, zTimestamp } from './common.js';
-import { pairingReactionsTodaySchema } from './pairings.js';
+import { pairingReactionsTodaySchema, sameSideSchema } from './pairings.js';
 import { pickSchema } from './picks.js';
 
 /** Crowd split — only ever present once the question is locked (§9.3: hidden while `open`). */
@@ -187,6 +187,12 @@ export const nemesisFlipSchema = z.object({
   pairing_id: zPairingId.nullish(),
   side_profile_ids: z.object({ a: zProfileId, b: zProfileId }).nullish(),
   today_stamps: pairingReactionsTodaySchema.nullish(),
+  /**
+   * Same-side price-edge day result (journeys plan §4/§5 WS20-T1/T2, D-J4). Non-null only when
+   * this reveal is a same-side day (both rivals took the same side); drives the SAME SIDE tape +
+   * edge line on the matchup/verdict surfaces (WS20-T2). `.nullish()` per the additive-only
+   * contract rule — WS16-T1 ships the field, WS20-T1's engine change populates it. */
+  same_side: sameSideSchema.nullish(),
 });
 
 /**

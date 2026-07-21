@@ -60,7 +60,7 @@ describe('errors (Appendix C)', () => {
 });
 
 describe('flags (§4.6)', () => {
-  it('has exactly the 10 spec flags, all defaulting off', () => {
+  it('has exactly the spec flags, all defaulting off', () => {
     expect(FLAG_NAMES.sort()).toEqual(
       [
         'confidence_slider',
@@ -76,6 +76,11 @@ describe('flags (§4.6)', () => {
         'passkeys',
         // swipe_ballot added by SW0-T3 (swipe-ux-plan §2.13.3) — gates the swipe UX.
         'swipe_ballot',
+        // journeys-plan flags added by WS16-T1 (docs/journeys-plan.md §4), all env-flipped by
+        // WS23-T2 after the E2E gate — default off like every other flag.
+        'topic_markets',
+        'callouts',
+        'departures_board',
       ].sort(),
     );
     for (const name of FLAG_NAMES) expect(FLAG_DEFAULTS[name]).toBe(false);

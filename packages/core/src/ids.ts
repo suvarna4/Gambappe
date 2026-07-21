@@ -24,6 +24,7 @@ export type ReportId = Branded<string, 'ReportId'>;
 export type WalletLinkId = Branded<string, 'WalletLinkId'>;
 export type NotificationId = Branded<string, 'NotificationId'>;
 export type PushSubscriptionId = Branded<string, 'PushSubscriptionId'>;
+export type CalloutId = Branded<string, 'CalloutId'>;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -54,3 +55,4 @@ export const zReportId = zId<'ReportId'>();
 export const zWalletLinkId = zId<'WalletLinkId'>();
 export const zNotificationId = zId<'NotificationId'>();
 export const zPushSubscriptionId = zId<'PushSubscriptionId'>();
+export const zCalloutId = zId<'CalloutId'>();

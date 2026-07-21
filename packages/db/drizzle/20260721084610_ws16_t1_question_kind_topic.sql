@@ -1,0 +1,1 @@
+ALTER TYPE "public"."question_kind" ADD VALUE 'topic';

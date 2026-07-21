@@ -28,8 +28,13 @@ export type MarketStatus = (typeof MARKET_STATUS)[number];
 export const MARKET_SIDE = ['yes', 'no'] as const;
 export type MarketSide = (typeof MARKET_SIDE)[number];
 
-/** Placement does NOT use `questions`; it uses `placement_items` (§5.5). */
-export const QUESTION_KIND = ['daily', 'nemesis_bonus', 'duo_bonus'] as const;
+/**
+ * Placement does NOT use `questions`; it uses `placement_items` (§5.5).
+ * `'topic'` (journeys plan §4, WS16-T1): evergreen topic-market questions for the stack feed —
+ * no `question_date` uniqueness, no streak effect, open/lock windows derived from the venue
+ * market's `close_time`. The daily-unique index filters `kind='daily'`, so it is unaffected.
+ */
+export const QUESTION_KIND = ['daily', 'nemesis_bonus', 'duo_bonus', 'topic'] as const;
 export type QuestionKind = (typeof QUESTION_KIND)[number];
 
 export const QUESTION_STATUS = [
@@ -71,6 +76,14 @@ export type WalletLinkStatus = (typeof WALLET_LINK_STATUS)[number];
 
 export const REMATCH_STATUS = ['open', 'accepted', 'declined', 'expired'] as const;
 export type RematchStatus = (typeof REMATCH_STATUS)[number];
+
+/**
+ * Call-out challenge lifecycle (journeys plan §4/§5 WS20-T3). `pending` until the recipient
+ * acts; `accepted` mints the next-week nemesis pairing; a signed link past `expires_at` reads
+ * as `expired`.
+ */
+export const CALLOUT_STATUS = ['pending', 'accepted', 'declined', 'expired'] as const;
+export type CalloutStatus = (typeof CALLOUT_STATUS)[number];
 
 /** Used by posts + reactions (§5.1). */
 export const THREAD_CONTEXT = ['question', 'pairing', 'duo_match'] as const;

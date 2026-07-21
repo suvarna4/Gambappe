@@ -9,6 +9,23 @@ import { profileRefSchema } from './profiles.js';
 import { pairingReactionEmojiSchema } from './threads.js';
 
 /**
+ * Same-side price-edge day result (journeys plan §4/§5 WS20-T1, D-J4). Present only on a day
+ * where both rivals picked the SAME side; the better entry price (lower cost of the taken
+ * position) wins the day, earlier stamp breaks a price tie, a same-minute tie is a genuine
+ * `draw`. Viewer-relative: `your_price`/`their_price` are integer implied-entry cents. WS16-T1
+ * declares it; WS20-T1's engine change populates it. Attached `.nullish()` to the viewer's daily
+ * nemesis reveal (`nemesisFlipSchema`, questions.ts) — a viewer-scoped, client-fetched surface
+ * (§10.2), so it never rides the ISR-cached viewer-free scoreboard.
+ */
+export const sameSideSchema = z.object({
+  your_price: z.number().int().min(0).max(100),
+  their_price: z.number().int().min(0).max(100),
+  winner: z.enum(['you', 'them', 'draw']),
+});
+
+export type SameSide = z.infer<typeof sameSideSchema>;
+
+/**
  * One shared question on the pairing scoreboard. Opponent picks on a shared question are
  * masked (null) until that question locks (§9.3); pre-reveal daily results are masked too.
  */
