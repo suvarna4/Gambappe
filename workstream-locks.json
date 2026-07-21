@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-21T10:23:43.732Z",
+  "updated_at": "2026-07-21T10:24:04.833Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -1947,12 +1947,12 @@
       ],
       "mock_start_ok": false,
       "note": "Spec: docs/journeys-plan.md §5 WS17-T2. Refactor nemesis/duo page bodies into exported NemesisRoom/DuoRoom; old routes keep working (deep links, share cards). Does not touch layout.tsx or copy.ts.",
-      "status": "in_review",
+      "status": "done",
       "owner": "claude-opus-fohjki-agentI",
       "branch": "feat/ws17-t2-rivals-hub",
       "pr": "https://github.com/Gambappe/Gambappe/pull/117",
       "claimed_at": "2026-07-21T10:04:01.553Z",
-      "updated_at": "2026-07-21T10:18:41.331Z"
+      "updated_at": "2026-07-21T10:24:04.833Z"
     },
     "WS18-T1": {
       "title": "Topic supply: admin publish-as-topic + GET /api/v1/stack feed",
