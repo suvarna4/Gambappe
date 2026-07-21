@@ -3,6 +3,7 @@ import {
   Barcode,
   CountdownTicker,
   CrowdBar,
+  FlapText,
   PriceTag,
   PunchWell,
   SameSideRow,
@@ -14,6 +15,7 @@ import {
   UnderCard,
   sideAxisPair,
 } from '@receipts/ui';
+import { DeparturesBoard } from '@/components/DeparturesBoard';
 import { ObituaryCard } from '@/components/ObituaryCard';
 import { GraveyardShelf } from '@/components/GraveyardShelf';
 import { NemesisFlip } from '@/components/nemesis/NemesisFlip';
@@ -419,6 +421,33 @@ export default function UiGalleryPage() {
           {SWEAT_GALLERY_POSITIONS.map((position) => (
             <SweatRow key={position.pickId} position={position} />
           ))}
+        </div>
+      </section>
+
+      {/* WS24-T1 (journeys-plan §5, STRETCH): the split-flap `FlapText` primitive — per-character
+          cells with the split hairline. Shown static (no `animate`) so the screenshot baseline is
+          stable; the live board opts into the motion-safe flip-in tick. Dark `bg` cells with
+          `paper` ink read at AA (the board ships dark by design), no gold token. */}
+      <section data-testid="gallery-flaptext" className="space-y-3">
+        <h2 className="text-muted text-sm font-semibold uppercase">FlapText (WS24-T1)</h2>
+        <div className="bg-bg flex flex-wrap items-center gap-4 rounded-md p-4">
+          <FlapText>LIVE</FlapText>
+          <FlapText>~NOV 2026</FlapText>
+          <FlapText>71¢</FlapText>
+        </div>
+      </section>
+
+      {/* WS24-T1 (journeys-plan §5, STRETCH): the flagged `departures_board` skin of `/sweat` —
+          the same open positions on a `TicketFrame tone="board"` arrivals board, STATUS rendered
+          in `FlapText`. Ships dark (the board variant is `bg-surface`); shown on `bg-bg`. Static
+          (no `animate`) for a stable baseline. Off by default (`departures_board`); this tile is
+          the only place it renders when the flag is off. */}
+      <section data-testid="gallery-departures-board" className="space-y-3">
+        <h2 className="text-muted text-sm font-semibold uppercase">DeparturesBoard (WS24-T1)</h2>
+        <div className="bg-bg rounded-md p-6">
+          <div className="mx-auto max-w-[340px]">
+            <DeparturesBoard positions={SWEAT_GALLERY_POSITIONS} />
+          </div>
         </div>
       </section>
     </main>

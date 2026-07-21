@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { nowMs, PRODUCT_NAME } from '@receipts/core';
+import { isFlagEnabled, nowMs, PRODUCT_NAME } from '@receipts/core';
+import { DeparturesBoard } from '@/components/DeparturesBoard';
 import { SweatRow } from '@/components/SweatRow';
 import { sweatCopy } from '@/lib/copy';
 import { getSweatPositions } from '@/lib/sweat-feed';
@@ -29,6 +30,26 @@ export default async function SweatPage() {
     identity.kind === 'anonymous'
       ? []
       : await getSweatPositions(getDb(), identity.profile.id, nowMsValue);
+
+  // WS24-T1 stretch (journeys-plan §5): the flagged `departures_board` skin. Early-return the
+  // arrivals-board panel when the flag is on AND there are rows to flip; when the flag is off
+  // (default) this branch is skipped on the flag check alone and the paper path below runs
+  // UNCHANGED — byte-identical to WS19-T2 (flag-off regression: e2e/departures-board.spec.ts).
+  // The empty/anonymous state stays on the paper path (a board with no rows is just the header).
+  if (isFlagEnabled('departures_board') && positions.length > 0) {
+    return (
+      <main className="mx-auto w-full max-w-xl flex-1 px-6 py-10">
+        <header className="mb-6 space-y-1">
+          <p className="text-muted font-mono text-[10px] tracking-[0.22em] uppercase">
+            {sweatCopy.eyebrow}
+          </p>
+          <h1 className="font-display text-2xl font-bold uppercase">{sweatCopy.heading}</h1>
+          <p className="text-muted text-sm">{sweatCopy.intro}</p>
+        </header>
+        <DeparturesBoard positions={positions} animate />
+      </main>
+    );
+  }
 
   return (
     <main className="mx-auto w-full max-w-xl flex-1 px-6 py-10">

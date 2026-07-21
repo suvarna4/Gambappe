@@ -10,6 +10,7 @@ export * from './side-axis.js';
 export * from './swipe.js';
 export * from './reduced-motion.js';
 export * from './components/TicketFrame.js';
+export * from './components/FlapText.js';
 export * from './components/TicketCard.js';
 export * from './components/BallotCard.js';
 export * from './components/PunchWell.js';

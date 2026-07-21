@@ -76,3 +76,24 @@
     opacity: 1;
   }
 }
+
+/* WS24-T1 (journeys-plan §5, STRETCH): the split-flap "tick" for `FlapText` on the flagged
+   departures-board skin. Like `stamp-slam` above, this animates ONLY `transform` (a rotateX
+   flap-in) and its cells never carry a persistent `rotate`/`scale` utility, so there is no
+   compose/snap with the standalone transform properties. Applied via
+   `motion-safe:[animation:flap-tick_…]`, so `prefers-reduced-motion` users get the static final
+   character with no animation at all. */
+@keyframes flap-tick {
+  0% {
+    transform: rotateX(-90deg);
+    opacity: 0;
+  }
+  55% {
+    transform: rotateX(12deg);
+    opacity: 1;
+  }
+  100% {
+    transform: rotateX(0deg);
+    opacity: 1;
+  }
+}

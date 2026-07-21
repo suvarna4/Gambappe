@@ -197,6 +197,19 @@ test.describe('SW10-T5 /dev/ui visual regression', () => {
     await expect(page.getByTestId('gallery-sweatrow')).toHaveScreenshot('sweatrow.png');
   });
 
+  // WS24-T1 (journeys-plan §5, STRETCH): the split-flap primitive + the flagged departures-board
+  // skin of /sweat. Both tiles render static (the gallery passes no `animate`), so the flip-in
+  // tick never needs handling here even beyond toHaveScreenshot's `animations: 'disabled'`.
+  test('FlapText (WS24-T1, split-flap cells)', async ({ page }) => {
+    await expect(page.getByTestId('gallery-flaptext')).toHaveScreenshot('flaptext.png');
+  });
+
+  test('DeparturesBoard (WS24-T1, arrivals-board skin)', async ({ page }) => {
+    await expect(page.getByTestId('gallery-departures-board')).toHaveScreenshot(
+      'departures-board.png',
+    );
+  });
+
   test('Stamp (all five variants)', async ({ page }) => {
     await expect(page.getByTestId('gallery-stamp')).toHaveScreenshot('stamp.png');
   });

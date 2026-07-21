@@ -49,4 +49,17 @@ test('WS7-T1 design system gallery renders every component state', async ({ page
   await expect(sweat).toContainText('LIVE');
   await expect(sweat).toContainText('~NOV 2026');
   await expect(sweat.getByTestId('sweat-row').first()).toBeVisible();
+
+  // WS24-T1 (STRETCH): the FlapText primitive renders one accessible reading per string (its
+  // decorative cells are aria-hidden), and the departures-board tile lays the same sample
+  // positions out as an arrivals board with per-row STATUS flaps.
+  const flap = page.getByTestId('gallery-flaptext');
+  await expect(flap).toContainText('LIVE');
+  await expect(flap).toContainText('71¢');
+
+  const board = page.getByTestId('gallery-departures-board');
+  await expect(board.getByTestId('departures-board')).toBeVisible();
+  await expect(board.getByTestId('departures-row')).toHaveCount(3);
+  await expect(board).toContainText('DEPARTURES');
+  await expect(board).toContainText('LIVE');
 });

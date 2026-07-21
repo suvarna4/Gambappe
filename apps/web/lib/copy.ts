@@ -435,6 +435,26 @@ export const sweatCopy = {
   settledAt: (time: string) => `SETTLED ${time}`,
 } as const;
 
+/**
+ * WS24-T1 (journeys-plan §5, STRETCH — this task's OWN copy block): the chrome for the flagged
+ * `departures_board` skin on `/sweat` (the arrivals-board panel + its column heads). The per-row
+ * data (held side/entry price, drift) is quoted through `sweatCopy` above, not re-templated here,
+ * so the money-word rule (INV-8: no bet/stake/wager/$) has a single owner for those strings; the
+ * only NEW strings are the board's own labels, and `copy.test.ts` scans this block too.
+ */
+export const departuresCopy = {
+  /** ADMIT-bar left slot of the board's `TicketFrame` (mono, uppercase). */
+  boardTitle: 'DEPARTURES',
+  /** ADMIT-bar right slot — the board's "all times" note (never a clock reading). */
+  boardGate: 'ALL TIMES ET',
+  /** Tear-off stub serial for the board panel. */
+  serial: 'BOARD № 24-1',
+  /** Column heads, left→right: the settle status, the question, and the live price drift. */
+  colStatus: 'STATUS',
+  colDestination: 'DESTINATION',
+  colDrift: 'DRIFT',
+} as const;
+
 export const shareCopy = {
   shareButtonLabel: 'Share your receipt',
   sheetHeading: 'Share this',

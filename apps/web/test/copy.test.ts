@@ -5,6 +5,7 @@ import {
   CLAIM_PROMPT_CTA,
   CLAIM_PUBLICNESS_STATEMENT,
   crowdCopy,
+  departuresCopy,
   obituaryCopy,
   shareCopy,
   stackCopy,
@@ -93,6 +94,15 @@ describe('stack-deck copy (WS18-T3)', () => {
       stackCopy.clearedBlurb,
       stackCopy.sweatLink,
     ].join(' ');
+    expect(allCopy).not.toMatch(/\bbet\b|\bstake\b|\bwager\b|\$/i);
+  });
+});
+
+/** WS24-T1 (§5 STRETCH) departures-board skin chrome — the same INV-8 money-word rule on this
+ * task's OWN copy block (the row data is quoted through sweatCopy, scanned above). */
+describe('departures-board copy (WS24-T1)', () => {
+  it('no copy references money words (§10.6/INV-8 review rule: bet|stake|wager|$)', () => {
+    const allCopy = Object.values(departuresCopy).join(' ');
     expect(allCopy).not.toMatch(/\bbet\b|\bstake\b|\bwager\b|\$/i);
   });
 });
