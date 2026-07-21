@@ -276,7 +276,13 @@ export function ViewerStrip({
   // and error slot as the button flow.
   if (swipeBallot && question.status === 'open') {
     return (
-      <div className="space-y-2" data-testid="viewer-strip-swipe">
+      // Design-diff audit: `flex flex-1 flex-col justify-center` (not `space-y-2`) so
+      // `SwipeBallot`'s own interactive-state root (which sets `flex-1` on itself) can actually
+      // stretch to fill the height `DeckStage`'s card column gives it, matching the mockup's tall
+      // card proportions — see `DeckStage.tsx`'s own note. `justify-center` is a no-op for that
+      // stretching child but keeps the receipt/error states (neither sets `flex-1`) centered
+      // exactly as `space-y-2` + the ancestor's old centering did before this change.
+      <div className="flex flex-1 flex-col justify-center gap-2" data-testid="viewer-strip-swipe">
         <SwipeBallot
           question={question}
           ageGateRequired={me.status === 'ready' ? needsAgeGate(me.ageAttested) : true}

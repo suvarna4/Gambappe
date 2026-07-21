@@ -330,8 +330,8 @@ export function SwipeBallot({
   );
 
   return (
-    <div className="space-y-3" data-testid="swipe-ballot">
-      <div className="relative">
+    <div className="flex flex-1 flex-col gap-3" data-testid="swipe-ballot">
+      <div className="relative flex flex-1 flex-col">
         {/* World-tint wash (gesture-driven — lives in the interactive component, §2.5). */}
         {activeSide ? (
           <div
@@ -366,7 +366,7 @@ export function SwipeBallot({
           onPointerMove={drag.onPointerMove}
           onPointerUp={drag.onPointerUp}
           onPointerCancel={drag.onPointerCancel}
-          className={`relative touch-none select-none ${nudge ? 'motion-safe:[animation:ballot-nudge_2.6s_ease-in-out_2]' : ''}`}
+          className={`relative flex flex-1 flex-col touch-none select-none ${nudge ? 'motion-safe:[animation:ballot-nudge_2.6s_ease-in-out_2]' : ''}`}
           style={{
             transform: flingTransform,
             transition: flingSide
@@ -377,7 +377,19 @@ export function SwipeBallot({
             cursor: dragging ? 'grabbing' : 'grab',
           }}
         >
+          {/* Design-diff audit: `className="flex-1"` (native flex-grow), not `h-full`
+              (percentage height) — the card's own ancestor chain only has a REAL, definite
+              height when mounted under `DeckStage` (whose own `flex-1` chain ultimately traces
+              to `<body>`'s `min-h-screen`); in the `/dev/ui` gallery, the same tree sits in a
+              plain content-sized section with nothing to stretch into. A percentage height
+              against an indeterminate/content-sized ancestor is exactly the kind of circular
+              case Chromium doesn't reliably fall back to `auto` for (confirmed empirically — an
+              earlier `h-full` pass here visibly SHRANK the gallery's card below its own natural
+              content height instead of leaving it alone). `flex-1` sidesteps the whole question:
+              flex-grow only pulls from space that's actually eligible (real stretch), and the
+              flex item's own `min-height:auto` content floor keeps it at natural size otherwise. */}
           <BallotCard
+            className="flex-1"
             eyebrow={question.kind.toUpperCase()}
             serial={`№ ${question.question_date ?? question.slug.slice(0, 10)}`}
             headline={question.headline}

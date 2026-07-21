@@ -16,6 +16,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { isFlagEnabled, nowMs, PRODUCT_NAME } from '@receipts/core';
 import { QuestionStateView } from '@/components/QuestionStateView';
+import { StreakBadge } from '@/components/StreakBadge';
 import { ViewerStrip } from '@/components/ViewerStrip';
 import { appUrl } from '@/lib/app-url';
 import { describeQuestionState } from '@/lib/question-meta';
@@ -89,12 +90,13 @@ export default async function QuestionPage({ params }: QuestionPageProps) {
   // route for the same reason `swipeBallot` already is (a runtime flag, not per-request data).
   const duoQueue = isFlagEnabled('duo_queue');
 
-  return (
-    <main className="mx-auto max-w-xl space-y-6 px-6 py-10">
+  const content = (
+    <>
       <QuestionStateView
         question={question}
         serverOffsetMs={serverOffsetMs}
         swipeBallot={swipeBallot}
+        streakSlot={swipeBallot ? <StreakBadge /> : undefined}
         // `?arm=1` is intentionally NOT read here (searchParams) — see ViewerStrip's `arm` prop
         // doc: doing so would force this ISR'd (`revalidate = 30`) route into fully dynamic
         // rendering. ViewerStrip self-detects it client-side instead.
@@ -106,6 +108,13 @@ export default async function QuestionPage({ params }: QuestionPageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-    </main>
+    </>
   );
+
+  // Design-diff audit: same full-bleed rationale as `app/page.tsx` — see that file's own note.
+  if (swipeBallot) {
+    return <main className="flex flex-1 flex-col">{content}</main>;
+  }
+
+  return <main className="mx-auto max-w-xl space-y-6 px-6 py-10">{content}</main>;
 }

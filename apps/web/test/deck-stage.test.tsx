@@ -53,6 +53,22 @@ describe('DeckStage', () => {
     expect(html).toContain('HOLDS');
     expect(html).toContain('CUTS');
   });
+
+  it('renders the persistent topbar and threads the streak slot into it, empty when omitted', () => {
+    const withSlot = renderToStaticMarkup(
+      <DeckStage
+        question={base}
+        viewerSlot={null}
+        streakSlot={<span data-testid="streak-slot">6</span>}
+      />,
+    );
+    expect(withSlot).toContain('Today');
+    expect(withSlot).toContain('data-testid="streak-slot"');
+
+    const withoutSlot = renderToStaticMarkup(<DeckStage question={base} viewerSlot={null} />);
+    expect(withoutSlot).toContain('Today');
+    expect(withoutSlot).not.toContain('data-testid="streak-slot"');
+  });
 });
 
 describe('QuestionStateView — swipe_ballot flag', () => {
@@ -126,5 +142,19 @@ describe('QuestionStateView — swipe_ballot flag', () => {
     );
     expect(voided).toContain('data-testid="question-voided"');
     expect(voided).toContain('VOID');
+  });
+
+  it('threads the streak slot into the non-open deck topbar too, so it never flickers between states', () => {
+    const html = renderToStaticMarkup(
+      <QuestionStateView
+        question={{ ...base, status: 'scheduled' }}
+        serverOffsetMs={0}
+        swipeBallot
+        viewerSlot={null}
+        streakSlot={<span data-testid="streak-slot">6</span>}
+      />,
+    );
+    expect(html).toContain('Today');
+    expect(html).toContain('data-testid="streak-slot"');
   });
 });

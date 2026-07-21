@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { QuestionPublic } from '@receipts/core';
 import {
   Barcode,
@@ -29,6 +30,10 @@ export interface QuestionStateViewProps {
    * the INV-10 dual-render proof.
    */
   swipeBallot?: boolean;
+  /** `StreakBadge`, threaded into `DeckStage`/`DeckStates`'s shared `DeckTopbar` — see that
+   * component's header. Only rendered when `swipeBallot` is on (the flag-off ticket layout has
+   * no topbar equivalent to slot it into). */
+  streakSlot?: ReactNode;
 }
 
 /**
@@ -47,6 +52,7 @@ export function QuestionStateView({
   serverOffsetMs,
   viewerSlot,
   swipeBallot = false,
+  streakSlot,
 }: QuestionStateViewProps) {
   // SW2-T1/SW2-T2: when the flag is on, the whole question page is the deck. The actionable
   // `open` state is the interactive ballot (DeckStage); the other states render on the same dark
@@ -54,15 +60,25 @@ export function QuestionStateView({
   // untouched and stays byte-identical.
   if (swipeBallot) {
     return (
-      <div data-testid={`question-state-${question.status}`}>
+      // Design-diff audit: `flex flex-1 flex-col` (not a plain div) — the missing link in the
+      // flex-1 chain from `<main>` down to `DeckStage`'s own `flex-1` root. Without it, `DeckStage`
+      // has no flex parent to grow within and shrinks to its content height instead of filling the
+      // real viewport — see `DeckStage.tsx`'s own note for the rest of the chain.
+      <div data-testid={`question-state-${question.status}`} className="flex flex-1 flex-col">
         {question.status === 'open' ? (
           <DeckStage
             question={question}
             viewerSlot={viewerSlot}
             underLabel={copy.question.tomorrowTeaser}
+            streakSlot={streakSlot}
           />
         ) : (
-          <DeckStates question={question} serverOffsetMs={serverOffsetMs} viewerSlot={viewerSlot} />
+          <DeckStates
+            question={question}
+            serverOffsetMs={serverOffsetMs}
+            viewerSlot={viewerSlot}
+            streakSlot={streakSlot}
+          />
         )}
       </div>
     );
