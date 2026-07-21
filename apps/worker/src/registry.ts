@@ -10,7 +10,9 @@
  * crons prevent double-fire, and every handler is idempotent + heartbeat-writing (§19.4 rule 4).
  *
  * Jobs without a cron are queue-only: enqueued transactionally (grade:followup, §6.5),
- * per-question (question:open/lock, reveal:fire), or per-event (wallet:ingest).
+ * per-question (question:open/lock), or per-event (wallet:ingest). Per D-J3 (WS19-T1) there is
+ * no clock-scheduled reveal job: a daily settles the moment its market resolves, in
+ * `grade:followup`'s same tick (`settleQuestion`), not on a per-question `reveal_at` clock.
  *
  * NOTE on 30s cadences (duo:matchmaker, notify:dispatch): pg-boss cron granularity is one
  * minute; the owning tasks (WS6-T1, WS9-T1) implement the sub-minute tick by self-requeue
@@ -43,7 +45,7 @@ import { preLockReminderHandler } from './jobs/pre-lock-reminder.js';
 import { questionLockHandler } from './jobs/question-lock.js';
 import { questionOpenHandler } from './jobs/question-open.js';
 import { ratingsWeeklyHandler } from './jobs/ratings-weekly.js';
-import { revealFireHandler } from './jobs/reveal-fire.js';
+import { settleDigestHandler } from './jobs/settle-digest.js';
 import { settlementPollHandler } from './jobs/settlement-poll.js';
 import { streakFreezeGrantHandler } from './jobs/streak-freeze-grant.js';
 import { streakSweepHandler } from './jobs/streak-sweep.js';
@@ -106,10 +108,10 @@ export const JOB_REGISTRY: readonly JobDefinition[] = [
     handler: preLockReminderHandler,
   },
   {
-    name: 'reveal:fire',
-    owner: 'WS3-T4',
-    // Per-question at reveal_at (+30min re-arm, §6.7).
-    handler: revealFireHandler,
+    name: 'settle:digest',
+    owner: 'WS19-T1',
+    cron: '0 21 * * *', // daily 21:00 ET — one summary push for a profile's 2nd+ settles that day (D-J3)
+    handler: settleDigestHandler,
   },
   {
     name: 'streak:sweep',

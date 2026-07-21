@@ -41,7 +41,7 @@ import {
 } from '@receipts/db';
 import { buildMarket, buildProfile, computeEdge } from '@receipts/db/testing';
 import { runGradeFollowup } from '../../src/jobs/grade-followup.js';
-import { runRevealFire } from '../../src/jobs/reveal-fire.js';
+import { settleQuestion } from '../../src/lib/settle-question.js';
 import { tryCompleteDuoMatch } from '../../src/jobs/duo-match-completion.js';
 
 const dbUrl =
@@ -239,21 +239,21 @@ describe('duo match lifecycle — 6-question E2E (§8.9, §19.3 WS6-T2 AC)', () 
     ]);
 
     // Bonus questions publish immediately (§8.8.1) — order doesn't matter.
-    await runGradeFollowup(db, redis, boss, q4);
-    await runGradeFollowup(db, redis, boss, q5);
-    await runGradeFollowup(db, redis, boss, q6);
+    await runGradeFollowup(db, pool, redis, q4);
+    await runGradeFollowup(db, pool, redis, q5);
+    await runGradeFollowup(db, pool, redis, q6);
 
     // Dailies must reveal in date order (§6.6 ordering assert) — the match should NOT complete
     // until the last one (q3) reveals, even though every bonus question already has.
-    await runRevealFire(db, pool, boss, q1);
+    await settleQuestion(db, pool, q1);
     let mid = await db.select().from(duoMatches).where(eq(duoMatches.id, matchId));
     expect(mid[0]!.status).toBe('active');
 
-    await runRevealFire(db, pool, boss, q2);
+    await settleQuestion(db, pool, q2);
     mid = await db.select().from(duoMatches).where(eq(duoMatches.id, matchId));
     expect(mid[0]!.status).toBe('active');
 
-    await runRevealFire(db, pool, boss, q3);
+    await settleQuestion(db, pool, q3);
 
     const [finalMatch] = await db.select().from(duoMatches).where(eq(duoMatches.id, matchId));
     expect(finalMatch!.status).toBe('completed');
@@ -318,7 +318,7 @@ describe('duo chemistry — synergy display gate (§8.9, §19.3 WS6-T2 AC)', () 
     match1QuestionIds.push(q6Match1);
     await db.insert(duoMatchQuestions).values(match1QuestionIds.map((questionId) => ({ matchId: match1Id, questionId })));
     for (const qid of match1QuestionIds) {
-      await runGradeFollowup(db, redis, boss, qid);
+      await runGradeFollowup(db, pool, redis, qid);
     }
 
     const [duoAAfterMatch1] = await db.select().from(duos).where(eq(duos.id, duoAId));
@@ -355,7 +355,7 @@ describe('duo chemistry — synergy display gate (§8.9, §19.3 WS6-T2 AC)', () 
     match2QuestionIds.push(lastQMatch2);
     await db.insert(duoMatchQuestions).values(match2QuestionIds.map((questionId) => ({ matchId: match2Id, questionId })));
     for (const qid of match2QuestionIds) {
-      await runGradeFollowup(db, redis, boss, qid);
+      await runGradeFollowup(db, pool, redis, qid);
     }
 
     const [duoAAfterMatch2] = await db.select().from(duos).where(eq(duos.id, duoAId));

@@ -1,25 +1,26 @@
 /**
- * `grade:followup` (WS3-T3, §6.5): enqueued transactionally by `settlement:poll` (WS1-T5,
- * already implemented) right after grading. For `daily` questions: percentile computation
- * (§8.6, WS3-T5) and reveal scheduling (§6.7, WS3-T4) — it does NOT touch streaks itself ("the
- * publication rule ... defers all streak/record mutation to reveal firing", §6.5).
+ * `grade:followup` (WS3-T3, §6.5; WS19-T1 amendment): enqueued transactionally by
+ * `settlement:poll` (WS1-T5) right after grading. For `daily` questions: percentile computation
+ * (§8.6, WS3-T5) then — per D-J3 ("settlement follows reality") — SETTLE IN THE SAME TICK via
+ * `settleQuestion` (`../lib/settle-question.ts`), instead of scheduling a `reveal:fire` at the
+ * question's `reveal_at` clock time. The synchronized clock-scheduled reveal ceremony is cut: a
+ * question settles the moment its market resolves, any time of day. `settleQuestion` owns the
+ * streak/record mutation the §6.5 publication rule used to defer to reveal firing.
  *
  * For `nemesis_bonus` (WS5-T1) and `duo_bonus` (WS6-T2) — §8.8.1 "bonus questions have no held
  * reveal — grading publishes immediately via `grade:followup`": both reveal immediately (no
  * percentile/streak machinery — those are daily-only, §6.6/§8.6) via the same generic, idempotent
- * `revealQuestionTx` the daily path eventually reaches through `reveal:fire`. `duo_bonus`
- * additionally checks completion for every `duo_matches` row that references this question as a
- * bonus question (`listOpenMatchIdsForBonusQuestion`, `duo-match-completion.ts`) — `nemesis_bonus`
- * has no equivalent hook (nemesis week scoring, WS5-T3, reads shared-question picks directly
- * rather than needing a per-question completion check).
+ * `revealQuestionTx`. `duo_bonus` additionally checks completion for every `duo_matches` row that
+ * references this question as a bonus question (`listOpenMatchIdsForBonusQuestion`,
+ * `duo-match-completion.ts`) — `nemesis_bonus` has no equivalent hook (nemesis week scoring,
+ * WS5-T3, reads shared-question picks directly rather than needing a per-question completion check).
  *
- * Idempotent: percentile computation is a pure overwrite (safe to re-run); reveal scheduling
- * just (re-)enqueues `reveal:fire`, which is itself idempotent (§5.7); `revealQuestionTx` and
- * `tryCompleteDuoMatch` are both status-guarded no-ops on a re-run — so a worker restart anywhere
- * in this job (daily, nemesis_bonus, or duo_bonus) always converges correctly on redelivery,
- * satisfying the "kill-worker-between-grading-and-followup recovers" AC.
+ * Idempotent: percentile computation is a pure overwrite (safe to re-run); `settleQuestion`,
+ * `revealQuestionTx` and `tryCompleteDuoMatch` are all status-guarded no-ops on a re-run — so a
+ * worker restart anywhere in this job (daily, nemesis_bonus, or duo_bonus) always converges
+ * correctly on redelivery, satisfying the "kill-worker-between-grading-and-followup recovers" AC.
  */
-import type PgBoss from 'pg-boss';
+import type pg from 'pg';
 import type { Redis } from 'ioredis';
 import { now } from '@receipts/core';
 import { getQuestionById, listOpenMatchIdsForBonusQuestion, revealQuestionTx, type Db } from '@receipts/db';
@@ -27,6 +28,7 @@ import type { JobHandler } from '../heartbeat.js';
 import { logger } from '../logger.js';
 import { computeAndCachePercentiles } from './percentiles.js';
 import { tryCompleteDuoMatch } from './duo-match-completion.js';
+import { settleQuestion } from '../lib/settle-question.js';
 
 export interface GradeFollowupJobData {
   questionId: string;
@@ -43,8 +45,8 @@ async function runDuoBonusFollowup(db: Db, questionId: string, at: Date): Promis
 
 export async function runGradeFollowup(
   db: Db,
+  pool: pg.Pool,
   redis: Redis,
-  boss: PgBoss,
   questionId: string,
   at: Date = now(),
 ): Promise<void> {
@@ -80,14 +82,15 @@ export async function runGradeFollowup(
 
   await computeAndCachePercentiles(db, redis, questionId);
 
-  // §6.7 reveal scheduling: honors reveal_at, but never schedules in the past (a late-settling
-  // market should reveal promptly once graded, not wait for an already-passed target).
-  const target = question.revealAt.getTime() > at.getTime() ? question.revealAt : at;
-  await boss.send('reveal:fire', { questionId }, { startAfter: target });
+  // D-J3 (WS19-T1): settle in the same tick — the clock-scheduled reveal ceremony is cut. A daily
+  // settles the moment its market resolves; `settleQuestion` flips `locked` → `revealed`, applies
+  // the §6.6 streak increment, fires the settle push + ISR revalidate. Idempotent on redelivery.
+  const outcome = await settleQuestion(db, pool, questionId, at);
+  logger.info({ questionId, outcome }, 'grade:followup — daily settled on resolution (D-J3)');
 }
 
 export const gradeFollowupHandler: JobHandler = async (ctx, data) => {
   const { questionId } = data as GradeFollowupJobData;
-  await runGradeFollowup(ctx.db, ctx.redis, ctx.boss, questionId);
+  await runGradeFollowup(ctx.db, ctx.pool, ctx.redis, questionId);
   logger.info({ questionId }, 'grade:followup complete');
 };

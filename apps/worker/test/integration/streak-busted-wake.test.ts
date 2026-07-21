@@ -4,9 +4,10 @@
  * break the night before. That is the ordering the pre-SW9 live-field key (`previousStreak >= 3
  * && currentStreak === 1`) silently missed: by reveal time the sweep had zeroed
  * `profiles.current_streak`, so `previousStreak` was 0 and no beat ever fired in the normal
- * flow. Per the doc's §1 binding rule, this drives the REAL jobs — `runRevealFire` builds the
- * run, the REAL `runStreakSweep` applies the break, and the wake reveal is a real
- * `runRevealFire` — against really-seeded Postgres history. No payload or state mocks anywhere.
+ * flow. Per the doc's §1 binding rule, this drives the REAL settle path — `settleQuestion`
+ * (WS19-T1, D-J3) builds the run, the REAL `runStreakSweep` applies the break, and the wake
+ * settle is a real `settleQuestion` — against really-seeded Postgres history. No payload or state
+ * mocks anywhere.
  */
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -17,7 +18,7 @@ import PgBoss from 'pg-boss';
 import type pg from 'pg';
 import { connect, markets, notifications, picks, profiles, questions, type Db } from '@receipts/db';
 import { buildMarket, buildPick, buildProfile, buildQuestion, computeEdge } from '@receipts/db/testing';
-import { runRevealFire } from '../../src/jobs/reveal-fire.js';
+import { settleQuestion } from '../../src/lib/settle-question.js';
 import { runStreakSweep } from '../../src/jobs/streak-sweep.js';
 
 const dbUrl =
@@ -91,7 +92,7 @@ async function revealDaily(opts: {
     );
   }
   await db.insert(picks).values(dayPicks);
-  return runRevealFire(db, pool, boss, question.id as string, opts.at);
+  return settleQuestion(db, pool, question.id as string, opts.at);
 }
 
 async function bustedRowsFor(profileId: string) {

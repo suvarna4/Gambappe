@@ -5,12 +5,16 @@
  * heuristic needed its own slot; `notify:pre-lock-reminder`'s own header explains the
  * pre-lock-reminder job similarly — added by the WS9-T4 task itself, also captured in the
  * design doc's §7.6 table in this same PR).
+ *
+ * WS19-T1 (D-J3): `reveal:fire` is GONE and `settle:digest` (21:00 ET) is added. The synchronized
+ * clock-scheduled reveal ceremony is cut — a daily settles the moment its market resolves
+ * (`grade:followup` → `settleQuestion`), so no job fires reveals by clock anymore.
  */
 import { describe, expect, it } from 'vitest';
 import { JOB_NAMES, JOB_REGISTRY, SCHEDULE_TIMEZONE } from '../src/registry.js';
 
-/** The §7.6 job table, verbatim, plus `bot:score` (WS11-T2) and `notify:pre-lock-reminder`
- * (WS9-T4). */
+/** The §7.6 job table, plus `bot:score` (WS11-T2), `notify:pre-lock-reminder` (WS9-T4), and
+ * `settle:digest` (WS19-T1); minus `reveal:fire` (cut by WS19-T1/D-J3). */
 const SPEC_JOBS = [
   'venue:sync-catalog',
   'venue:price-tick',
@@ -19,7 +23,7 @@ const SPEC_JOBS = [
   'question:open',
   'question:lock',
   'notify:pre-lock-reminder',
-  'reveal:fire',
+  'settle:digest',
   'streak:sweep',
   'streak:freeze-grant',
   'fingerprint:nightly',
@@ -37,7 +41,7 @@ const SPEC_JOBS = [
 ] as const;
 
 /** Jobs the spec schedules on cron (vs queue-only enqueued jobs). */
-const QUEUE_ONLY = ['grade:followup', 'question:open', 'question:lock', 'reveal:fire', 'wallet:ingest'];
+const QUEUE_ONLY = ['grade:followup', 'question:open', 'question:lock', 'wallet:ingest'];
 
 describe('job registry (§7.6)', () => {
   it('covers every spec job, no extras, no duplicates', () => {
@@ -83,5 +87,6 @@ describe('job registry (§7.6)', () => {
     expect(byName['analytics:rollup']).toBe('0 4 * * *');
     expect(byName['maintenance:prune']).toBe('30 4 * * *');
     expect(byName['notify:pre-lock-reminder']).toBe('*/5 * * * *');
+    expect(byName['settle:digest']).toBe('0 21 * * *');
   });
 });
