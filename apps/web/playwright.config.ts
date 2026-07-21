@@ -5,6 +5,15 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000';
+// WS23-T1 (docs/journeys-plan.md §5) · the Journey E2E gate runs against a SECOND `next start`
+// booted with the full journeys flag set ON (see the `journeys` project + its webServer below).
+// It lives on its own port so flipping `swipe_ballot`/`topic_markets` on — which changes what `/`
+// and an OPEN `/q/[slug]` render (the mixed stack deck / swipe strip instead of the tap-button
+// flow) — never disturbs the flag-off lane the rest of the suite asserts against (golden-loop's
+// tap flow, question-page's open state, every INV-10 byte-identical regression). "webServer env,
+// like FLAG_NEMESIS" (this task's brief) is satisfied by that server's inline flag env.
+const journeysBaseURL =
+  process.env.PLAYWRIGHT_JOURNEYS_BASE_URL ?? 'http://localhost:3001';
 
 // WS10-T1 admin-auth.spec.ts needs a known stopgap token + allowlist; harmless test-only
 // defaults so CI/local runs don't need to export these just to run e2e (webServer inherits
@@ -117,13 +126,40 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      // The journeys gate (WS23-T1) runs in its own project against the flags-ON server below —
+      // exclude it here so the flag-off lane never deals the mixed deck / swipe strip that would
+      // break the tap-button + byte-identical specs this project owns.
+      testIgnore: '**/journeys/**',
       use: { ...devices['Desktop Chrome'] },
     },
+    {
+      // WS23-T1 · the six journey specs (`e2e/journeys/*.spec.ts`), against the flags-ON server.
+      name: 'journeys',
+      testMatch: '**/journeys/**/*.spec.ts',
+      use: { ...devices['Desktop Chrome'], baseURL: journeysBaseURL },
+    },
   ],
-  webServer: {
-    command: 'pnpm start',
-    url: `${baseURL}/api/health`,
-    reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
-  },
+  webServer: [
+    {
+      command: 'pnpm start',
+      url: `${baseURL}/api/health`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
+    {
+      // WS23-T1 journeys gate: a second `next start` on :3001 with the journeys flags ON. The flag
+      // env is set INLINE on the command (guaranteed to merge over the inherited process.env,
+      // independent of Playwright's webServer.env merge semantics). `topic_markets` + `swipe_ballot`
+      // give journeys 1/6 the mixed stack deck on `/`; `callouts` gives journey 5 its challenge
+      // surfaces; `nemesis`/`duo_queue` (already global) power journeys 3/4. `departures_board` is
+      // deliberately LEFT OFF (default) — it's a stretch skin, not a journey requirement, and
+      // turning it on would swap `/sweat` to the arrivals board that journey 1 does NOT assert
+      // against (it asserts the WS19-T2 paper `sweat-row` list, the surface this flag set produces).
+      command:
+        'FLAG_SWIPE_BALLOT=true FLAG_TOPIC_MARKETS=true FLAG_CALLOUTS=true FLAG_NEMESIS=true FLAG_DUO_QUEUE=true pnpm exec next start --port 3001',
+      url: `${journeysBaseURL}/api/health`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
+  ],
 });
