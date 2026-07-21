@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-21T09:07:37.329Z",
+  "updated_at": "2026-07-21T09:07:39.317Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2009,12 +2009,12 @@
       ],
       "mock_start_ok": false,
       "note": "Spec: docs/journeys-plan.md §5 WS19-T1 (D-J3, PRD §4.1 amendment). Settle in the venue-sync tick when a linked market resolves; extract settleQuestion(); revealedAt column keeps its name (presented as settled-at); delete clock-scheduled reveal ceremony; digest = per-settle push only for first settle of the day, summary at 21:00 ET.",
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-opus-fohjki-agentE",
+      "branch": "feat/ws19-t1-settlement-pipeline",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-21T08:22:30.580Z"
+      "claimed_at": "2026-07-21T09:07:39.317Z",
+      "updated_at": "2026-07-21T09:07:39.317Z"
     },
     "WS19-T2": {
       "title": "Sweat surfaces: /sweat page + settled-state presentation on question pages",
