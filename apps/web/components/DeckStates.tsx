@@ -3,18 +3,13 @@ import type { QuestionPublic } from '@receipts/core';
 import { CountdownTicker, CrowdBar, RevealHush, Stamp } from '@receipts/ui';
 import { copy, hushCopy } from '@/lib/copy';
 import { formatClock } from '@/lib/format-et';
-import { DeckTopbar } from './DeckTopbar';
 
 /** The dark stage ground shared by every flag-on state (§2.5) — the deck's paper-on-dark world,
- * minus the open-state rails (those belong to the gesture, `DeckStage`). Carries the same
- * `DeckTopbar` `DeckStage` renders (design-diff audit) so the deck's own chrome doesn't flicker
- * in and out as a question moves between states in the same session — see that component's
- * header. */
-function Stage({ children, streakSlot }: { children: ReactNode; streakSlot?: ReactNode }) {
+ * minus the open-state rails (those belong to the gesture, `DeckStage`). */
+function Stage({ children }: { children: ReactNode }) {
   return (
-    <div className="bg-bg flex flex-1 flex-col items-stretch gap-4">
-      <DeckTopbar streakSlot={streakSlot} />
-      <div className="flex flex-1 flex-col justify-center gap-4 px-6 py-8">{children}</div>
+    <div className="bg-bg flex min-h-[50dvh] flex-col items-stretch justify-center gap-4 rounded-xl px-6 py-8">
+      {children}
     </div>
   );
 }
@@ -31,8 +26,6 @@ export interface DeckStatesProps {
   question: QuestionPublic;
   serverOffsetMs: number;
   viewerSlot?: ReactNode;
-  /** `StreakBadge`, threaded into `DeckTopbar` — see that component's header. */
-  streakSlot?: ReactNode;
 }
 
 /**
@@ -43,9 +36,9 @@ export interface DeckStatesProps {
  * the reveal choreography arrive through `viewerSlot` (`ViewerStrip`). `open` is handled by
  * `DeckStage` (the interactive ballot), not here.
  */
-export function DeckStates({ question, serverOffsetMs, viewerSlot, streakSlot }: DeckStatesProps) {
+export function DeckStates({ question, serverOffsetMs, viewerSlot }: DeckStatesProps) {
   return (
-    <Stage streakSlot={streakSlot}>
+    <Stage>
       {question.status === 'scheduled' && (
         <div className="space-y-3" data-testid="question-scheduled">
           <DeckHeadline question={question} />

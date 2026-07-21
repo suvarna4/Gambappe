@@ -88,18 +88,6 @@ function readCount(key: string): number {
  * no animation ever delays that POST. `SwipeBallot` mounts into the deck shell's reserved
  * overlay slot (SW2-T1) over the viewer-free static `BallotCard` (INV-10). Guardrails fade with
  * experience (D-SW7); `prefers-reduced-motion` drops every transform (§2.3.8).
- *
- * Design-diff audit: the wells (`.well{font-size:12.5px;border-radius:9px}`) and the hint row
- * (`.hint{font-size:9px}`) are the mockup's own values (`docs/mockups/swipe-ux.html`) scaled
- * ×1.4, matching `BallotCard`'s own scaling pass — see that component's header for why. `wells`
- * itself has no `flex-1`/stretch classes — it's a natural-height sibling that lands flush against
- * the stage's bottom edge because the flex-1 wrapper ABOVE it (around the card+hints block, see
- * this component's `return`) absorbs all the leftover space, the same way the mockup's own
- * `.stage{flex:1;align-items:center;justify-content:center}` centers `.deck` and leaves `.wells`
- * — a separate sibling after `.stage` — sitting at the true bottom. `BallotCard` itself still
- * sizes via a fixed aspect ratio (an earlier pass instead stretched the CARD to fill 100% of its
- * ancestors' height, which overshot the mockup's actual restraint — see that component's header);
- * this wrapper's flex-1 is scoped to the card+hints block's own centering, not the card itself.
  */
 export function SwipeBallot({
   question,
@@ -324,7 +312,7 @@ export function SwipeBallot({
       disabled={disabled}
       onClick={() => submit('no', 'well')}
       onKeyDown={onWellKey}
-      className="border-side-b text-side-b min-h-12 flex-1 rounded-[13px] border-2 font-display text-[18px] font-bold tracking-[0.08em] uppercase disabled:opacity-50"
+      className="border-side-b text-side-b min-h-12 flex-1 rounded-lg border-2 font-display text-sm font-bold tracking-wide uppercase disabled:opacity-50"
     >
       {ballotCopy.wellAgainstGlyph} {noLabel}
     </button>,
@@ -335,146 +323,136 @@ export function SwipeBallot({
       disabled={disabled}
       onClick={() => submit('yes', 'well')}
       onKeyDown={onWellKey}
-      className="border-side-a text-side-a min-h-12 flex-1 rounded-[13px] border-2 font-display text-[18px] font-bold tracking-[0.08em] uppercase disabled:opacity-50"
+      className="border-side-a text-side-a min-h-12 flex-1 rounded-lg border-2 font-display text-sm font-bold tracking-wide uppercase disabled:opacity-50"
     >
       {yesLabel} {ballotCopy.wellForGlyph}
     </button>,
   );
 
   return (
-    <div className="flex flex-1 flex-col gap-3" data-testid="swipe-ballot">
-      {/* Design-diff audit: this wrapper (`flex-1 justify-center`) grows to consume whatever
-          height `DeckStage`'s stage actually has above the wells, and centers the card+hints
-          block within it — the mockup's own `.stage{flex:1;align-items:center;justify-content:
-          center}` does exactly this, with `.wells` as a separate sibling AFTER `.stage` that
-          naturally lands flush against the screen's bottom edge because `.stage` absorbed all the
-          leftover space. The INNER `relative` div is untouched from before this wrapper existed —
-          `ballot-tint`'s own `absolute -inset-6` still positions relative to it (the shrink-wrapped
-          card+hints bounds), not the new outer wrapper's much larger box. */}
-      <div className="flex flex-1 flex-col justify-center">
-        <div className="relative">
-          {/* World-tint wash (gesture-driven — lives in the interactive component, §2.5). */}
-          {activeSide ? (
-            <div
-              aria-hidden="true"
-              data-testid="ballot-tint"
-              data-side={activeSide}
-              className="pointer-events-none absolute -inset-6 rounded-3xl"
-              style={{
-                background:
-                  activeSide === 'yes'
-                    ? 'radial-gradient(120% 90% at 85% 50%, rgba(59,130,246,0.42), transparent 62%)'
-                    : 'radial-gradient(120% 90% at 15% 50%, rgba(249,115,22,0.42), transparent 62%)',
-                opacity: flingSide ? 0.85 : tintOpacity(progress),
-                transition: dragging ? 'none' : 'opacity 180ms',
-              }}
-            />
-          ) : null}
-
-          {/* The card is a pointer-drag surface with an accessible name; the two tap wells below
-              are the keyboard/AT path (real buttons — Tab + Enter), so the card itself is not a
-              focusable custom widget. SPEC-GAP(SW1-T2): the plan sketched arrow-keys-on-card, but
-              standard buttons are a stronger, jsx-a11y-clean keyboard affordance than a focusable
-              non-interactive div, so keyboard picking lives on the wells. Pointer handlers are not
-              in jsx-a11y's flagged handler set, so a labelled group with them stays lint-clean. */}
+    <div className="space-y-3" data-testid="swipe-ballot">
+      <div className="relative">
+        {/* World-tint wash (gesture-driven — lives in the interactive component, §2.5). */}
+        {activeSide ? (
           <div
-            ref={cardRef}
-            role="group"
-            aria-label={ballotCopy.cardAriaLabel(question.headline, yesLabel, noLabel)}
-            data-testid="ballot-card-interactive"
-            data-armed={armed ? 'true' : 'false'}
-            onPointerDown={onPointerDown}
-            onPointerMove={drag.onPointerMove}
-            onPointerUp={drag.onPointerUp}
-            onPointerCancel={drag.onPointerCancel}
-            className={`relative touch-none select-none ${nudge ? 'motion-safe:[animation:ballot-nudge_2.6s_ease-in-out_2]' : ''}`}
+            aria-hidden="true"
+            data-testid="ballot-tint"
+            data-side={activeSide}
+            className="pointer-events-none absolute -inset-6 rounded-3xl"
             style={{
-              transform: flingTransform,
-              transition: flingSide
-                ? `transform ${FLING_MS}ms cubic-bezier(.3,.6,.4,1)`
-                : dragging
-                  ? 'none'
-                  : 'transform 400ms cubic-bezier(.28,1.6,.5,1)',
-              cursor: dragging ? 'grabbing' : 'grab',
+              background:
+                activeSide === 'yes'
+                  ? 'radial-gradient(120% 90% at 85% 50%, rgba(59,130,246,0.42), transparent 62%)'
+                  : 'radial-gradient(120% 90% at 15% 50%, rgba(249,115,22,0.42), transparent 62%)',
+              opacity: flingSide ? 0.85 : tintOpacity(progress),
+              transition: dragging ? 'none' : 'opacity 180ms',
             }}
-          >
-            <BallotCard
-              eyebrow={question.kind.toUpperCase()}
-              serial={`№ ${question.question_date ?? question.slug.slice(0, 10)}`}
-              headline={question.headline}
-              yesLabel={yesLabel}
-              noLabel={noLabel}
-              yesProbability={yesProbability}
-              venue={`${question.venue.toUpperCase()} · LIVE`}
-              lockLabel={`LOCKS ${formatClock(question.lock_at)}`}
-              overlay={
-                <>
-                  {showPreview ? (
-                    <span
-                      aria-hidden="true"
-                      data-testid="stamp-preview"
-                      className={`pointer-events-none absolute top-[42%] left-1/2 -rotate-6 rounded border-2 px-3 py-1 font-display text-lg font-bold uppercase ${previewSide === 'yes' ? 'border-side-a text-[#1d4fa8]' : 'border-side-b text-[#b34d0a]'}`}
-                      style={{
-                        transform: `translate(-50%,-50%) rotate(-6deg) scale(${stampScale(progress)})`,
-                        opacity: Math.min(1, progress),
-                      }}
-                    >
-                      {previewLabel} @ {previewCents}¢
-                    </span>
-                  ) : null}
-                  {pendingAge ? (
-                    <div
-                      data-testid="age-gate"
-                      className="bg-paper/95 absolute inset-x-0 bottom-0 space-y-1 border-t px-4 py-3"
-                    >
-                      <p className="text-ink font-mono text-xs">{copy.question.ageGatePrompt}</p>
-                      <div dir="ltr" className="flex gap-3">
-                        <button
-                          type="button"
-                          data-testid="age-gate-cancel"
-                          onClick={() => setPendingAge(null)}
-                          className="text-muted min-h-11 flex-1 rounded border text-xs"
-                        >
-                          {copy.question.ageGateCancel}
-                        </button>
-                        <button
-                          type="button"
-                          data-testid="age-gate-confirm"
-                          onClick={confirmAge}
-                          className="bg-win text-ink min-h-11 flex-1 rounded text-xs font-semibold"
-                        >
-                          {copy.question.ageGateConfirm}
-                        </button>
-                      </div>
-                    </div>
-                  ) : null}
-                </>
-              }
-            />
-          </div>
+          />
+        ) : null}
 
-          {/* Hint arrows inside the stage bottom — fade out once the hand has learned (D-SW7); a
-              pre-armed deep link (SW2-T4) keeps them for the first-time visitor. */}
-          {arm || !hintsHidden(pickCount) ? (
-            <div
-              aria-hidden="true"
-              data-testid="ballot-hints"
-              className="text-muted mt-2 flex justify-between font-mono text-[13px] tracking-widest"
-              style={{ opacity: arm ? 1 : railsOpacity(pickCount) }}
-            >
-              <span className="text-side-b">
-                {ballotCopy.againstArrow} {noLabel}
-              </span>
-              <span className="text-side-a">
-                {yesLabel} {ballotCopy.forArrow}
-              </span>
-            </div>
-          ) : null}
+        {/* The card is a pointer-drag surface with an accessible name; the two tap wells below
+            are the keyboard/AT path (real buttons — Tab + Enter), so the card itself is not a
+            focusable custom widget. SPEC-GAP(SW1-T2): the plan sketched arrow-keys-on-card, but
+            standard buttons are a stronger, jsx-a11y-clean keyboard affordance than a focusable
+            non-interactive div, so keyboard picking lives on the wells. Pointer handlers are not
+            in jsx-a11y's flagged handler set, so a labelled group with them stays lint-clean. */}
+        <div
+          ref={cardRef}
+          role="group"
+          aria-label={ballotCopy.cardAriaLabel(question.headline, yesLabel, noLabel)}
+          data-testid="ballot-card-interactive"
+          data-armed={armed ? 'true' : 'false'}
+          onPointerDown={onPointerDown}
+          onPointerMove={drag.onPointerMove}
+          onPointerUp={drag.onPointerUp}
+          onPointerCancel={drag.onPointerCancel}
+          className={`relative touch-none select-none ${nudge ? 'motion-safe:[animation:ballot-nudge_2.6s_ease-in-out_2]' : ''}`}
+          style={{
+            transform: flingTransform,
+            transition: flingSide
+              ? `transform ${FLING_MS}ms cubic-bezier(.3,.6,.4,1)`
+              : dragging
+                ? 'none'
+                : 'transform 400ms cubic-bezier(.28,1.6,.5,1)',
+            cursor: dragging ? 'grabbing' : 'grab',
+          }}
+        >
+          <BallotCard
+            eyebrow={question.kind.toUpperCase()}
+            serial={`№ ${question.question_date ?? question.slug.slice(0, 10)}`}
+            headline={question.headline}
+            yesLabel={yesLabel}
+            noLabel={noLabel}
+            yesProbability={yesProbability}
+            venue={`${question.venue.toUpperCase()} · LIVE`}
+            lockLabel={`LOCKS ${formatClock(question.lock_at)}`}
+            overlay={
+              <>
+                {showPreview ? (
+                  <span
+                    aria-hidden="true"
+                    data-testid="stamp-preview"
+                    className={`pointer-events-none absolute top-[42%] left-1/2 -rotate-6 rounded border-2 px-3 py-1 font-display text-lg font-bold uppercase ${previewSide === 'yes' ? 'border-side-a text-[#1d4fa8]' : 'border-side-b text-[#b34d0a]'}`}
+                    style={{
+                      transform: `translate(-50%,-50%) rotate(-6deg) scale(${stampScale(progress)})`,
+                      opacity: Math.min(1, progress),
+                    }}
+                  >
+                    {previewLabel} @ {previewCents}¢
+                  </span>
+                ) : null}
+                {pendingAge ? (
+                  <div
+                    data-testid="age-gate"
+                    className="bg-paper/95 absolute inset-x-0 bottom-0 space-y-1 border-t px-4 py-3"
+                  >
+                    <p className="text-ink font-mono text-xs">{copy.question.ageGatePrompt}</p>
+                    <div dir="ltr" className="flex gap-3">
+                      <button
+                        type="button"
+                        data-testid="age-gate-cancel"
+                        onClick={() => setPendingAge(null)}
+                        className="text-muted min-h-11 flex-1 rounded border text-xs"
+                      >
+                        {copy.question.ageGateCancel}
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="age-gate-confirm"
+                        onClick={confirmAge}
+                        className="bg-win text-ink min-h-11 flex-1 rounded text-xs font-semibold"
+                      >
+                        {copy.question.ageGateConfirm}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            }
+          />
         </div>
+
+        {/* Hint arrows inside the stage bottom — fade out once the hand has learned (D-SW7); a
+            pre-armed deep link (SW2-T4) keeps them for the first-time visitor. */}
+        {arm || !hintsHidden(pickCount) ? (
+          <div
+            aria-hidden="true"
+            data-testid="ballot-hints"
+            className="text-muted mt-2 flex justify-between font-mono text-[11px] tracking-widest"
+            style={{ opacity: arm ? 1 : railsOpacity(pickCount) }}
+          >
+            <span className="text-side-b">
+              {ballotCopy.againstArrow} {noLabel}
+            </span>
+            <span className="text-side-a">
+              {yesLabel} {ballotCopy.forArrow}
+            </span>
+          </div>
+        ) : null}
       </div>
 
       {/* Tap wells — always present, never faded (a11y is permanent, D-SW7). */}
-      <div dir="ltr" className="flex gap-[11px]">
+      <div dir="ltr" className="flex gap-2">
         {wells[0]}
         {wells[1]}
       </div>

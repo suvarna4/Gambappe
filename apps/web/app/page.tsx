@@ -5,7 +5,6 @@
 import type { Metadata } from 'next';
 import { isFlagEnabled, nowMs, PRODUCT_NAME } from '@receipts/core';
 import { QuestionStateView } from '@/components/QuestionStateView';
-import { StreakBadge } from '@/components/StreakBadge';
 import { ViewerStrip } from '@/components/ViewerStrip';
 import { copy } from '@/lib/copy';
 import { getTodayQuestionPublic } from '@/lib/question-view';
@@ -39,39 +38,28 @@ export default async function HomePage({
   // so it doesn't affect INV-10; the client strips it after mount (SW7-T2).
   const arm = swipeBallot && (await searchParams).arm === '1';
 
-  const content = question ? (
-    <QuestionStateView
-      question={question}
-      serverOffsetMs={serverOffsetMs}
-      swipeBallot={swipeBallot}
-      streakSlot={swipeBallot ? <StreakBadge /> : undefined}
-      viewerSlot={
-        <ViewerStrip question={question} swipeBallot={swipeBallot} arm={arm} duoQueue={duoQueue} />
-      }
-    />
-  ) : (
-    <p
-      className={swipeBallot ? 'text-muted p-6 text-sm' : 'text-muted text-sm'}
-      data-testid="no-question-today"
-    >
-      {copy.question.noQuestionToday}
-    </p>
-  );
-
-  // Design-diff audit: the mockup's own lede for this primitive is explicit — "the swipe ballot
-  // is not a control on a page — it IS the page" (`docs/mockups/swipe-ux.html`'s "01 THE
-  // PRIMITIVE"). The flag-off ticket layout keeps its own page shell (title + margins) exactly
-  // as before (INV-10 byte-identical); the flag-on deck bleeds edge-to-edge instead — no page
-  // title competing with the deck's own topbar (`DeckTopbar`, threaded above) for the same
-  // "TODAY" chrome, no page-shell margin duplicating the deck's own internal insets.
-  if (swipeBallot) {
-    return <main className="flex flex-1 flex-col">{content}</main>;
-  }
-
   return (
     <main className="mx-auto max-w-xl space-y-6 px-6 py-10">
       <h1 className="text-2xl font-bold">{PRODUCT_NAME}</h1>
-      {content}
+      {question ? (
+        <QuestionStateView
+          question={question}
+          serverOffsetMs={serverOffsetMs}
+          swipeBallot={swipeBallot}
+          viewerSlot={
+            <ViewerStrip
+              question={question}
+              swipeBallot={swipeBallot}
+              arm={arm}
+              duoQueue={duoQueue}
+            />
+          }
+        />
+      ) : (
+        <p className="text-muted text-sm" data-testid="no-question-today">
+          {copy.question.noQuestionToday}
+        </p>
+      )}
     </main>
   );
 }
