@@ -208,6 +208,27 @@ describe('buildRevealPayload — nemesis_flip mechanical condition (SW10-T1)', (
     expect(flip!.side_profile_ids).toEqual({ a: viewer.id, b: opponent.id });
     // Neither side has stamped today yet.
     expect(flip!.today_stamps).toEqual({ a: null, b: null });
+    // Opposite sides → NOT a same-side day (D-J4, WS20-T1): same_side stays null.
+    expect(flip!.same_side ?? null).toBeNull();
+  });
+
+  it('same_side is populated when both rivals take the SAME side, winner = cheaper entry (D-J4, WS20-T1)', async () => {
+    const seasonId = await makeSeasonRow();
+    const [viewer, opponent] = await Promise.all([
+      makeClaimedProfile({ handle: 'Viewer H.' }),
+      makeClaimedProfile({ handle: 'Opponent H.' }),
+    ]);
+    await makePairing(seasonId, viewer.id, opponent.id, { scoreA: 0, scoreB: 0 });
+
+    const qId = await makeRevealedDailyQuestion(0);
+    // Both pick YES; viewer entered cheaper (0.40 vs 0.70) → viewer wins the day on price.
+    await makePick(qId, viewer.id, { side: 'yes', result: 'win', edge: computeEdge('yes', 0.4, true), yesPriceAtEntry: 0.4 });
+    await makePick(qId, opponent.id, { side: 'yes', result: 'win', edge: computeEdge('yes', 0.7, true), yesPriceAtEntry: 0.7 });
+
+    const payload = await getPayloadFor(qId, viewer.id);
+    const flip = payload.viewer!.nemesis_flip;
+    expect(flip).not.toBeNull();
+    expect(flip!.same_side).toEqual({ your_price: 40, their_price: 70, winner: 'you' });
   });
 
   it('today_stamps reflects a real posted reaction — the SAME read `pairing.today_reactions` on /nemesis uses (SW10-T4), not a re-derived query', async () => {

@@ -132,12 +132,28 @@ export async function findActivePairingInvolving(db: Db, profileId: string): Pro
   return row ?? null;
 }
 
+/**
+ * One side's pick on a shared question (§8.8 scoring input). The `side`/`entryCents`/
+ * `priceStampedAtMs` fields (journeys plan §4/§5 WS20-T1, D-J4) are optional and populated only
+ * by `getFullPairingSharedQuestionPicks` (the weekly-scoring reader) for a real pick — they feed
+ * the engine's same-side price-edge day rule. Readers that don't need them (e.g. the block-exit
+ * `getPairingSharedQuestionPicks`) simply omit them and the engine falls back to the old rule.
+ */
+export interface SharedPick {
+  picked: boolean;
+  won: boolean;
+  edge: number;
+  side?: 'yes' | 'no';
+  entryCents?: number;
+  priceStampedAtMs?: number;
+}
+
 export interface SharedQuestionPicks {
   questionId: string;
   isVoid: boolean;
   isSettled: boolean;
-  profileAPick: { picked: boolean; won: boolean; edge: number };
-  profileBPick: { picked: boolean; won: boolean; edge: number };
+  profileAPick: SharedPick;
+  profileBPick: SharedPick;
 }
 
 /** Every bonus question shared by the pairing, with both sides' pick outcome (§8.8 input shape). */

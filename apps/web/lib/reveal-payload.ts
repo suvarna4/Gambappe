@@ -4,7 +4,7 @@
  * rule, §6.5/§6.7 — before ever reaching this builder).
  */
 import type { Redis } from 'ioredis';
-import { isCalledIt, narrate } from '@receipts/engine';
+import { isCalledIt, narrate, resolveSameSideDay } from '@receipts/engine';
 import {
   getFreezeUsesForProfile,
   getPick,
@@ -249,6 +249,42 @@ async function computeNemesisFlipBlock(
   const opponentPick = await getPick(db, question.id, opponentRef.profile_id);
   if (!opponentPick) return null;
 
+  // D-J4 (WS20-T1/T2): when the viewer and opponent took the SAME side, this day is decided by
+  // price edge, not by both being right/wrong. Surface `{your_price, their_price, winner}`
+  // (viewer-relative, integer cents) so the matchup/verdict UI can render the SAME SIDE tape +
+  // edge line. Opposite-side / solo days leave `same_side` null (schema is `.nullish()`).
+  const viewerPick = await getPick(db, question.id, viewerProfileId);
+  let sameSide: NemesisFlipBlock['same_side'] = null;
+  if (viewerPick && viewerPick.side === opponentPick.side) {
+    const yourCents = impliedEntryCents(viewerPick);
+    const theirCents = impliedEntryCents(opponentPick);
+    const day = resolveSameSideDay(
+      {
+        picked: true,
+        won: false,
+        edge: 0,
+        side: viewerPick.side,
+        entryCents: yourCents,
+        priceStampedAtMs: viewerPick.priceStampedAt.getTime(),
+      },
+      {
+        picked: true,
+        won: false,
+        edge: 0,
+        side: opponentPick.side,
+        entryCents: theirCents,
+        priceStampedAtMs: opponentPick.priceStampedAt.getTime(),
+      },
+    );
+    if (day) {
+      sameSide = {
+        your_price: yourCents,
+        their_price: theirCents,
+        winner: day.winner === 'a' ? 'you' : day.winner === 'b' ? 'them' : 'draw',
+      };
+    }
+  }
+
   const scoreboard = pairing.scoreboard;
   // Fable review of PR #85 round 2 (MEDIUM): without this, an archival reveal for a question
   // outside the pairing's current week (e.g. reached via the viewer's own obituary
@@ -308,6 +344,7 @@ async function computeNemesisFlipBlock(
     pairing_id: pairing.id,
     side_profile_ids: { a: pairing.a.profile_id, b: pairing.b.profile_id },
     today_stamps: pairing.today_reactions ?? null,
+    same_side: sameSide,
   };
 }
 

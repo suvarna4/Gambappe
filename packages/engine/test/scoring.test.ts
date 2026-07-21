@@ -4,11 +4,25 @@
  */
 import { describe, expect, it } from 'vitest';
 import { SYNERGY_MIN_PICKS } from '@receipts/core';
-import { computeDuoSynergy, scoreDuoMatch, scoreNemesisWeek } from '../src/scoring.js';
+import {
+  computeDuoSynergy,
+  resolveSameSideDay,
+  scoreDuoMatch,
+  scoreNemesisWeek,
+} from '../src/scoring.js';
 import type { DuoMatchQuestion, NemesisSharedQuestion, PlayerQuestionPick } from '../src/scoring.js';
 
 const pick = (won: boolean, edge: number): PlayerQuestionPick => ({ picked: true, won, edge });
 const noPick: PlayerQuestionPick = { picked: false, won: false, edge: 0 };
+
+/** A same-side-aware pick (D-J4 inputs): side + entry cost (cents) + price stamp (ms). */
+const ssPick = (
+  side: 'yes' | 'no',
+  entryCents: number,
+  won: boolean,
+  stampMs = 0,
+  edge = 0,
+): PlayerQuestionPick => ({ picked: true, won, edge, side, entryCents, priceStampedAtMs: stampMs });
 
 describe('scoreNemesisWeek', () => {
   it('1 point iff picked AND won; no pick scores 0; both can score the same question', () => {
@@ -78,6 +92,79 @@ describe('scoreNemesisWeek', () => {
     expect(result.scoreA).toBe(1);
     expect(result.scoreB).toBe(2);
     expect(result.winner).toBe('b');
+  });
+});
+
+describe('resolveSameSideDay (D-J4, WS20-T1)', () => {
+  it('returns null when not a same-side day (solo pick, opposite sides, or missing price data)', () => {
+    expect(resolveSameSideDay(ssPick('yes', 40, true), noPick)).toBeNull();
+    expect(resolveSameSideDay(ssPick('yes', 40, true), ssPick('no', 40, false))).toBeNull();
+    // both picked same side but no price data → fall back to old rule
+    expect(resolveSameSideDay(pick(true, 0.3), pick(true, 0.1))).toBeNull();
+  });
+
+  it('cheaper entry wins the day, independent of outcome (both-right AND both-wrong)', () => {
+    // both right, yes side: 40¢ beats 55¢
+    expect(resolveSameSideDay(ssPick('yes', 40, true), ssPick('yes', 55, true)).winner).toBe('a');
+    // both wrong, yes side: 40¢ (smaller loss) still beats 55¢
+    expect(resolveSameSideDay(ssPick('yes', 40, false), ssPick('yes', 55, false)).winner).toBe('a');
+    // no side, b cheaper
+    expect(resolveSameSideDay(ssPick('no', 70, true), ssPick('no', 30, false)).winner).toBe('b');
+  });
+
+  it('equal price → earlier minute-truncated stamp wins; same minute → draw', () => {
+    // a stamped 09:00:59, b at 09:01:10 → different minutes, a earlier
+    expect(resolveSameSideDay(ssPick('yes', 50, true, 59_000), ssPick('yes', 50, false, 70_000)).winner).toBe('a');
+    // both within the same minute (0–59s) → genuine draw
+    expect(resolveSameSideDay(ssPick('yes', 50, true, 10_000), ssPick('yes', 50, false, 40_000)).winner).toBe('draw');
+    // b earlier minute
+    expect(resolveSameSideDay(ssPick('no', 50, false, 130_000), ssPick('no', 50, true, 10_000)).winner).toBe('b');
+  });
+});
+
+describe('scoreNemesisWeek — same-side days (D-J4)', () => {
+  it('same-side both-won day → cheaper entry wins the day 1–0 (not the old 1–1 push)', () => {
+    const r = scoreNemesisWeek([
+      { questionId: 'q', isVoid: false, isSettled: true, profileA: ssPick('yes', 40, true, 0, 0.3), profileB: ssPick('yes', 60, true, 0, 0.1) },
+    ]);
+    expect([r.scoreA, r.scoreB]).toEqual([1, 0]);
+  });
+
+  it('same-side both-wrong day → smaller loss wins 1–0 (not the old 0–0 dead day)', () => {
+    const r = scoreNemesisWeek([
+      { questionId: 'q', isVoid: false, isSettled: true, profileA: ssPick('no', 65, false), profileB: ssPick('no', 35, false) },
+    ]);
+    expect([r.scoreA, r.scoreB]).toEqual([0, 1]);
+  });
+
+  it('same-side equal-price same-minute → draw day (0–0), Σedge still accrues for the week', () => {
+    const r = scoreNemesisWeek([
+      { questionId: 'q', isVoid: false, isSettled: true, profileA: ssPick('yes', 50, true, 5_000, 0.4), profileB: ssPick('yes', 50, true, 20_000, 0.2) },
+    ]);
+    expect([r.scoreA, r.scoreB]).toEqual([0, 0]);
+    expect(r.edgeA).toBeCloseTo(0.4, 10);
+    expect(r.edgeB).toBeCloseTo(0.2, 10);
+    expect(r.winner).toBe('a'); // score tie → higher Σedge
+  });
+
+  it('void same-side day is excluded (no winner, no Σedge)', () => {
+    const r = scoreNemesisWeek([
+      { questionId: 'v', isVoid: true, isSettled: true, profileA: ssPick('yes', 40, true, 0, 0.5), profileB: ssPick('yes', 60, true, 0, 0.5) },
+    ]);
+    expect(r.excludedQuestionIds).toEqual(['v']);
+    expect([r.scoreA, r.scoreB]).toEqual([0, 0]);
+  });
+
+  it('opposite-side day is byte-identical to the pre-D-J4 rule even with price data present', () => {
+    // A picks yes and wins, B picks no and loses → exactly one point, as before.
+    const withPrices = scoreNemesisWeek([
+      { questionId: 'q', isVoid: false, isSettled: true, profileA: ssPick('yes', 40, true, 0, 0.3), profileB: ssPick('no', 60, false, 0, -0.2) },
+    ]);
+    const legacy = scoreNemesisWeek([
+      { questionId: 'q', isVoid: false, isSettled: true, profileA: pick(true, 0.3), profileB: pick(false, -0.2) },
+    ]);
+    expect([withPrices.scoreA, withPrices.scoreB]).toEqual([legacy.scoreA, legacy.scoreB]);
+    expect([withPrices.scoreA, withPrices.scoreB]).toEqual([1, 0]);
   });
 });
 

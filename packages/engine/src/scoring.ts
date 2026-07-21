@@ -13,6 +13,59 @@ export interface PlayerQuestionPick {
   won: boolean;
   /** Required (and meaningful) only when `picked` is true. */
   edge: number;
+  /**
+   * Same-side price-edge inputs (journeys plan §4/§5 WS20-T1, D-J4). All optional so callers that
+   * don't supply them keep the pre-D-J4 scoring exactly (byte-identical). When BOTH rivals supply
+   * `side` + `entryCents` on a shared day AND took the same side, the day is scored by price edge
+   * (see `resolveSameSideDay`) instead of "1 point iff won".
+   */
+  side?: 'yes' | 'no';
+  /** Implied entry cost of the taken side, in integer cents (yes → yes-price¢, no → (100−yes)¢). */
+  entryCents?: number;
+  /** `priceStampedAt` as epoch ms — the same-minute-truncated tiebreak when entry costs tie. */
+  priceStampedAtMs?: number;
+}
+
+/** Same-side day winner (viewer-free, pairing `a`/`b`). */
+export type SameSideDayWinner = 'a' | 'b' | 'draw';
+
+export interface SameSideDayResult {
+  winner: SameSideDayWinner;
+  aCents: number;
+  bCents: number;
+}
+
+/**
+ * Resolve a same-side day under D-J4 (journeys plan §4/§5 WS20-T1). Returns `null` when the day
+ * is NOT a same-side day — either rival didn't pick, price data is missing, or they took opposite
+ * sides — in which case scoring falls back to the pre-D-J4 rule (byte-identical).
+ *
+ * When both took the same side, the better entry price wins the day: the cheaper taken position
+ * (lower `entryCents`) wins. This is outcome-independent by construction — both-right → the
+ * cheaper entry had more edge; both-wrong → the cheaper entry lost less ("smaller implied loss")
+ * — which is exactly why the rule "reduces to the same price rule" (WS20-T1). A price tie is
+ * broken by the earlier `priceStampedAtMs`, truncated to the minute; a same-minute tie is a
+ * genuine `draw` (no point to either — the only day with no winner).
+ */
+export function resolveSameSideDay(
+  a: PlayerQuestionPick,
+  b: PlayerQuestionPick,
+): SameSideDayResult | null {
+  if (!a.picked || !b.picked) return null;
+  if (a.side === undefined || b.side === undefined) return null;
+  if (a.entryCents === undefined || b.entryCents === undefined) return null;
+  if (a.side !== b.side) return null;
+
+  const aCents = a.entryCents;
+  const bCents = b.entryCents;
+  if (aCents < bCents) return { winner: 'a', aCents, bCents };
+  if (bCents < aCents) return { winner: 'b', aCents, bCents };
+
+  // Equal entry cost → earlier stamp (minute-truncated) wins; same minute → draw.
+  const aMin = a.priceStampedAtMs === undefined ? null : Math.floor(a.priceStampedAtMs / 60_000);
+  const bMin = b.priceStampedAtMs === undefined ? null : Math.floor(b.priceStampedAtMs / 60_000);
+  if (aMin === null || bMin === null || aMin === bMin) return { winner: 'draw', aCents, bCents };
+  return { winner: aMin < bMin ? 'a' : 'b', aCents, bCents };
 }
 
 // --- Nemesis week scoring (§8.8) --------------------------------------------------------------
@@ -54,13 +107,22 @@ export function scoreNemesisWeek(questions: readonly NemesisSharedQuestion[]): N
       excludedQuestionIds.push(q.questionId);
       continue;
     }
-    if (q.profileA.picked) {
-      if (q.profileA.won) scoreA += 1;
-      edgeA += q.profileA.edge;
-    }
-    if (q.profileB.picked) {
-      if (q.profileB.won) scoreB += 1;
-      edgeB += q.profileB.edge;
+    // Σedge (the week tiebreak) accumulates for every picked player regardless of same/opposite
+    // side — unchanged by D-J4.
+    if (q.profileA.picked) edgeA += q.profileA.edge;
+    if (q.profileB.picked) edgeB += q.profileB.edge;
+
+    // D-J4 (WS20-T1): a same-side day is decided by price edge (one winner, or a rare draw) —
+    // "no pushes, no dead days". Every other day (opposite sides, a solo pick, or missing price
+    // data) keeps the pre-D-J4 rule: each player scores 1 iff they picked AND won.
+    const sameSide = resolveSameSideDay(q.profileA, q.profileB);
+    if (sameSide) {
+      if (sameSide.winner === 'a') scoreA += 1;
+      else if (sameSide.winner === 'b') scoreB += 1;
+      // draw → neither scores the day
+    } else {
+      if (q.profileA.picked && q.profileA.won) scoreA += 1;
+      if (q.profileB.picked && q.profileB.won) scoreB += 1;
     }
   }
 

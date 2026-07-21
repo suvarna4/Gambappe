@@ -23,7 +23,7 @@ import {
   rematchRequests,
   seasons,
 } from '../schema/index.js';
-import type { NemesisPairingRow, SharedQuestionPicks } from './moderation.js';
+import type { NemesisPairingRow, SharedPick, SharedQuestionPicks } from './moderation.js';
 import type { MarketRow } from './questions.js';
 
 export type SeasonRow = typeof seasons.$inferSelect;
@@ -403,6 +403,26 @@ export async function listNemesisEligibleMarketsForCategory(
  * prominently in the WS5-T1 PR description as a correctness gap this closes for any caller that
  * switches to it.
  */
+/**
+ * Build a `SharedPick` from a raw pick row, including the D-J4 same-side inputs (WS20-T1): the
+ * taken side, its implied entry cost in integer cents (yes → yes-price¢, no → (100−yes)¢), and
+ * the price stamp as epoch ms for the same-minute tiebreak.
+ */
+function buildSharedPick(row: Record<string, unknown>): SharedPick {
+  const side = row['pick_side'] as 'yes' | 'no';
+  const yesPrice = Number(row['pick_yes_price'] ?? 0);
+  const entryCents = Math.round((side === 'yes' ? yesPrice : 1 - yesPrice) * 100);
+  const stampedAt = row['pick_stamped_at'] as string | null;
+  return {
+    picked: true,
+    won: row['pick_result'] === 'win',
+    edge: Number(row['pick_edge'] ?? 0),
+    side,
+    entryCents,
+    priceStampedAtMs: stampedAt ? new Date(stampedAt).getTime() : undefined,
+  };
+}
+
 export async function getFullPairingSharedQuestionPicks(
   db: Db,
   pairing: { id: string; weekStart: string; weekEnd: string },
@@ -415,7 +435,10 @@ export async function getFullPairingSharedQuestionPicks(
       q.status AS status,
       pk.profile_id AS pick_profile_id,
       pk.result AS pick_result,
-      pk.edge AS pick_edge
+      pk.edge AS pick_edge,
+      pk.side AS pick_side,
+      pk.yes_price_at_entry AS pick_yes_price,
+      pk.price_stamped_at AS pick_stamped_at
     FROM questions q
     LEFT JOIN picks pk
       ON pk.question_id = q.id AND pk.profile_id IN (${profileAId}, ${profileBId})
@@ -440,9 +463,9 @@ export async function getFullPairingSharedQuestionPicks(
 
     const pickProfileId = row['pick_profile_id'] as string | null;
     if (pickProfileId === profileAId) {
-      existing.profileAPick = { picked: true, won: row['pick_result'] === 'win', edge: Number(row['pick_edge'] ?? 0) };
+      existing.profileAPick = buildSharedPick(row);
     } else if (pickProfileId === profileBId) {
-      existing.profileBPick = { picked: true, won: row['pick_result'] === 'win', edge: Number(row['pick_edge'] ?? 0) };
+      existing.profileBPick = buildSharedPick(row);
     }
     byQuestion.set(questionId, existing);
   }
