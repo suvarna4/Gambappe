@@ -117,7 +117,7 @@ describe('forceSettleQuestion (§15.3)', () => {
 
     const settled = await getQuestionById(db, question.id as string);
     expect(settled?.outcome).toBe('yes');
-    expect(settled?.status).toBe('locked'); // publication rule — reveal:fire owns the transition
+    expect(settled?.status).toBe('locked'); // publication rule — the settle pipeline (grade:followup → settleQuestion, D-J3) owns the locked→revealed transition, not force-settle
 
     const jobs = await db.execute(
       sql`SELECT data FROM pgboss.job WHERE name = 'grade:followup' ORDER BY created_on DESC LIMIT 1`,

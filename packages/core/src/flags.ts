@@ -34,12 +34,19 @@ export const FLAG_DEFAULTS = {
   /**
    * Topic-market stack supply (journeys plan §4, WS16-T1/WS18). Off → `GET /api/v1/stack`
    * returns `topics: []`, the admin "publish as topic" affordance is hidden, and `/` shows only
-   * the daily headliner (byte-identical to today, INV-10). Flipped by WS23-T2 via env, not code.
+   * the daily headliner (byte-identical to today, INV-10). Shipped ON in prod via the environment
+   * (`FLAG_TOPIC_MARKETS=true`) as the WS23-T2 rollout (docs/journeys-plan.md §5) — the code
+   * default stays `false` so the flag-off lane keeps rendering byte-identically. This is the exact
+   * env-gated treatment `duo_queue` uses (default off here, turned on per-environment via
+   * `FLAG_DUO_QUEUE`): rollout is an env-var change in the deploy target, never a code default flip.
    */
   topic_markets: false,
   /**
    * Call-out challenge links + grudge book (journeys plan §4/§5 WS20-T3/T4). Off → the call-out
-   * API 404s/hides and no challenge surfaces render. Flipped by WS23-T2 via env.
+   * API 404s/hides and no challenge surfaces render. Shipped ON in prod via the environment
+   * (`FLAG_CALLOUTS=true`) as the WS23-T2 rollout (docs/journeys-plan.md §5); code default stays
+   * `false`, env-gated exactly like `duo_queue`/`topic_markets` above — rollout flips the env var
+   * in the deploy target, not this default.
    */
   callouts: false,
   /**

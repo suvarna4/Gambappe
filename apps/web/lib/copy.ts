@@ -484,7 +484,10 @@ export const threadCopy = {
    * the box is always visible, only submitting/focusing it while unclaimed opens the prompt). */
   postPlaceholder: 'Add to the thread…',
   postSubmit: 'Post',
-  postClaimGateCta: 'Claim your account to post',
+  /** D-J8 (WS23-T2, docs/journeys-plan.md §5): the sign-in ask is "Save", never "claim" — this
+   * gate CTA was reconciled off the old "Claim your account to post" wording, matching §10.6's
+   * Save rename. The property key stays (not user-facing; no route/testid touched). */
+  postClaimGateCta: 'Save your record to post',
   postError: 'Could not post that — try again.',
   reactionError: 'Could not react — try again.',
   loadError: 'Could not load the thread — try again.',
@@ -504,7 +507,9 @@ export const threadCopy = {
  * scope, not this task's. */
 export const settingsCopy = {
   heading: 'Settings',
-  claimRequiredNotice: 'Claim your account to manage settings.',
+  /** D-J8 (WS23-T2): "Save", not "claim" — reconciled off "Claim your account to manage settings."
+   * (key unchanged; §10.6 Save rename). */
+  claimRequiredNotice: 'Save your record to manage settings.',
   loadError: 'Could not load your settings — try again.',
   saveError: 'Could not save — try again.',
 
@@ -545,7 +550,9 @@ export function duoTierLabel(tier: number): string {
 
 export const duoCopy = {
   hubHeading: 'Your duo',
-  claimRequiredNotice: 'Claim your account to join a duo.',
+  /** D-J8 (WS23-T2): "Save", not "claim" — reconciled off "Claim your account to join a duo."
+   * (key unchanged; §10.6 Save rename). */
+  claimRequiredNotice: 'Save your record to join a duo.',
   loadError: 'Could not load your duo — try again.',
 
   /** §8.5 eligibility: `DUO_MIN_PICKS` graded picks, claimed + active, no active duo already. */

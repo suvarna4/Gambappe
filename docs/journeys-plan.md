@@ -3,9 +3,10 @@
 > Status: **approved direction** (owner decisions 2026-07-21). This document is the
 > authoritative spec for the WS16–WS24 ("journeys") tasks in the workstream-lock registry
 > (`docs/journeys-tasks.seed.json`). It amends `receipts-prd.md` §4.1 and parts of
-> `receipts-design-doc.md` (§6.7 reveal worker, §10.1 routes, §10.3 state machine,
-> §10.6 copy) — the amendments land as part of WS23-T2; until then, **where this doc
-> and the design doc conflict, this doc wins** for WS16–WS24 tasks only.
+> `receipts-design-doc.md` (§6.7 reveal worker → settle pipeline, §7.6 job registry, §10.1 routes,
+> §10.3 state machine, §10.6 copy). **Those amendments landed in WS23-T2**, so the PRD and design
+> doc now match the shipped app on these surfaces — read them as the record. (Historically, until
+> WS23-T2 landed, this doc won any conflict with the design doc for WS16–WS24 tasks.)
 >
 > Visual reference: the "Gambappe — The stack, the rivals, the skin" review artifact
 > (v3). Every screen named below is drawn there.

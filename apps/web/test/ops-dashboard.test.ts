@@ -56,7 +56,7 @@ describe('computeJobHealth (§16.1)', () => {
   });
 
   it('never flags a queue-only job stale on cadence alone, even with no success ever', () => {
-    const [health] = computeJobHealth([row({ jobName: 'reveal:fire', lastSuccessAt: null })], NOW);
+    const [health] = computeJobHealth([row({ jobName: 'wallet:ingest', lastSuccessAt: null })], NOW);
     expect(health!.stale).toBe(false);
   });
 

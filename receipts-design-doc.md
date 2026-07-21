@@ -730,13 +730,24 @@ Definitions: a profile "answered day D" iff it has a pick on the daily question 
 - **Freeze earn** (`streak:freeze-grant`, Mondays 00:05 ET): +1 if profile answered ≥ `FREEZE_EARN_MIN_DAYS` (5) of the prior 7 daily questions, capped at `STREAK_FREEZE_CAP` (2). Never purchasable (INV-3).
 - **Replay procedure** (used by merge, regrade, post-reveal void): rebuild `current_streak`/`best_streak`/`last_counted_date`/win streaks from scratch by replaying all revealed non-void dailies in date order against the profile's pick history, treating dates present in `streak_freeze_uses` as covered (freeze consumption is replayed exactly as recorded, never re-simulated; `freeze_bank` is left as-is).
 
-### 6.7 Reveal orchestration
+### 6.7 Settle-on-resolution (was: Reveal orchestration)
 
-`reveal_at` is set by the curator (default 20:00 ET). Actual reveal fires at `max(reveal_at, settlement_time)`:
+> **Amended by the journeys plan (D-J3, `docs/journeys-plan.md` §5 WS19-T1/WS23-T2).** The
+> clock-scheduled `reveal:fire` worker and the synchronized "reveal at 20:00 ET" moment are
+> **cut**. Settlement follows reality: a daily settles the moment its venue market resolves — any
+> time of day — in the **same tick as grading** (`grade:followup` → `settleQuestion`,
+> `apps/worker/src/lib/settle-question.ts`), not on a per-question `reveal_at` clock. The
+> `revealed`/`revealed_at` column names are **kept** and now mean settled/settled-at (presentation
+> reads "SETTLED {time}"). No `reveal:fire` job exists (removed from the §7.6 registry and from
+> both the worker's and web's lifecycle enqueuers); the §19.3 WBS "WS3-T4 Reveal orchestration"
+> row and the risk/retro entries that mention an "8pm reveal ritual" are superseded historical
+> records. The paragraphs below describe the live settle pipeline.
 
-- Graded before `reveal_at`: results exist in DB but **all public surfaces and APIs keep the question in `locked` presentation** until reveal (the reveal endpoint returns `status:'locked'`; spectator page shows countdown to reveal). This preserves the synchronized moment (P8).
-- Not settled by `reveal_at`: `reveal:fire` job re-schedules itself every `REVEAL_REARM_MIN` (30 min) until settled (cap: if > `REVEAL_MAX_DELAY_H` (12h) past target, notify admin channel; admin may void or manually settle).
-- Reveal firing: set `status='revealed'`, `revealed_at`; enqueue reveal notifications (§13); revalidate pages; the reveal API (§9) now returns the full payload.
+`reveal_at` is retained on the row only as the curator's **target settle hint** (default 20:00 ET) for scheduling/monitoring copy — it no longer gates anything. Settlement fires whenever the venue resolves:
+
+- Graded before it settles: grading writes `picks.result`/`edge` internally, but **all public surfaces and APIs keep the question in `locked` presentation** until the settle transaction runs (the endpoint returns `status:'locked'`; the page shows "settles when it settles", §10.3). The §6.6 publication rule still defers every public streak/record mutation to the settle transaction — nothing observable changes between grading and settle.
+- No re-arm, no synchronized wait: `settleQuestion` runs inline in `grade:followup` the moment the market resolves; there is no `REVEAL_REARM_MIN` re-schedule loop and no D−1 ordering gate (the monotonic streak replay tolerates out-of-order settles, audit 9.1). The admin still has void / force-settle paths for stuck markets.
+- Settle firing: in one transaction set `status='revealed'`, `revealed_at=now`, apply §6.6 streak increments, detect "called it", complete covered duo matches, and write the WS9-T3 per-outcome beats; post-commit, best-effort revalidate pages and fire the per-settle web-push (first settle of a profile's ET day only; the 21:00 ET `settle:digest` job covers the rest). The reveal API (§9) then returns the full payload. The old general "reveal at 8" push/email beat is gone, replaced by that per-settle push + digest.
 
 **RevealPayload** (type in `core/types`): `{question, outcome, crowd:{yes,no,pct_yes}, viewer?: {pick, result, edge, percentile: number|null, streak:{current,best,delta,freeze_used,broken_run}, badges:['called_it'?], nemesis_flip, duo_tandem}, narrative_line, share:{page_url, og_url, card_urls}}`. The `viewer` block is fetched client-side (§10.2 keeps SSR viewer-free). `percentile` is **nullable by contract** — at P0 (before WS3-T5 ships) it is always null and the UI omits the stat. `streak.broken_run` (SW9-T1, `docs/plans/obituary-handoff.md` §3.2) is the viewer's most recently **completed** (broken) participation run — `{length, started_on, ended_on, last_pick: {pick_id, side_label, entry_cents, question_slug} | null, freezes_survived, longest_odds_cents} | null` — emitted iff this reveal is the viewer's first counted daily since the break (`runs.length > 0 && currentRunStartedOn === question_date` on the through-`question_date` replay); null otherwise. No length threshold server-side (`OBITUARY_MIN_STREAK` is a client presentation rule). `viewer.nemesis_flip` (SW10-T1, `docs/plans/sw-revamp-wiring-gaps.md` §4 SW10-T1) is `{opponent_handle, opponent_side, opponent_side_label, opponent_entry_cents, narration: string|null, you_wins, opponent_wins, week_label, pairing_id, side_profile_ids, today_stamps} | null | undefined` (`.nullish()` — a contract-PR-sequencing field, not a semantic optional/nullable distinction) — non-null iff the viewer has an active nemesis pairing this week AND the opponent has a pick on this exact question. Fires **at reveal**, not pick time (a pick-time trigger would violate §9.3's no-probe-by-picking rule). `you_wins`/`opponent_wins` replay the pairing's scoreboard rows (never `nemesis_pairings.score_a`/`score_b`, which stay 0 until the week concludes); `narration` is one engine-narrated line (`nemesis_lead_taken`/`nemesis_comeback`) or null when no beat's trigger fires. `pairing_id: PairingId|null|undefined`, `side_profile_ids: {a: ProfileId, b: ProfileId}|null|undefined`, and `today_stamps: {a, b: PairingReactionEmoji|null}|null|undefined` (design-diff audit finding, `docs/mockups/swipe-ux.html`'s inline "STAMP REPLY ▾" on the daily reveal card — the shipped app had split the opponent's stamp + narration from the reply affordance across two separate surfaces) are each `.nullish()` per the same contract-PR-sequencing rule as the fields above, and are non-null under the exact same condition as the rest of `nemesis_flip` (there is no independent gate for them). They carry `ReactionStampsPanel`'s three required props (`pairingId`, `sideProfileIds`, `stamps`) verbatim so the reveal card can mount the SAME component `NemesisMatchupCard` uses on `/nemesis`, rather than a second reaction-picker implementation; `today_stamps` is the identical viewer-free per-player shape and the identical `getTodayPairingReactions` read `pairingPublicSchema.today_reactions` already uses (SW10-T4), so the two surfaces can never disagree about today's stamps. `viewer.duo_tandem` (SW10-T3, `docs/plans/sw-revamp-wiring-gaps.md` §4 SW10-T3) is `{partner_handle, partner_side, partner_side_label} | null | undefined` (same `.nullish()` sequencing rule) — non-null iff the viewer has an active duo AND the partner has a pick on this exact question; fires at reveal, same corrected timing as `nemesis_flip`. Independent of `nemesis_flip` — a viewer can be in both a duo and a nemesis pairing at once, so both fields populate together rather than branching between them.
 
@@ -797,7 +808,8 @@ A `MockVenueAdapter` (WS1-T1) with scriptable fixtures ships first; all downstre
 | `question:open` | per-question at `open_at` | WS3-T1 |
 | `question:lock` | per-question at `lock_at` | WS3-T1 |
 | `notify:pre-lock-reminder` | every 5 min (scans `open` questions inside `PRE_LOCK_REMINDER_LEAD_MIN` of `lock_at`, §13.2) — added WS9-T4, not in the original table | WS9-T4 |
-| `reveal:fire` | per-question at `reveal_at` (+30min re-arm); also fires the `reveal` beat (§13.2/§13.3, WS9-T4) alongside WS9-T3's per-outcome beats | WS3-T4 |
+| ~~`reveal:fire`~~ | **removed (D-J3, WS19-T1/WS23-T2, §6.7):** no clock-scheduled reveal — a daily settles inline in `grade:followup` (`settleQuestion`) when its market resolves, which also writes WS9-T3's per-outcome beats | — |
+| `settle:digest` | daily 21:00 ET — one summary push for a profile's 2nd+ settles that day (D-J3, replaces the old "reveal at 8" beat) | WS19-T1 |
 | `streak:sweep` | daily 03:30 | WS3-T3 |
 | `streak:freeze-grant` | Mon 00:05 | WS3-T3 |
 | `fingerprint:nightly` | daily 03:00 | WS4-T7 |
@@ -1026,13 +1038,17 @@ Zod schema in `core/schemas/settings.ts`; `.strict()` — unknown keys rejected.
 | `/p/[handle]` | ISR 60s | public profile | The creator-wedge page — polish priority (PRD §9) |
 | `/vs/[pairingId]` | ISR 30s | public matchup | |
 | `/duos/[id]`, `/ladder` | ISR 60s | duo pages | flag `duo_queue` |
-| `/claim` | SSR | — | Auth + claim flow + placement offer |
+| `/sweat` | force-dynamic (SSR) | viewer's open positions | The Sweat room (D-J3, WS19-T2): `pending` picks by settle-time. Viewer-scoped (reads ghost cookie / session), never cached; INV-10 applies to public pages, not this one |
+| `/rivals` | force-dynamic (SSR) | nemesis + duo + call-outs | The one Rivals hub (D-J6, WS17-T2 + WS20-T4): segmented Nemesis · Duo, plus call-out surfaces + grudge book. flags `nemesis`, `duo_queue`, `callouts` |
+| `/crowd` | force-dynamic (SSR) | weekly leaderboards | The Crowd boards (D-J7, WS22-T2). **Deviation:** §5's WS22-T2 AC sketched ISR 60s; shipped force-dynamic so it builds with no/unmigrated DB in CI and reflects standings seeded after build. INV-10 preserved — viewer-free HTML (`getCrowdBoards(getDb())`), row highlight hydrates client-side |
+| `/you` | force-dynamic (SSR) | viewer's record | The signed-in record-first room (D-J7, WS22-T1). Viewer-scoped from cookies; the one page entirely about the viewer, so never ISR-cached (contrast `/p/[slug]`) |
+| `/claim` | SSR | — | Auth + Save (D-J8 rename) flow + placement offer |
 | `/placement` | client | placement items | |
 | `/settings` | client | me | incl. wallet linking, deletion |
 | `/rules` | static | — | how scoring works, publicness, 18+ |
 | `/admin/*` | SSR, role-gated | §15 | |
 
-Every ISR page sets full OG/Twitter meta (§10.5). No layout shift on hydration (viewer strips render into reserved slots).
+The four journeys rooms (`/sweat`, `/rivals`, `/crowd`, `/you`) landed with the journeys plan (`docs/journeys-plan.md` §5) and are amended into this table by WS23-T2. Every ISR page sets full OG/Twitter meta (§10.5). No layout shift on hydration (viewer strips render into reserved slots).
 
 ### 10.2 Spectator-page architecture (INV-10)
 
@@ -1046,13 +1062,31 @@ One-tap participation: the pick buttons on a spectator page POST directly (minti
 |---|---|---|
 | `scheduled` | headline, "opens 9:00 ET" countdown | notify-me (claimed) |
 | `open` | live yes-price (stamped style), countdown to lock | side buttons (one tap) / your receipt + undo (60s) |
-| `locked` | crowd split (now public), your side vs crowd, countdown to reveal | share your receipt |
-| `revealed` | outcome stamp, crowd result, viewer result block (client-side), thread | share result card; tomorrow's question teaser |
+| `locked` | crowd split (now public), your side vs crowd, **"SETTLES WHEN IT SETTLES"** (no reveal countdown) | share your receipt; "see what you're sweating" → `/sweat` |
+| `revealed` (settled) | **"SETTLED {time}"** stamp with the real settle instant, outcome stamp, crowd result, viewer result block (client-side), thread | share result card; tomorrow's question teaser |
 | `voided` | "voided by venue" explainer, streak-safe note | tomorrow teaser |
+
+> **Amended by the journeys plan (D-J3, `docs/journeys-plan.md` §5 WS19-T2/WS23-T2).** Settlement
+> follows reality (§6.7), so the `locked` state no longer counts down to a synchronized reveal — it
+> shows **"SETTLES WHEN IT SETTLES · whenever the venue calls it — around {time}"** (copy in
+> `sweatCopy`, `apps/web/lib/copy.ts`). The `revealed` state is presented as **settled**, headed by
+> a **"SETTLED {time}"** stamp of the actual settle instant (the `revealed`/`revealed_at` DB names
+> are kept). The companion **Sweat room** (`/sweat`, §10.1) lists a viewer's open positions by
+> settle-time between lock and settle. A pick's result lands whenever its market resolves, any time
+> of day — there is no shared appointment.
+>
+> **`/crowd` render-mode deviation (WS22-T2 → WS23-T2).** §5's WS22-T2 AC specified ISR 60s for
+> `/crowd`; it shipped `dynamic = 'force-dynamic'` (SSR per request) instead — a deliberate,
+> recorded deviation. The page reads the DB at render, and (a) `next build` would prerender it
+> against a missing/unmigrated CI DB, and (b) an ISR snapshot can't reflect standings seeded after
+> the build (the WS22-T2 e2e seeds a winner and expects it live). INV-10 is unchanged: the render
+> reads no cookies and resolves no viewer identity (`getCrowdBoards(getDb())` takes only a `Db`), so
+> the HTML is byte-identical for every viewer and a CDN can still edge-cache it; the row highlight
+> hydrates client-side. True ISR (build-empty + on-demand revalidate) is a possible future revisit.
 
 Countdowns use server-time offset from `x-server-time` (§9.1); at T-0 the client re-fetches rather than assuming.
 
-The **reveal moment** (WS7-T3): a single 1.6–2.0s choreographed sequence (stamp slam of outcome → crowd bar fill → your result flip → streak/percentile count-up), sound optional (off default), fully honoring `prefers-reduced-motion` (instant static layout). Motion budget exists **only** here (PRD §8).
+The **settle moment** (was the reveal moment, WS7-T3): a single 1.6–2.0s choreographed sequence (stamp slam of outcome → crowd bar fill → your result flip → streak/percentile count-up), sound optional (off default), fully honoring `prefers-reduced-motion` (instant static layout). Motion budget exists **only** here (PRD §8). It now plays when a viewer opens a question that settled while they were away — a per-pick artifact moment, not a synchronized nightly one.
 
 ### 10.4 Design system (`packages/ui`)
 
@@ -1077,8 +1111,8 @@ Accessibility bar: WCAG AA contrast; all interactive elements keyboard-operable;
 
 ### 10.6 Copy rules (enforced in review)
 
-- The publicness sentence at claim: **"Your picks, results, and rating are public — that's the point. You can stay pseudonymous forever."** (INV-6, pinned copy.)
-- Claim-nudge strings are pinned verbatim (used by §11.3 and §13.3 — no paraphrasing): streak trigger → **"Your ghost has a 3-day streak. Claim it before this device loses it."**; fingerprint trigger → **"Your fingerprint is ready. Claim your record to get assigned your nemesis."** (PRD §3 wording.)
+- The publicness sentence on the Save screen: **"Your picks, results, and rating are public — that's the point. You can stay pseudonymous forever."** (INV-6, pinned copy.)
+- **D-J8 "claim" → "Save" rename** (`docs/journeys-plan.md` §5, owner decision 2026-07-21; amended into this doc by WS23-T2): the sign-in ask is the single word **"Save"**, never "claim". The old "claim" nudges were re-pinned off that wording (mechanic unchanged, verb only). The two nudge strings are pinned verbatim (used by §11.3 and §13.3 — no paraphrasing): streak trigger → **"Your streak lives on this device. Save it — free, ten seconds."**; fingerprint trigger → **"Your fingerprint is ready. Save your record to get your nemesis."** The prompt CTA is **"Save"** (`CLAIM_PROMPT_CTA`); the `/claim` screen is a neutral **"SAVE YOUR RECORD"** ticket with no gold on the ask. Ghost-gate CTAs on secondary surfaces follow the same rename — "Save your record to post / to manage settings / to join a duo" (not "Claim your account …"). The `/claim` route path, `CLAIM_*` export names, and `data-testid`s are unchanged (internal identifiers, not user-facing copy).
 - No copy anywhere references money amounts, "bets", stake sizes, or venue balances (INV-8; say "pick"/"call", not "bet").
 - Venue link-outs are quiet text links, never primary buttons (§7.8).
 - All mechanic names are plain words (P11): nemesis, duo, streak, freeze, receipt, called it.

@@ -1,8 +1,7 @@
 /**
  * Pre-lock reminder beat (WS9-T4, §13.2/§19.3 WS9-T4 row: "pre-lock reminder for streak
- * holders"). Pure, DB-free — mirrors `reveal-beats.ts`'s and `reveal-general-beat.ts`'s "no DB,
- * no clock reads" discipline; the caller (`jobs/pre-lock-reminder.ts`) is the only place that
- * touches Postgres.
+ * holders"). Pure, DB-free — mirrors `reveal-beats.ts`'s "no DB, no clock reads" discipline; the
+ * caller (`jobs/pre-lock-reminder.ts`) is the only place that touches Postgres.
  *
  * Unlike `reveal`, this beat DOES carry per-user trigger data (the streak length), so per DD-9
  * it goes through `packages/engine`'s `narrate()` rather than a category-level fallback — the
@@ -20,8 +19,8 @@ export interface PreLockReminderBeatInput {
   questionDate: string;
   /** `profiles.current_streak` at candidate-selection time. */
   currentStreak: number;
-  /** Deep link back to the question page, if available — same optionality rationale as
-   * `reveal-general-beat.ts`. */
+  /** Deep link back to the question page, if available — optional so a missing `NEXT_PUBLIC_APP_URL`
+   * never blocks the beat (only cosmetic; the email/push templates render fine with no CTA). */
   ctaUrl?: string;
 }
 

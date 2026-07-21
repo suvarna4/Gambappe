@@ -5,6 +5,12 @@ This repo implements `receipts-design-doc.md` (technical design, the buildable s
 the design doc — it's intentionally over-specified so a task can be implemented from its
 own listed sections plus §0–§5 shared context, without reading the whole thing.
 
+The WS16–WS24 "journeys" work (the integrated app: mixed stack, settle-on-resolution,
+rivals hub, Save/D-J8, shell) is spec'd in `docs/journeys-plan.md`. Its amendments have
+landed in the canonical docs — PRD §4.1 and design-doc §6.7 (settle pipeline), §7.6, §10.1
+(routes incl. `/sweat` `/rivals` `/crowd` `/you`), §10.3 (settled states), §10.6 (Save copy)
+— so those sections already reflect the shipped app; read them as the record.
+
 ## Before starting implementation work
 
 This repo is built by multiple parallel agents against the design doc's §19 work

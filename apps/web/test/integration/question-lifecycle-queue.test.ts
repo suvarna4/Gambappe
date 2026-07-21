@@ -54,14 +54,16 @@ beforeEach(async () => {
 const NOW = new Date('2026-08-10T12:00:00Z');
 
 describe('scheduleDailyQuestionLifecycle', () => {
-  it('enqueues question:open, question:lock, and reveal:fire at the question\'s lifecycle times', async () => {
+  // WS23-T2 (D-J3): the third `reveal:fire` send is GONE (settle-on-resolution replaced the
+  // clock-scheduled reveal ceremony) — this asserts ONLY question:open + question:lock are queued,
+  // and that no orphan `reveal:fire` row is ever enqueued.
+  it('enqueues question:open and question:lock at the question\'s lifecycle times (no reveal:fire)', async () => {
     const market = buildMarket();
     await db.insert(markets).values(market);
     const question = buildQuestion(market.id as string, {
       status: 'scheduled',
       openAt: new Date(NOW.getTime() + 60 * 60_000),
       lockAt: new Date(NOW.getTime() + 8 * 3600_000),
-      revealAt: new Date(NOW.getTime() + 9 * 3600_000),
     });
     await db.insert(questions).values(question);
 
@@ -69,25 +71,30 @@ describe('scheduleDailyQuestionLifecycle', () => {
       id: question.id as string,
       openAt: question.openAt as Date,
       lockAt: question.lockAt as Date,
-      revealAt: question.revealAt as Date,
     });
 
     const jobs = await db.execute(
-      sql`SELECT name, data, start_after FROM pgboss.job WHERE name IN ('question:open', 'question:lock', 'reveal:fire') ORDER BY name`,
+      sql`SELECT name, data, start_after FROM pgboss.job WHERE name IN ('question:open', 'question:lock') ORDER BY name`,
     );
-    expect(jobs.rows).toHaveLength(3);
+    expect(jobs.rows).toHaveLength(2);
 
     const byName = new Map(jobs.rows.map((r) => [r['name'], r]));
     for (const [name, at] of [
       ['question:lock', question.lockAt as Date],
       ['question:open', question.openAt as Date],
-      ['reveal:fire', question.revealAt as Date],
     ] as const) {
       const row = byName.get(name);
       expect(row, name).toBeDefined();
       expect(row!['data'], name).toEqual({ questionId: question.id });
       expect(new Date(row!['start_after'] as string).getTime(), name).toBe(at.getTime());
     }
+
+    // The settle pipeline (D-J3) means no reveal is ever clock-scheduled — assert the orphan
+    // `reveal:fire` row this used to leave behind is gone.
+    const revealJobs = await db.execute(
+      sql`SELECT count(*)::int AS n FROM pgboss.job WHERE name = 'reveal:fire'`,
+    );
+    expect(revealJobs.rows[0]!['n']).toBe(0);
   });
 
   it('is safe to call twice — the lifecycle jobs are idempotent, so duplicate enqueues are harmless (§5.7)', async () => {
@@ -100,16 +107,15 @@ describe('scheduleDailyQuestionLifecycle', () => {
       id: question.id as string,
       openAt: question.openAt as Date,
       lockAt: question.lockAt as Date,
-      revealAt: question.revealAt as Date,
     };
     await scheduleDailyQuestionLifecycle(times);
     await expect(scheduleDailyQuestionLifecycle(times)).resolves.toBeUndefined();
 
     const jobs = await db.execute(
-      sql`SELECT count(*)::int AS n FROM pgboss.job WHERE name IN ('question:open', 'question:lock', 'reveal:fire')`,
+      sql`SELECT count(*)::int AS n FROM pgboss.job WHERE name IN ('question:open', 'question:lock')`,
     );
-    // Six rows (two of each) is expected and fine — the handlers are status-guarded no-ops on
+    // Four rows (two of each) is expected and fine — the handlers are status-guarded no-ops on
     // the second delivery; what matters is the call never throws and never drops a job.
-    expect(jobs.rows[0]!['n']).toBe(6);
+    expect(jobs.rows[0]!['n']).toBe(4);
   });
 });

@@ -44,11 +44,17 @@ Non-logged-in users are first-class. The funnel is designed so value accrues *be
 
 ### 4.1 The Daily Question
 
-One market per day. Everyone answers the same one. One synchronized reveal.
+One market per day. Everyone answers the same one. The morning drop is the appointment; results land when reality does.
+
+> **Amended by the journeys plan (D-J3, `docs/journeys-plan.md` §5 WS23-T2).** The original
+> "one synchronized reveal" is cut: settlement now follows reality. A question **settles the
+> moment its venue market resolves — any time of day**, not on a shared 8pm clock. The daily
+> appointment is the **morning drop** (a fresh market to answer); the app owns the _sweat_ (open
+> positions) and the _artifact_ (the graded receipt), not a synchronized reveal moment.
 
 - **Selection:** pulled from Kalshi/Polymarket catalogs by rule: settles within ~24–48h, liquidity above threshold, broad-appeal category, alternating category mix week over week. Curated by hand at launch; rules-assisted later.
 - **Lock:** picks open at 9:00 local-region time and lock at a fixed deadline (e.g., 12:00 ET). The user sees the live market probability and takes a side; their **entry price is stamped** on the pick.
-- **Reveal:** at settlement, a synchronized reveal moment: outcome, your result, the crowd split, your percentile, your streak. Reveal is a designed moment (motion, sound optional) — the daily appointment.
+- **Settle (was Reveal):** a question settles when its venue market resolves — outcome, your result, the crowd split, your percentile, your streak all land then, whenever "then" is. Each settled pick is a graded receipt (win or obituary). The first settle of a profile's day is a per-settle push; a 21:00 ET digest summarizes the rest — no single synchronized moment.
 - **Artifacts:** the share card carries side, entry price, result, streak, and a link/QR to the live question page. Longshot hits (entry ≤ 20%) mint a special "Called it" card.
 - **Streaks and records:** daily streak, category records, lifetime accuracy and edge — all public on the profile.
 

@@ -59,12 +59,13 @@ const PINNED_THRESHOLD_MIN: Record<string, number> = {
   'venue:price-tick': 5,
 };
 
-/** Jobs with no cron (§7.6) — enqueued transactionally or per-event; never cadence-stale. */
+/** Jobs with no cron (§7.6) — enqueued transactionally or per-event; never cadence-stale.
+ * `reveal:fire` was removed here in WS23-T2 (D-J3): the clock-scheduled reveal job no longer
+ * exists (settle-on-resolution replaced it), so it never emits a heartbeat row to classify. */
 const NON_PERIODIC_JOBS = new Set([
   'grade:followup',
   'question:open',
   'question:lock',
-  'reveal:fire',
   'wallet:ingest',
 ]);
 
