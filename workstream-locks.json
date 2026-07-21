@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-21T19:26:17.245Z",
+  "updated_at": "2026-07-21T19:26:18.899Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2088,12 +2088,12 @@
       ],
       "mock_start_ok": false,
       "note": "Spec: docs/journeys-plan.md §5 WS20-T4. Candidates from nemesis history + share link (reuse share sheet); incoming card = TapeLabel 'YOU'VE BEEN CALLED OUT' + accept/decline; ghost accept routes through Save with ?next=; grudge book extends NemesisHistoryList (lifetime tallies + REMATCH); bounded matchmaking boost for standing grudges; stamps only, no free text; owns its copy.ts block.",
-      "status": "in_review",
+      "status": "done",
       "owner": "claude-opus-fohjki-agentL",
       "branch": "feat/ws20-t4-callouts-ui",
       "pr": null,
       "claimed_at": "2026-07-21T10:34:41.398Z",
-      "updated_at": "2026-07-21T11:07:35.175Z"
+      "updated_at": "2026-07-21T19:26:18.899Z"
     },
     "WS21-T1": {
       "title": "'Save': §10.6 copy amendment + /claim restyled in TicketFrame, zero gold on asks",
