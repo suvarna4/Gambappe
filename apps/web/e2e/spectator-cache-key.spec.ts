@@ -38,7 +38,19 @@ test('GET /q/:slug is byte-identical with and without a ghost cookie present (§
   ]);
 
   expect(withoutCookie.status()).toBe(withCookie.status());
-  expect(bodyWithoutCookie).toBe(bodyWithCookie);
+
+  // React streams this response as a series of `<script>self.__next_f.push([1,"…"])</script>`
+  // chunks, and the FLUSH BOUNDARIES between them are timing-dependent: the exact same content
+  // (here, the 404 error chunk `5:E{…}` relative to the metadata chunk) can be grouped into one
+  // push on one request and split across two on the next, purely from streaming jitter — not from
+  // anything the request carried. That is framework-level nondeterminism, not cookie-derived
+  // content, so comparing raw bytes makes this INV-10 proof flaky. Collapse consecutive push
+  // chunks into one continuous stream before comparing: this tests the invariant that actually
+  // matters (the cookie must not change response CONTENT) while ignoring incidental flush
+  // grouping. Any real cookie-derived byte would land inside a chunk and still fail the compare.
+  const collapseRscFlush = (html: string): string =>
+    html.split('"])</script><script>self.__next_f.push([1,"').join('');
+  expect(collapseRscFlush(bodyWithoutCookie)).toBe(collapseRscFlush(bodyWithCookie));
 
   // The response itself must never echo the cookie back (belt-and-suspenders — the loader
   // has no way to see it, but assert the observable contract directly too).
