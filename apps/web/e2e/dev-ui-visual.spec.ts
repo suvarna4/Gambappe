@@ -187,6 +187,16 @@ test.describe('SW10-T5 /dev/ui visual regression', () => {
     await expect(page.getByTestId('gallery-samesiderow')).toHaveScreenshot('samesiderow.png');
   });
 
+  // WS20-T2 (journeys-plan §5, D-J4): the same-side card state — pre-settle price edge + both
+  // post-settle framings, on the dark stage. BASELINE-TODO: `same-side-state.png` has NO committed
+  // baseline yet — this sandbox has no browser, so the baseline PNG must be regenerated from CI
+  // (the main session's CI-regen workflow: `playwright test e2e/dev-ui-visual.spec.ts
+  // --update-snapshots`, scoped to this file). Until then this assertion fails "missing snapshot"
+  // in CI on purpose, which is the signal to run the regen.
+  test('SameSideState (WS20-T2)', async ({ page }) => {
+    await expect(page.getByTestId('gallery-samesidestate')).toHaveScreenshot('same-side-state.png');
+  });
+
   test('Stamp (all five variants)', async ({ page }) => {
     await expect(page.getByTestId('gallery-stamp')).toHaveScreenshot('stamp.png');
   });
@@ -235,7 +245,9 @@ test.describe('SW10-T5 /dev/ui visual regression', () => {
 
   test.describe('ClaimSheet (WS7-T5)', () => {
     test('closed', async ({ page }) => {
-      await expect(page.getByTestId('gallery-claim-sheet')).toHaveScreenshot('claim-sheet-closed.png');
+      await expect(page.getByTestId('gallery-claim-sheet')).toHaveScreenshot(
+        'claim-sheet-closed.png',
+      );
     });
 
     test('open (sign-in step)', async ({ page }) => {
@@ -255,7 +267,9 @@ test.describe('SW10-T5 /dev/ui visual regression', () => {
 
   test.describe('ShareSheet (WS8-T2)', () => {
     test('closed', async ({ page }) => {
-      await expect(page.getByTestId('gallery-share-sheet')).toHaveScreenshot('share-sheet-closed.png');
+      await expect(page.getByTestId('gallery-share-sheet')).toHaveScreenshot(
+        'share-sheet-closed.png',
+      );
     });
 
     test('open', async ({ page }) => {
@@ -271,14 +285,13 @@ test.describe('SW10-T5 /dev/ui visual regression', () => {
       // (not an in-flight loading spinner) is what gets captured.
       await dialog.waitFor();
       const preview = page.getByTestId('share-preview-image');
-      await preview.evaluate(
-        (img: HTMLImageElement) =>
-          img.complete
-            ? undefined
-            : new Promise<void>((resolve) => {
-                img.addEventListener('load', () => resolve(), { once: true });
-                img.addEventListener('error', () => resolve(), { once: true });
-              }),
+      await preview.evaluate((img: HTMLImageElement) =>
+        img.complete
+          ? undefined
+          : new Promise<void>((resolve) => {
+              img.addEventListener('load', () => resolve(), { once: true });
+              img.addEventListener('error', () => resolve(), { once: true });
+            }),
       );
       await expect(dialog).toHaveScreenshot('share-sheet-open.png');
     });

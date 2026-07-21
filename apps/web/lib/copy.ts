@@ -28,7 +28,9 @@ import { formatClock } from './format-et';
  * derived from `DAILY_OPEN_LOCAL` (§0.1 rule 4). The reference date is arbitrary: ET and PT
  * shift DST together, so the ET→PT rendering of a fixed ET wall time is date-independent.
  */
-const DAILY_OPEN_PT = formatClock(zonedTimeToUtc('2026-01-15', DAILY_OPEN_LOCAL, SCHEDULE_TZ).toISOString()); // "12:00 AM PT" while DAILY_OPEN_LOCAL is 03:00 ET
+const DAILY_OPEN_PT = formatClock(
+  zonedTimeToUtc('2026-01-15', DAILY_OPEN_LOCAL, SCHEDULE_TZ).toISOString(),
+); // "12:00 AM PT" while DAILY_OPEN_LOCAL is 03:00 ET
 
 /** INV-6, pinned verbatim (§10.6): shown on the claim/signup screen. */
 export const CLAIM_PUBLICNESS_STATEMENT =
@@ -253,6 +255,40 @@ export const nemesisCopy = {
   verdictDrawLine: (opponentHandle: string) => `Dead even with ${opponentHandle}. Break the tie?`,
   newFate: 'New fate',
   runItBack: 'Run it back',
+} as const;
+
+/**
+ * WS20-T2 (journeys-plan §5, D-J4) · The same-side card state (seam 2 — this block, and only this
+ * block, is WS20-T2's copy surface). When rivals took the SAME side, the day is decided by price
+ * edge, not by both being right/wrong: the cheaper (lower implied-entry) side wins, and if both
+ * were wrong the smaller implied loss wins. Rendered by `SameSideState` on the matchup/verdict
+ * surfaces (`NemesisMatchupCard`/`VerdictCard`). All viewer-relative. No money words (INV-8) —
+ * cents render as "¢", never "$"; "price"/"cheaper" describe the pick's cost, not a wager.
+ */
+export const sameSideCopy = {
+  /** The masking-tape state label (journeys-plan §2 `TapeLabel`), exact wording from the v3
+   * artifact ch. 03. */
+  tape: 'SAME SIDE · EDGE DECIDES',
+  /** Owner caption for the viewer's own column. */
+  youOwner: 'YOU',
+  /** Mono price caption under each stamp — implied entry cents. */
+  priceCaption: (cents: number) => `@ ${cents}¢`,
+  /** Pre-settle footer: the cheaper entry price beats the other by its margin. A same-minute price
+   * tie (winner decided by the earlier stamp, D-J4) has no margin to report — name the tiebreak. */
+  priceEdge: (yourPrice: number, theirPrice: number) =>
+    yourPrice < theirPrice
+      ? `YOUR PRICE BEATS THEIRS BY ${theirPrice - yourPrice}¢`
+      : yourPrice > theirPrice
+        ? `THEIR PRICE BEATS YOURS BY ${yourPrice - theirPrice}¢`
+        : 'SAME PRICE · EARLIER STAMP DECIDES',
+  /** Post-settle framing — both took the correct side; the cheaper entry took the day. */
+  bothRight: (winner: 'you' | 'them' | 'draw') =>
+    winner === 'them'
+      ? 'both right — they called it cheaper'
+      : 'both right — you called it cheaper',
+  /** Post-settle framing — both wrong; the smaller implied loss took the day. */
+  bothWrong: (winner: 'you' | 'them' | 'draw') =>
+    winner === 'you' ? 'both wrong — you lost less' : 'both wrong — they lost less',
 } as const;
 
 /** WS8-T2 (share cards + share sheet, §10.5) section. */

@@ -18,6 +18,7 @@ import { ObituaryCard } from '@/components/ObituaryCard';
 import { GraveyardShelf } from '@/components/GraveyardShelf';
 import { NemesisFlip } from '@/components/nemesis/NemesisFlip';
 import { ReactionStamps } from '@/components/nemesis/ReactionStamps';
+import { SameSideState } from '@/components/nemesis/SameSideState';
 import { VerdictCard } from '@/components/nemesis/VerdictCard';
 import { DuoTandem } from '@/components/duo/DuoTandem';
 import ClaimPromptEngine from '@/components/claim/ClaimPromptEngine';
@@ -153,7 +154,13 @@ export default function UiGalleryPage() {
         <h2 className="text-muted text-sm font-semibold uppercase">Verdict + reactions (SP2)</h2>
         <div className="bg-bg space-y-3 rounded-md p-6">
           <div className="mx-auto max-w-[300px] space-y-3">
-            <VerdictCard outcome="lost" opponentHandle="Maria O." youWins={2} opponentWins={3} scoreMargin={11} />
+            <VerdictCard
+              outcome="lost"
+              opponentHandle="Maria O."
+              youWins={2}
+              opponentWins={3}
+              scoreMargin={11}
+            />
             <ReactionStamps selected="Called it" />
           </div>
         </div>
@@ -240,6 +247,39 @@ export default function UiGalleryPage() {
             left={{ owner: 'YOU', caption: '@ 71¢', stamp: <Stamp variant="win" /> }}
             right={{ owner: 'MARIA O.', caption: '@ 74¢', stamp: <Stamp variant="loss" /> }}
           />
+        </div>
+      </section>
+
+      {/* WS20-T2 (journeys-plan §5, D-J4): the same-side card state — SAME SIDE tape + dual stamps
+          + edge line + winner footer, pre-settle and post-settle. Shown on the dark stage
+          (`bg-bg`) — the win/loss stamp hues read at AA there but FAIL on cream `bg-paper`, and all
+          caption/footer text is `text-paper`/`text-muted` (both AA on `bg`), so this tile stays
+          inside the axe gate over /dev/ui (`surface="stage"`). No gold on the edge-win affordance. */}
+      <section data-testid="gallery-samesidestate" className="space-y-3">
+        <h2 className="text-muted text-sm font-semibold uppercase">SameSideState (WS20-T2)</h2>
+        <div className="bg-bg space-y-4 rounded-md p-6">
+          <div className="mx-auto max-w-[300px] space-y-4">
+            {/* Pre-settle: the price-edge footer (your cheaper entry beats theirs). */}
+            <SameSideState
+              sameSide={{ your_price: 71, their_price: 74, winner: 'you' }}
+              opponentHandle="MARIA O."
+              surface="stage"
+            />
+            {/* Post-settle, both right: cheaper entry took the day. */}
+            <SameSideState
+              sameSide={{ your_price: 71, their_price: 74, winner: 'you' }}
+              opponentHandle="MARIA O."
+              settled="both_right"
+              surface="stage"
+            />
+            {/* Post-settle, both wrong: their smaller implied loss took the day. */}
+            <SameSideState
+              sameSide={{ your_price: 68, their_price: 61, winner: 'them' }}
+              opponentHandle="MARIA O."
+              settled="both_wrong"
+              surface="stage"
+            />
+          </div>
         </div>
       </section>
 
