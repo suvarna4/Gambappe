@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-21T09:03:36.287Z",
+  "updated_at": "2026-07-21T09:07:37.329Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2040,12 +2040,12 @@
       ],
       "mock_start_ok": false,
       "note": "Spec: docs/journeys-plan.md §5 WS20-T1 (D-J4). Same side ⇒ better entry price wins the day, earlier stamp breaks price tie, same-minute ⇒ draw; both-wrong reduces to the same price rule; same_side payload .nullish(); opposite-side days byte-identical (regression fixtures).",
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-opus-fohjki",
+      "branch": "feat/ws20-t1-same-side-scoring",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-21T08:22:30.580Z"
+      "claimed_at": "2026-07-21T09:07:37.329Z",
+      "updated_at": "2026-07-21T09:07:37.329Z"
     },
     "WS20-T2": {
       "title": "Same-side UI: dual stamps + SAME SIDE tape + edge line on matchup/verdict",
