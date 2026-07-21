@@ -1,0 +1,134 @@
+{
+  "tasks": {
+    "WS16-T1": {
+      "title": "Core contracts for the journeys plan: kind='topic', flags, stack/topics/callouts/same-side schemas [contract-change]",
+      "phase": "J0",
+      "depends_on": [],
+      "note": "Spec: docs/journeys-plan.md §5 WS16-T1 (+§4). Additive only, every new response field .nullish(), core-first PR with no consumer changes. New flags topic_markets/callouts/departures_board default false."
+    },
+    "WS16-T2": {
+      "title": "DB: topic_follows + callouts tables, kind='topic', repositories + factories",
+      "phase": "J0",
+      "depends_on": ["WS16-T1"],
+      "note": "Spec: docs/journeys-plan.md §5 WS16-T2 (+§4). acceptCallout is transactional and creates the next-week nemesis pairing (canonical a<b). Regression test: questions_daily_date_uq must not constrain kind='topic'."
+    },
+    "WS16-T3": {
+      "title": "packages/ui: TicketFrame system (frame/punch/tape/same-side) — the consistency fix",
+      "phase": "J0",
+      "depends_on": [],
+      "note": "Spec: docs/journeys-plan.md §2 + §5 WS16-T3. One frame family owns ALL perforation/stub/admit chrome; BallotCard+TicketCard refactored to compose it; gallery tiles + deliberate visual-baseline refresh in this PR. Tokens unchanged."
+    },
+    "WS17-T1": {
+      "title": "App shell: bottom tab bar (Stack/Sweat/Rivals/Crowd/You), sinks while deck on stage",
+      "phase": "J1",
+      "depends_on": ["WS16-T3"],
+      "mock_start_ok": true,
+      "note": "Spec: docs/journeys-plan.md §5 WS17-T1 (D-J6). Sole owner of layout.tsx. SHELL_ROUTES map lets later tasks flip one entry each; saveChipSlot reserved for WS21-T2. E2E: every room ≤2 taps from '/'."
+    },
+    "WS17-T2": {
+      "title": "/rivals hub: segmented Nemesis·Duo, ghost save-gate instead of redirect",
+      "phase": "J1",
+      "depends_on": ["WS16-T3"],
+      "note": "Spec: docs/journeys-plan.md §5 WS17-T2. Refactor nemesis/duo page bodies into exported NemesisRoom/DuoRoom; old routes keep working (deep links, share cards). Does not touch layout.tsx or copy.ts."
+    },
+    "WS18-T1": {
+      "title": "Topic supply: admin publish-as-topic + GET /api/v1/stack feed",
+      "phase": "J1",
+      "depends_on": ["WS16-T1", "WS16-T2"],
+      "note": "Spec: docs/journeys-plan.md §5 WS18-T1 (+§4). lib/stack-feed.ts shared by route and '/' SSR (question-view.ts delegation pattern); serialize via serialize-question.ts only; flag topic_markets; cap 8, soonest-close first; ghost default all categories; exposes rival_sealed .nullish() on shared questions."
+    },
+    "WS18-T2": {
+      "title": "Topic follows: POST/DELETE /api/v1/topics/:category/follow + TopicFollowChips",
+      "phase": "J1",
+      "depends_on": ["WS16-T2"],
+      "note": "Spec: docs/journeys-plan.md §5 WS18-T2. Ghost-allowed via ghost cookie (mirror the pick route), rate-limited, optimistic toggle with rollback. Chips exported standalone; hosts (WS18-T3 end-state, WS22-T1 /you) import it."
+    },
+    "WS18-T3": {
+      "title": "The deck: single mixed stack on '/', up=skip, end-of-stack → sweat handoff",
+      "phase": "J2",
+      "depends_on": ["WS18-T1", "WS16-T3"],
+      "mock_start_ok": true,
+      "note": "Spec: docs/journeys-plan.md §5 WS18-T3 (D-J2). Extend SwipeBallot (onSkip/footerSlot), never fork it; skip = up-swipe or ArrowUp/S (a11y parity); headliner-only streak footer + rival chip; sets deckOnStage. Flag off ⇒ '/' byte-identical to today (regression e2e)."
+    },
+    "WS19-T1": {
+      "title": "Settlement pipeline: settle-on-resolution in worker, per-settle push, evening digest",
+      "phase": "J2",
+      "depends_on": ["WS16-T1"],
+      "note": "Spec: docs/journeys-plan.md §5 WS19-T1 (D-J3, PRD §4.1 amendment). Settle in the venue-sync tick when a linked market resolves; extract settleQuestion(); revealedAt column keeps its name (presented as settled-at); delete clock-scheduled reveal ceremony; digest = per-settle push only for first settle of the day, summary at 21:00 ET."
+    },
+    "WS19-T2": {
+      "title": "Sweat surfaces: /sweat page + settled-state presentation on question pages",
+      "phase": "J2",
+      "depends_on": ["WS19-T1", "WS17-T1"],
+      "mock_start_ok": true,
+      "note": "Spec: docs/journeys-plan.md §5 WS19-T2. Force-dynamic viewer-scoped (ghost + claimed); SweatRow exported for WS18-T3; settle-when labels (LIVE/<7d weekday/~MON YYYY) soonest-first; reveal choreography plays at first settled view; owns its copy.ts block; flips SHELL_ROUTES.sweat."
+    },
+    "WS20-T1": {
+      "title": "Engine: same-side price-edge day scoring [contract-change]",
+      "phase": "J2",
+      "depends_on": ["WS16-T1"],
+      "note": "Spec: docs/journeys-plan.md §5 WS20-T1 (D-J4). Same side ⇒ better entry price wins the day, earlier stamp breaks price tie, same-minute ⇒ draw; both-wrong reduces to the same price rule; same_side payload .nullish(); opposite-side days byte-identical (regression fixtures)."
+    },
+    "WS20-T2": {
+      "title": "Same-side UI: dual stamps + SAME SIDE tape + edge line on matchup/verdict",
+      "phase": "J3",
+      "depends_on": ["WS20-T1", "WS16-T3"],
+      "mock_start_ok": true,
+      "note": "Spec: docs/journeys-plan.md §5 WS20-T2. Uses SameSideRow/TapeLabel from WS16-T3; sealed rules unchanged pre-lock; pre-settle edge line + post-settle both-right/both-wrong framing; owns its copy.ts block; gallery tile + baseline."
+    },
+    "WS20-T3": {
+      "title": "Call-outs API: create signed link, public preview, accept→pairing, decline, expiry",
+      "phase": "J3",
+      "depends_on": ["WS16-T1", "WS16-T2"],
+      "note": "Spec: docs/journeys-plan.md §5 WS20-T3 (D-J5). Token stored hashed, 24h expiry, flag callouts; accept transactional+idempotent; weekly assignment must skip players with an accepted call-out for that week (one WHERE clause + test); ghost accept ⇒ 401 {reason:'save_required'}."
+    },
+    "WS20-T4": {
+      "title": "Call-outs UI + grudge book: issue/receive challenges, lifetime rival records, grudge-seeded matchmaking",
+      "phase": "J3",
+      "depends_on": ["WS20-T3", "WS17-T2"],
+      "note": "Spec: docs/journeys-plan.md §5 WS20-T4. Candidates from nemesis history + share link (reuse share sheet); incoming card = TapeLabel 'YOU'VE BEEN CALLED OUT' + accept/decline; ghost accept routes through Save with ?next=; grudge book extends NemesisHistoryList (lifetime tallies + REMATCH); bounded matchmaking boost for standing grudges; stamps only, no free text; owns its copy.ts block."
+    },
+    "WS21-T1": {
+      "title": "'Save': §10.6 copy amendment + /claim restyled in TicketFrame, zero gold on asks",
+      "phase": "J1",
+      "depends_on": ["WS16-T3"],
+      "note": "Spec: docs/journeys-plan.md §5 WS21-T1 (D-J8). CTA label is the single word 'Save'; pinned nudge strings replaced per spec (update the pinned-verbatim header comment, run money-word lint); /claim URL unchanged, identifiers unchanged; grep gate: no user-facing 'claim' string left; owns its copy.ts block."
+    },
+    "WS21-T2": {
+      "title": "Save chip + value-triggered save card (streak/5th-pick/rival-surface/incoming call-out)",
+      "phase": "J4",
+      "depends_on": ["WS17-T1", "WS21-T1"],
+      "note": "Spec: docs/journeys-plan.md §5 WS21-T2. Fills WS17-T1's saveChipSlot: neutral one-word 'Save' chip only when there's value to lose; triggered card uses WS21-T1 copy in neutral TicketFrame; dismissals persist; unit-assert no gold token classnames in ask components."
+    },
+    "WS22-T1": {
+      "title": "/you: record-first room (stats trio, topic bars, graveyard, ghost save row)",
+      "phase": "J4",
+      "depends_on": ["WS17-T1"],
+      "note": "Spec: docs/journeys-plan.md §5 WS22-T1 (D-J7). Reuse /p/[slug] stat components (extract shared, don't fork); ghost variant hosts WS21-T2 save row + WS18-T2 TopicFollowChips; flips SHELL_ROUTES.you."
+    },
+    "WS22-T2": {
+      "title": "/crowd: weekly leaderboards page on the existing API (overall + topic chips + edge)",
+      "phase": "J4",
+      "depends_on": ["WS17-T1"],
+      "note": "Spec: docs/journeys-plan.md §5 WS22-T2 (D-J7). Server-fetch through the lib (no self-HTTP); ISR 60s with viewer highlight hydrating client-side (INV-10); handles link to /p/[slug]; flips SHELL_ROUTES.crowd."
+    },
+    "WS23-T1": {
+      "title": "Journey E2E gate: six end-to-end journeys + reachability matrix, flags ON",
+      "phase": "JQ",
+      "depends_on": ["WS18-T3", "WS19-T2", "WS20-T2", "WS20-T4", "WS21-T2", "WS22-T1", "WS22-T2"],
+      "note": "Spec: docs/journeys-plan.md §5 WS23-T1. Journeys: stack→sweat, settle→streak/obituary, ghost→Save→nemesis, same-side week, call-out loop, ≤2-taps reachability. journeys flags ON via playwright.config.ts env defaults; one deliberate visual-baseline refresh; <1% flake over 20 runs."
+    },
+    "WS23-T2": {
+      "title": "Rollout: flip flags in envs, delete dead reveal-ceremony code, amend PRD/design-doc/§10.6",
+      "phase": "JQ",
+      "depends_on": ["WS23-T1"],
+      "note": "Spec: docs/journeys-plan.md §5 WS23-T2. Env-var flag flips (duo_queue precedent, not code defaults); PRD §4.1 + design-doc §6.7/§10.1/§10.3/§10.6 amendments each citing docs/journeys-plan.md; no doc/app contradiction remains."
+    },
+    "WS24-T1": {
+      "title": "STRETCH: Departures-board pilot on /sweat (FlapText + TicketFrame tone='board'), flagged",
+      "phase": "JQ",
+      "depends_on": ["WS19-T2", "WS16-T3"],
+      "note": "Spec: docs/journeys-plan.md §5 WS24-T1. Flag departures_board; per-character flap cells with settle tick, reduced-motion static; receipts stay paper. Do not claim before JQ's required tasks are in review."
+    }
+  }
+}
