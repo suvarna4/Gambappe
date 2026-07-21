@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildObituaryFacts,
   CLAIM_NUDGE_COPY,
+  CLAIM_PROMPT_CTA,
   CLAIM_PUBLICNESS_STATEMENT,
   obituaryCopy,
   shareCopy,
@@ -19,16 +20,23 @@ describe('§10.6 pinned copy', () => {
     );
   });
 
-  it('streak nudge matches §10.6 verbatim', () => {
+  // D-J8 (WS21-T1): the "claim" wording was amended to "Save" per docs/journeys-plan.md §5 +
+  // the owner decision of 2026-07-21; these re-pin the new nudge strings verbatim.
+  it('streak nudge matches the WS21-T1 pinned copy verbatim', () => {
     expect(CLAIM_NUDGE_COPY.streak).toBe(
-      'Your ghost has a 3-day streak. Claim it before this device loses it.',
+      'Your streak lives on this device. Save it — free, ten seconds.',
     );
   });
 
-  it('fingerprint nudge matches §10.6 verbatim', () => {
+  it('fingerprint nudge matches the WS21-T1 pinned copy verbatim', () => {
     expect(CLAIM_NUDGE_COPY.fingerprint).toBe(
-      'Your fingerprint is ready. Claim your record to get assigned your nemesis.',
+      'Your fingerprint is ready. Save your record to get your nemesis.',
     );
+  });
+
+  it('no Save-flow copy uses "claim" wording (D-J8 grep gate)', () => {
+    const allCopy = [CLAIM_PROMPT_CTA, ...Object.values(CLAIM_NUDGE_COPY)].join(' ');
+    expect(allCopy).not.toMatch(/claim/i);
   });
 
   it('no copy references money words (§10.6/INV-8 review rule: bet|stake|wager|$)', () => {

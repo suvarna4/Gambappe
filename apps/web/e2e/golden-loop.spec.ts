@@ -314,7 +314,7 @@ test.describe('WS14-T1 golden loop (§17.1)', () => {
     // AGE_ATTESTATION_REQUIRED and the UI shows the re-affirm step before retrying.
     await expect(completion).toHaveAttribute('data-phase', 'age-attest', { timeout: 10_000 });
     await completion.getByRole('checkbox').check();
-    await completion.getByRole('button', { name: 'Confirm & claim' }).click();
+    await completion.getByRole('button', { name: 'Confirm & save' }).click();
     await expect(completion).toHaveAttribute('data-phase', 'done');
     await expect(completion).toHaveAttribute('data-case', 'A');
     await expect(completion).toContainText(ghostHandle);

@@ -13,10 +13,11 @@ test('gallery renders the WS7-T5 claim prompt engine nudge (streak trigger)', as
 
   const promptEngine = page.getByTestId('claim-prompt-engine');
   await expect(promptEngine).toBeVisible();
+  // D-J8 (WS21-T1): "Save" wording, not "claim".
   await expect(promptEngine).toContainText(
-    'Your ghost has a 3-day streak. Claim it before this device loses it.',
+    'Your streak lives on this device. Save it — free, ten seconds.',
   );
-  await expect(promptEngine.getByRole('button', { name: 'Claim your account' })).toBeVisible();
+  await expect(promptEngine.getByRole('button', { name: 'Save' })).toBeVisible();
   await expect(promptEngine.getByRole('button', { name: 'Not now' })).toBeVisible();
 });
 
@@ -28,12 +29,12 @@ test('dismissing the claim prompt engine hides it', async ({ page }) => {
   await expect(promptEngine).toHaveCount(0);
 });
 
-test('claim prompt engine "Claim your account" opens the claim sheet on the sign-in step', async ({
+test('claim prompt engine "Save" opens the claim sheet on the sign-in step', async ({
   page,
 }) => {
   await page.goto('/dev/ui');
   const promptEngine = page.getByTestId('claim-prompt-engine');
-  await promptEngine.getByRole('button', { name: 'Claim your account' }).click();
+  await promptEngine.getByRole('button', { name: 'Save' }).click();
 
   const sheet = page.getByTestId('claim-sheet');
   await expect(sheet).toBeVisible();
@@ -46,7 +47,7 @@ test('claim prompt engine "Claim your account" opens the claim sheet on the sign
   await expect(entry.getByRole('button', { name: 'Continue with Google' })).toBeVisible();
   await expect(entry.getByRole('button', { name: 'Continue with X' })).toHaveCount(0);
   await expect(entry.getByLabel('Continue with email')).toBeVisible();
-  await expect(entry.getByRole('button', { name: 'Send me a link' })).toBeVisible();
+  await expect(entry.getByRole('button', { name: 'Save' })).toBeVisible();
   await expect(entry).toContainText('Your picks, results, and rating are public');
 
   await sheet.getByRole('button', { name: 'Close' }).click();
@@ -72,6 +73,10 @@ test('/claim renders the sign-in entry point directly when no session exists', a
   await expect(entry).toHaveAttribute('data-phase', 'signin');
   await expect(entry.getByRole('button', { name: 'Continue with Google' })).toBeVisible();
   await expect(entry.getByLabel('Continue with email')).toBeVisible();
+  // D-J8 (WS21-T1): the neutral "SAVE YOUR RECORD" TicketFrame restyle — Save wording, no "claim".
+  await expect(page.getByText('SAVE YOUR RECORD')).toBeVisible();
+  await expect(entry).toContainText("Nothing to buy. Just don't lose your record.");
+  await expect(entry.getByRole('button', { name: 'Save' })).toBeVisible();
 });
 
 test('/claim page carries the 18+ footer notice', async ({ page }) => {

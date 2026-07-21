@@ -33,6 +33,7 @@ import {
   CLAIM_SIGNIN_EMAIL_SUBMIT_LABEL,
   CLAIM_SIGNIN_GOOGLE_LABEL,
   CLAIM_SIGNIN_HEADING,
+  CLAIM_SIGNIN_SUBHEADING,
   CLAIM_SIGNIN_X_LABEL,
   CLAIM_ALREADY_CLAIMED,
   ghostConfirmationCopy,
@@ -92,15 +93,24 @@ export default function ClaimEntry({
     };
   }, []);
 
-  const containerClass =
-    presentation === 'overlay'
-      ? 'bg-surface text-paper w-full max-w-sm space-y-4 rounded-lg p-6 shadow-xl'
-      : 'bg-surface text-paper mx-auto w-full max-w-sm space-y-4 rounded-lg p-6';
+  // D-J8 (WS21-T1): 'inline' now renders on the /claim page's neutral paper TicketFrame — ink text
+  // on cream (AA-safe), no card chrome of its own (the frame is the card), and NO gold on the ask.
+  // 'overlay' keeps the dark dismissible-sheet look (that surface is WS21-T2's to restyle).
+  const paper = presentation === 'inline';
+  const containerClass = paper
+    ? 'text-ink w-full space-y-4'
+    : 'bg-surface text-paper w-full max-w-sm space-y-4 rounded-lg p-6 shadow-xl';
+  const mutedText = paper ? 'text-ink/70' : 'text-muted';
+  const primaryBtn = paper ? 'bg-ink text-paper' : 'bg-side-a text-white';
+  const neutralBtn = paper ? 'border border-ink/25 bg-ink/[0.04] text-ink' : 'bg-bg';
+  const inputClass = paper
+    ? 'border border-ink/25 bg-transparent text-ink placeholder:text-ink/45'
+    : 'bg-bg';
 
   if (phase === 'loading') {
     return (
       <div className={containerClass} data-testid="claim-entry" data-phase={phase}>
-        <p className="text-muted text-sm">Loading…</p>
+        <p className={`${mutedText} text-sm`}>Loading…</p>
       </div>
     );
   }
@@ -130,14 +140,14 @@ export default function ClaimEntry({
         <div className="flex gap-2">
           <button
             type="button"
-            className="bg-side-a rounded px-4 py-2 text-sm font-semibold text-white"
+            className={`${primaryBtn} rounded px-4 py-2 text-sm font-semibold`}
             onClick={() => setPhase('signin')}
           >
             {CLAIM_CONFIRM_YES_LABEL}
           </button>
           <button
             type="button"
-            className="bg-bg text-muted rounded px-4 py-2 text-sm"
+            className={`${neutralBtn} rounded px-4 py-2 text-sm`}
             onClick={() => {
               markNotMe();
               setPhase('signin');
@@ -153,14 +163,17 @@ export default function ClaimEntry({
   // phase === 'signin'
   return (
     <div className={containerClass} data-testid="claim-entry" data-phase="signin">
-      <h2 className="text-lg font-bold">{CLAIM_SIGNIN_HEADING}</h2>
-      <p className="text-muted text-xs">{CLAIM_PUBLICNESS_STATEMENT}</p>
+      <div className="space-y-1">
+        <h2 className="text-lg font-bold">{CLAIM_SIGNIN_HEADING}</h2>
+        <p className={`${mutedText} text-sm`}>{CLAIM_SIGNIN_SUBHEADING}</p>
+      </div>
+      <p className={`${mutedText} text-xs`}>{CLAIM_PUBLICNESS_STATEMENT}</p>
       <div className="space-y-2">
         {enabledProviders.includes('google') && (
           <form action={signInWithGoogle}>
             <button
               type="submit"
-              className="bg-bg w-full rounded px-4 py-2 text-left text-sm font-semibold"
+              className={`${neutralBtn} w-full rounded px-4 py-2 text-left text-sm font-semibold`}
             >
               {CLAIM_SIGNIN_GOOGLE_LABEL}
             </button>
@@ -170,7 +183,7 @@ export default function ClaimEntry({
           <form action={signInWithTwitter}>
             <button
               type="submit"
-              className="bg-bg w-full rounded px-4 py-2 text-left text-sm font-semibold"
+              className={`${neutralBtn} w-full rounded px-4 py-2 text-left text-sm font-semibold`}
             >
               {CLAIM_SIGNIN_X_LABEL}
             </button>
@@ -183,10 +196,13 @@ export default function ClaimEntry({
               name="email"
               required
               placeholder={CLAIM_SIGNIN_EMAIL_PLACEHOLDER}
-              className="bg-bg min-w-0 flex-1 rounded px-3 py-2 text-sm"
+              className={`${inputClass} min-w-0 flex-1 rounded px-3 py-2 text-sm`}
               aria-label={CLAIM_SIGNIN_EMAIL_LABEL}
             />
-            <button type="submit" className="bg-side-a shrink-0 rounded px-3 py-2 text-sm font-semibold text-white">
+            <button
+              type="submit"
+              className={`${primaryBtn} shrink-0 rounded px-3 py-2 text-sm font-semibold`}
+            >
               {CLAIM_SIGNIN_EMAIL_SUBMIT_LABEL}
             </button>
           </form>
