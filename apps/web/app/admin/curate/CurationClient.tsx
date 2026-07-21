@@ -42,7 +42,11 @@ const makeEmptyForm = () => ({
   event_start_at: '',
 });
 
-export default function CurationClient() {
+export default function CurationClient({
+  topicMarketsEnabled = false,
+}: {
+  topicMarketsEnabled?: boolean;
+}) {
   const searchParams = useSearchParams();
   const token = searchParams.get('token') ?? '';
 
@@ -159,6 +163,33 @@ export default function CurationClient() {
     const json = (await res.json()) as { data?: { slug: string }; error?: { message: string } };
     if (res.ok && json.data) {
       setSubmitResult(`Scheduled: ${json.data.slug}`);
+      setForm(makeEmptyForm());
+      setSelectedMarketId(null);
+    } else {
+      setSubmitResult(`Error: ${json.error?.message ?? 'unknown'}`);
+    }
+  }
+
+  // WS18-T1: publish the selected market as a topic-market question — born `open` now, locking at
+  // the market's close_time (the API derives the times + slug). Only the headline (and optional
+  // labels) matter here; question_date/event_start don't apply to topics.
+  async function handlePublishTopic() {
+    if (!selectedMarketId) return;
+    setSubmitResult(null);
+    const body = {
+      headline: form.headline,
+      blurb: form.blurb || null,
+      ...(form.yes_label ? { yes_label: form.yes_label } : {}),
+      ...(form.no_label ? { no_label: form.no_label } : {}),
+    };
+    const res = await authedFetch(`/api/admin/markets/${selectedMarketId}/topic-question`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const json = (await res.json()) as { data?: { slug: string }; error?: { message: string } };
+    if (res.ok && json.data) {
+      setSubmitResult(`Published topic: ${json.data.slug}`);
       setForm(makeEmptyForm());
       setSelectedMarketId(null);
     } else {
@@ -302,14 +333,26 @@ export default function CurationClient() {
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={!preview?.question}
-            className="bg-side-a rounded px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
-          >
-            Schedule question
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={!preview?.question}
+              className="bg-side-a rounded px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              Schedule question
+            </button>
+            {topicMarketsEnabled && (
+              <button
+                type="button"
+                onClick={handlePublishTopic}
+                disabled={!form.headline}
+                className="bg-surface rounded px-4 py-2 text-sm font-semibold disabled:opacity-40"
+              >
+                Publish as topic question
+              </button>
+            )}
+          </div>
         </section>
       )}
       {submitResult && <p className="text-sm">{submitResult}</p>}

@@ -26,3 +26,17 @@ export async function scheduleDailyQuestionLifecycle(question: ScheduledQuestion
   await boss.send('question:lock', { questionId: question.id }, { startAfter: question.lockAt });
   await boss.send('reveal:fire', { questionId: question.id }, { startAfter: question.revealAt });
 }
+
+/**
+ * Topic questions (journeys plan §4, WS18-T1) are born `open` (openAt=now) and carry no
+ * synchronized reveal (§D-J3: settlement follows the venue market, any time of day), so they need
+ * only the ONE `question:lock` transition at `lock_at` (= the market's close_time). Without it a
+ * topic would sit `open` forever and keep surfacing in the stack feed past its close (the feed
+ * filters on the RAW `status='open'`). Reuses the kind-agnostic `question:lock` job the daily path
+ * already relies on — it only flips `open`→`locked` and snapshots crowd/price, no daily-only logic.
+ */
+export async function scheduleTopicQuestionLock(question: { id: string; lockAt: Date }): Promise<void> {
+  const boss = await getBoss();
+  await boss.createQueue('question:lock');
+  await boss.send('question:lock', { questionId: question.id }, { startAfter: question.lockAt });
+}
