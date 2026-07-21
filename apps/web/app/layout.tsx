@@ -34,10 +34,15 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={fontVariables}>
-      <body className="bg-bg text-paper font-ui min-h-screen">
+      <body className="bg-bg text-paper font-ui flex min-h-screen flex-col">
         {children}
-        {/* INV-9: every page footer carries an 18+ notice. */}
-        <footer className="text-muted border-surface border-t px-4 py-6 text-sm">
+        {/* INV-9: every page footer carries an 18+ notice — that invariant is about PRESENCE,
+            not a specific size, so this stays on every page but shrinks on narrow viewports
+            (design-diff audit: on a short page, e.g. /nemesis's single card, the footer's full
+            desktop padding/text-size read as disproportionately loud on mobile). Mobile-first:
+            the compact values are the unprefixed base, `sm:` restores the original spacious
+            desktop treatment. */}
+        <footer className="text-muted border-surface border-t px-4 py-3 text-xs sm:py-6 sm:text-sm">
           <p>{EIGHTEEN_PLUS_FOOTER_NOTICE}</p>
         </footer>
       </body>

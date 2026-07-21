@@ -15,60 +15,69 @@ const OPPONENT: PairingSide = {
   rating: { glicko_rating: 1550.4, glicko_rd: 80, games_count: 40, accuracy_percentile: 72 },
 };
 
+const BASE = { opponent: OPPONENT, isRematch: false, weekStart: '2026-07-13', sharedDayCount: 5, bonusQuestionCount: 0 };
+
 describe('NemesisAssignmentCard', () => {
   it('shows the literal "VS" badge, never a score — assignment day is before any picks land', () => {
-    const html = renderToStaticMarkup(
-      <NemesisAssignmentCard opponent={OPPONENT} isRematch={false} weekStart="2026-07-13" />,
-    );
+    const html = renderToStaticMarkup(<NemesisAssignmentCard {...BASE} />);
     expect(html).toContain('>VS<');
     // No digit-dash-digit score pattern anywhere (that's the DIFFERENT, later verdict moment).
     expect(html).not.toMatch(/\d+–\d+/);
   });
 
   it('shows the opponent handle and rating', () => {
-    const html = renderToStaticMarkup(
-      <NemesisAssignmentCard opponent={OPPONENT} isRematch={false} weekStart="2026-07-13" />,
-    );
+    const html = renderToStaticMarkup(<NemesisAssignmentCard {...BASE} />);
     expect(html).toContain('Maria O.');
     expect(html).toContain('1550');
     expect(html).toContain('Top 28%');
   });
 
   it('formats week_start via the shared short-date convention, not a fabricated week number', () => {
-    const html = renderToStaticMarkup(
-      <NemesisAssignmentCard opponent={OPPONENT} isRematch={false} weekStart="2026-07-13" />,
-    );
+    const html = renderToStaticMarkup(<NemesisAssignmentCard {...BASE} />);
     expect(html).toContain('Week of Jul 13');
     expect(html).not.toMatch(/WEEK\s*\d+/i);
   });
 
   it('distinguishes the assignment vs. rematch eyebrow copy', () => {
-    const assignment = renderToStaticMarkup(
-      <NemesisAssignmentCard opponent={OPPONENT} isRematch={false} weekStart="2026-07-13" />,
-    );
-    const rematch = renderToStaticMarkup(
-      <NemesisAssignmentCard opponent={OPPONENT} isRematch={true} weekStart="2026-07-13" />,
-    );
+    const assignment = renderToStaticMarkup(<NemesisAssignmentCard {...BASE} />);
+    const rematch = renderToStaticMarkup(<NemesisAssignmentCard {...BASE} isRematch={true} />);
     expect(assignment).toContain('Assignment day');
     expect(rematch).toContain('Rematch day');
   });
 
   it('links "View matchup" to the private /nemesis/matchup route, not the public /vs/[pairingId] page', () => {
-    const html = renderToStaticMarkup(
-      <NemesisAssignmentCard opponent={OPPONENT} isRematch={false} weekStart="2026-07-13" />,
-    );
+    const html = renderToStaticMarkup(<NemesisAssignmentCard {...BASE} />);
     expect(html).toContain('href="/nemesis/matchup"');
     expect(html).not.toContain('/vs/');
   });
 
+  it('links "Pause weeks" to the real /settings nemesis-pause toggle', () => {
+    const html = renderToStaticMarkup(<NemesisAssignmentCard {...BASE} />);
+    expect(html).toContain('href="/settings"');
+  });
+
   it('renders without a rating block when the opponent has no rating yet', () => {
     const html = renderToStaticMarkup(
-      <NemesisAssignmentCard
-        opponent={{ ...OPPONENT, rating: null }}
-        isRematch={false}
-        weekStart="2026-07-13"
-      />,
+      <NemesisAssignmentCard {...BASE} opponent={{ ...OPPONENT, rating: null }} />,
     );
     expect(html).not.toContain('rating');
+  });
+
+  it('renders one empty dot per shared day, and the real (not fabricated) bonus count', () => {
+    const html = renderToStaticMarkup(
+      <NemesisAssignmentCard {...BASE} sharedDayCount={5} bonusQuestionCount={3} />,
+    );
+    expect(html.match(/rounded-full border-2/g)?.length).toBe(5);
+    // §8.8: real weeks carry 2-3 nemesis_bonus questions (or 0) — never a hard-coded count, so
+    // this asserts the actual number passed in is what renders, not a fixed "+1" or "+2".
+    expect(html).toContain('+3 bonus');
+  });
+
+  it('renders no day strip, and no bonus row, when sharedDayCount and bonusQuestionCount are zero', () => {
+    const html = renderToStaticMarkup(
+      <NemesisAssignmentCard {...BASE} sharedDayCount={0} bonusQuestionCount={0} />,
+    );
+    expect(html).not.toContain('rounded-full border-2');
+    expect(html.toLowerCase()).not.toContain('bonus');
   });
 });

@@ -170,6 +170,11 @@ export const nemesisCopy = {
       ? `You and ${opponentHandle} are running it back this week.`
       : `${opponentHandle} is your nemesis this week. Same daily questions, head to head.`,
   viewMatchupCta: 'View matchup',
+  /** The assignment card's second "well" button (design-diff audit: `docs/mockups/swipe-ux.html`
+   * line 825's "Pause weeks" — links to the real `nemesis_paused` toggle on `/settings`
+   * (`SettingsClient.tsx`'s `saveNemesisPaused`), not a fabricated action; this card just gives
+   * it a shortcut. */
+  pauseWeeksCta: 'Pause weeks',
 
   requestRematchCta: 'Request rematch',
   rematchPendingLabel: (opponentHandle: string) =>

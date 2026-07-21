@@ -1,15 +1,13 @@
 /**
- * SW10-T2 · `NemesisHistoryList` → `VerdictCard` wiring: each row derives its `RematchVerdict`
- * from the history entry's own `outcome`/`my_score`/`their_score` (see `lib/nemesis/verdict.ts`)
- * and the per-pairing `dayResultsByPairingId` map the page fetches from `GET /pairings/:id`.
+ * `NemesisHistoryList` — plain compact past-record rows (design-diff audit: no head-to-head
+ * banner, no verdict swipe card, no rematch-request affordance — see the component's own header
+ * for why those were dropped for this route).
  */
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { ProfileId } from '@receipts/core';
 import { NemesisHistoryList } from '@/components/nemesis/NemesisHistoryList';
 import type { NemesisHistoryEntry } from '@/lib/nemesis/types';
-
-const VIEWER_ID = '018f1e2b-0000-7000-8000-0000000000v1';
 
 function entry(overrides: Partial<NemesisHistoryEntry> = {}): NemesisHistoryEntry {
   return {
@@ -26,71 +24,34 @@ function entry(overrides: Partial<NemesisHistoryEntry> = {}): NemesisHistoryEntr
   };
 }
 
-describe('NemesisHistoryList (SW10-T2)', () => {
-  it('renders a verdict card for a decisive (win/loss/draw) row', () => {
-    const html = renderToStaticMarkup(
-      <NemesisHistoryList viewerProfileId={VIEWER_ID} entries={[entry()]} />,
-    );
-    expect(html).toContain('data-testid="verdict-card"');
+describe('NemesisHistoryList', () => {
+  it('renders the empty-state copy when there are no entries', () => {
+    const html = renderToStaticMarkup(<NemesisHistoryList entries={[]} />);
+    expect(html.toLowerCase()).toContain('no nemesis history');
   });
 
-  it('renders NO verdict card for a cancelled row — the plain fallback stays', () => {
-    const html = renderToStaticMarkup(
-      <NemesisHistoryList viewerProfileId={VIEWER_ID} entries={[entry({ outcome: 'cancelled' })]} />,
-    );
+  it('renders a compact row: opponent link, score, week, and an outcome badge', () => {
+    const html = renderToStaticMarkup(<NemesisHistoryList entries={[entry()]} />);
+    expect(html).toContain('href="/vs/p-1"');
+    expect(html).toContain('Otter #9001');
+    expect(html).toContain('4–1');
+    expect(html).toContain('week of 2026-06-01');
+  });
+
+  it('marks a rematch week', () => {
+    const html = renderToStaticMarkup(<NemesisHistoryList entries={[entry({ is_rematch: true })]} />);
+    expect(html).toContain('rematch');
+  });
+
+  it('renders no head-to-head banner, verdict card, or rematch-request affordance', () => {
+    const html = renderToStaticMarkup(<NemesisHistoryList entries={[entry()]} />);
+    expect(html).not.toContain('data-testid="head-to-head-banner"');
     expect(html).not.toContain('data-testid="verdict-card"');
-    expect(html).toContain('data-testid="rematch-request-button"');
+    expect(html).not.toContain('data-testid="rematch-request-button"');
+  });
+
+  it('shows the Cancelled label for a cancelled row instead of a win/loss/draw badge', () => {
+    const html = renderToStaticMarkup(<NemesisHistoryList entries={[entry({ outcome: 'cancelled' })]} />);
     expect(html).toContain('Cancelled');
-  });
-
-  it('threads the per-pairing dayResults into the verdict card dot strip', () => {
-    const html = renderToStaticMarkup(
-      <NemesisHistoryList
-        viewerProfileId={VIEWER_ID}
-        entries={[entry()]}
-        dayResultsByPairingId={{ 'p-1': ['win', 'loss', 'neutral', 'pending'] }}
-      />,
-    );
-    // Four dots rendered means the strip actually got the array (each dot is a `<span>` inside
-    // the `aria-hidden` strip — a coarse but adequate structural check for pure/presentational
-    // SSR coverage, matching this file's sibling tests' posture).
-    expect(html.match(/rounded-full border/g)?.length).toBe(4);
-  });
-
-  describe('head-to-head banner (design-diff gap fix)', () => {
-    it('renders the banner above a decisive row when viewerHandle is provided', () => {
-      const html = renderToStaticMarkup(
-        <NemesisHistoryList
-          viewerProfileId={VIEWER_ID}
-          viewerHandle="Fox #4821"
-          entries={[entry()]}
-        />,
-      );
-      expect(html).toContain('data-testid="head-to-head-banner"');
-      expect(html).toContain('Fox #4821');
-      // The banner comes before the verdict card in document order (mounted "directly above").
-      expect(html.indexOf('data-testid="head-to-head-banner"')).toBeLessThan(
-        html.indexOf('data-testid="verdict-card"'),
-      );
-    });
-
-    it('renders no banner at all when viewerHandle is not supplied (optional plumbing)', () => {
-      const html = renderToStaticMarkup(
-        <NemesisHistoryList viewerProfileId={VIEWER_ID} entries={[entry()]} />,
-      );
-      expect(html).not.toContain('data-testid="head-to-head-banner"');
-    });
-
-    it('renders no banner for a cancelled row even with viewerHandle supplied — no verdict card, no banner', () => {
-      const html = renderToStaticMarkup(
-        <NemesisHistoryList
-          viewerProfileId={VIEWER_ID}
-          viewerHandle="Fox #4821"
-          entries={[entry({ outcome: 'cancelled' })]}
-        />,
-      );
-      expect(html).not.toContain('data-testid="head-to-head-banner"');
-      expect(html).not.toContain('data-testid="verdict-card"');
-    });
   });
 });

@@ -3,6 +3,8 @@ import type { ProfileId } from '@receipts/core';
 import {
   deriveDayResults,
   deriveOutcome,
+  deriveWeekDayResults,
+  NEMESIS_SHARED_WEEK_DAYS,
   opponentOf,
   scoreMarginFromHistory,
   sideOutcome,
@@ -179,5 +181,55 @@ describe('deriveDayResults (SW10-T2 — viewer-relative, re-pinned in fable roun
       row({ question_id: 'q-3' as PairingScoreboardRow['question_id'], a: null }),
     ];
     expect(deriveDayResults(rows, A.profile_id, { a: A, b: B })).toEqual(['win', 'loss', 'neutral']);
+  });
+});
+
+describe('deriveWeekDayResults (design-diff audit — the "DAYS" strip, always NEMESIS_SHARED_WEEK_DAYS dots)', () => {
+  const WEEK_START = '2026-06-01'; // a Monday
+
+  function dailyRow(dayOffset: number, overrides: Partial<PairingScoreboardRow> = {}): PairingScoreboardRow {
+    const d = new Date(`${WEEK_START}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + dayOffset);
+    return {
+      question_id: `q-${dayOffset}` as PairingScoreboardRow['question_id'],
+      slug: `q-${dayOffset}`,
+      kind: 'daily',
+      question_date: d.toISOString().slice(0, 10),
+      a: { side: 'yes', result: 'win' },
+      b: { side: 'no', result: 'loss' },
+      ...overrides,
+    };
+  }
+
+  it('always returns exactly NEMESIS_SHARED_WEEK_DAYS entries, even with a sparse or empty scoreboard', () => {
+    expect(deriveWeekDayResults(WEEK_START, [], A.profile_id, { a: A, b: B })).toHaveLength(
+      NEMESIS_SHARED_WEEK_DAYS,
+    );
+    expect(
+      deriveWeekDayResults(WEEK_START, [dailyRow(0)], A.profile_id, { a: A, b: B }),
+    ).toHaveLength(NEMESIS_SHARED_WEEK_DAYS);
+  });
+
+  it('fills a day with no matching daily row as neutral, rather than shrinking the strip', () => {
+    // Only day 0 and day 2 exist — days 1, 3-6 are missing (a sparse dev DB, or a week that
+    // hasn't reached that day yet).
+    const rows = [dailyRow(0), dailyRow(2, { a: { side: 'yes', result: 'loss' }, b: { side: 'no', result: 'win' } })];
+    const result = deriveWeekDayResults(WEEK_START, rows, A.profile_id, { a: A, b: B });
+    expect(result).toEqual(['win', 'neutral', 'loss', 'neutral', 'neutral', 'neutral', 'neutral']);
+  });
+
+  it('excludes the nemesis_bonus row from the strip — a calendar-day strip, not a scored-row list', () => {
+    const rows = [dailyRow(0), { ...dailyRow(1), kind: 'nemesis_bonus' as const, question_date: null }];
+    const result = deriveWeekDayResults(WEEK_START, rows, A.profile_id, { a: A, b: B });
+    expect(result).toHaveLength(NEMESIS_SHARED_WEEK_DAYS);
+    // Day 1 (the would-be bonus slot) has no real daily row for that date, so it's neutral —
+    // the bonus row never gets counted as if it were day 1's result.
+    expect(result[1]).toBe('neutral');
+  });
+
+  it('is viewer-relative, same as deriveDayResults', () => {
+    const rows = [dailyRow(0)];
+    expect(deriveWeekDayResults(WEEK_START, rows, A.profile_id, { a: A, b: B })[0]).toBe('win');
+    expect(deriveWeekDayResults(WEEK_START, rows, B.profile_id, { a: A, b: B })[0]).toBe('loss');
   });
 });

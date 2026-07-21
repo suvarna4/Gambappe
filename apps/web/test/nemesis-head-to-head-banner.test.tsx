@@ -62,8 +62,8 @@ describe('NemesisHeadToHeadBanner', () => {
     );
     // Fixed by position (mockup's own scheme for this exhibit): viewer's half is always
     // side-a-tinted, opponent's is always side-b-tinted, regardless of who won.
-    expect(html).toContain('from-side-a/45');
-    expect(html).toContain('from-side-b/45');
+    expect(html).toContain('bg-side-a/15');
+    expect(html).toContain('bg-side-b/15');
     // The ONLY outcome-driven visual: the loser's whole half dialed down via opacity, the
     // winner's left untouched. Here the viewer won, so only the opponent's half carries the
     // dim class.
@@ -85,7 +85,7 @@ describe('NemesisHeadToHeadBanner', () => {
     expect(html).not.toContain('opacity-[0.55]');
   });
 
-  it('keeps the score badge structurally outside both truncating handle spans, so a long handle can never clip the score away', () => {
+  it('keeps the score badge structurally outside both wrapping handle spans, so a long handle can never clip the score away', () => {
     const html = renderToStaticMarkup(
       <NemesisHeadToHeadBanner
         viewerHandle="A Genuinely Extremely Long Display Handle That Would Overflow"
@@ -95,13 +95,12 @@ describe('NemesisHeadToHeadBanner', () => {
         outcome="won"
       />,
     );
-    // The score lives in its own centered badge element (`aria-hidden`, no `truncate` class),
-    // never inside either handle's own `truncate` span — so a long handle clipping itself can
-    // never clip the score along with it.
+    // The score lives in its own centered, absolutely-positioned badge element (`aria-hidden`) —
+    // a long handle WRAPS to a second line (design-diff audit round 5, no ellipsis) rather than
+    // overflowing into the badge's own space, so the badge's own markup never contains it.
     const badge = html.match(/<div aria-hidden="true"[^>]*>4–1<\/div>/);
     expect(badge).not.toBeNull();
-    expect(badge?.[0]).not.toContain('truncate');
-    const handleSpan = html.match(/<span class="[^"]*truncate[^"]*">A Genuinely[^<]*<\/span>/);
+    const handleSpan = html.match(/<span class="[^"]*break-words[^"]*">A Genuinely[^<]*<\/span>/);
     expect(handleSpan).not.toBeNull();
     expect(handleSpan?.[0]).not.toContain('4');
   });
@@ -118,5 +117,56 @@ describe('NemesisHeadToHeadBanner', () => {
     );
     expect(html.toLowerCase()).not.toContain('edge');
     expect(html.toLowerCase()).not.toContain('right ·');
+  });
+
+  it('renders one dot per day result in the strip below the tug bar, and none when dayResults is omitted', () => {
+    const withDots = renderToStaticMarkup(
+      <NemesisHeadToHeadBanner
+        viewerHandle="You"
+        opponentHandle="Them"
+        viewerScore={4}
+        opponentScore={1}
+        outcome="won"
+        dayResults={['win', 'loss', 'neutral', 'pending', 'win']}
+      />,
+    );
+    expect(withDots.match(/rounded-full border-2/g)?.length).toBe(5);
+
+    const withoutDots = renderToStaticMarkup(
+      <NemesisHeadToHeadBanner
+        viewerHandle="You"
+        opponentHandle="Them"
+        viewerScore={4}
+        opponentScore={1}
+        outcome="won"
+      />,
+    );
+    expect(withoutDots).not.toContain('rounded-full border-2');
+  });
+
+  it('renders the "Week of {date} / Verdict" eyebrow when weekStart is given, and omits it otherwise', () => {
+    const withWeekStart = renderToStaticMarkup(
+      <NemesisHeadToHeadBanner
+        viewerHandle="You"
+        opponentHandle="Them"
+        viewerScore={4}
+        opponentScore={1}
+        outcome="won"
+        weekStart="2026-07-13"
+      />,
+    );
+    expect(withWeekStart).toContain('Week of Jul 13');
+    expect(withWeekStart).toContain('Verdict');
+
+    const withoutWeekStart = renderToStaticMarkup(
+      <NemesisHeadToHeadBanner
+        viewerHandle="You"
+        opponentHandle="Them"
+        viewerScore={4}
+        opponentScore={1}
+        outcome="won"
+      />,
+    );
+    expect(withoutWeekStart).not.toContain('Week of');
   });
 });

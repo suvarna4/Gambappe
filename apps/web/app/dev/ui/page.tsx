@@ -149,14 +149,7 @@ export default function UiGalleryPage() {
         <h2 className="text-muted text-sm font-semibold uppercase">Verdict + reactions (SP2)</h2>
         <div className="bg-bg space-y-3 rounded-md p-6">
           <div className="mx-auto max-w-[300px] space-y-3">
-            <VerdictCard
-              outcome="lost"
-              opponentHandle="Maria O."
-              youWins={2}
-              opponentWins={3}
-              scoreMargin={11}
-              dayResults={['loss', 'win', 'loss', 'win', 'neutral']}
-            />
+            <VerdictCard outcome="lost" opponentHandle="Maria O." youWins={2} opponentWins={3} scoreMargin={11} />
             <ReactionStamps selected="Called it" />
           </div>
         </div>

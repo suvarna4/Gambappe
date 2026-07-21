@@ -10,8 +10,8 @@
  *       `/nemesis/matchup`;
  *   (b) `/nemesis/matchup` renders the matchup card with real "You" labeling for an authenticated
  *       participant, and redirects to `/nemesis` for a viewer with no active pairing;
- *   (c) the verdict state promotes the most recent settled week and it is NOT duplicated in the
- *       history list below.
+ *   (c) the verdict state promotes the most recent settled week, and the full history list (both
+ *       the promoted week and older ones) lives at its own private `/nemesis/history` route.
  *
  * Session-seeding, wide-season, and advisory-lock helpers are copied verbatim from
  * `nemesis-rematch.spec.ts`'s header-documented pattern (same rationale: a real Auth.js
@@ -219,7 +219,7 @@ test.describe('/nemesis page-state redesign (real Postgres + HTTP)', () => {
     await expect(page).toHaveURL(/\/nemesis$/);
   });
 
-  test('(c) the verdict state promotes the most recent settled week and it is not duplicated in the history list below', async ({
+  test('(c) the verdict state promotes the most recent settled week, and the full history lives at /nemesis/history', async ({
     page,
   }) => {
     const unique = randomUUID();
@@ -266,13 +266,15 @@ test.describe('/nemesis page-state redesign (real Postgres + HTTP)', () => {
     await expect(verdictState).toBeVisible();
     await expect(verdictState).toContainText(newerOpponent.handle as string);
 
-    const historySection = page
-      .locator('section')
-      .filter({ has: page.getByRole('heading', { name: 'History', level: 2 }) });
-    await expect(historySection).toBeVisible();
-    // The promoted (newer) entry must NOT also appear as a row in the aggregate history list...
-    await expect(historySection.getByRole('link', { name: newerOpponent.handle as string })).toHaveCount(0);
-    // ...while the non-promoted (older) entry still does, unchanged.
-    await expect(historySection.getByRole('link', { name: olderOpponent.handle as string })).toBeVisible();
+    // No aggregate list, and no on-page link to it either (explicit design feedback) — the
+    // dedicated history route is reached directly.
+    await page.goto('/nemesis/history');
+    // Both weeks show up here, unfiltered — including the one promoted to primary content on
+    // `/nemesis` itself, since there's no competing primary content on this page to dedupe against.
+    await expect(page.getByRole('link', { name: newerOpponent.handle as string })).toBeVisible();
+    await expect(page.getByRole('link', { name: olderOpponent.handle as string })).toBeVisible();
+    // Read-only rows: no rematch-request affordance here — that's a current-week action that
+    // belongs on the promoted verdict state on /nemesis, not the lifetime history list.
+    await expect(page.getByTestId('rematch-request-button')).toHaveCount(0);
   });
 });

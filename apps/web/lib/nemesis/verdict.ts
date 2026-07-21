@@ -5,7 +5,17 @@
  * for a given viewer, never recomputes score/edge/tiebreak math, which is WS5-T3 scope).
  */
 import type { DayResult, VerdictOutcome } from '@/components/nemesis/VerdictCard';
+import { addDaysToDateString } from './clock';
 import type { NemesisHistoryEntry, PairingPublic, PairingScoreboardRow } from './types';
+
+/** §8.8's shared set is every `daily` question with `question_date` in `[week_start,
+ * week_start+6]` — 7 calendar days, always, by definition of that inclusive range. Both the
+ * "DAYS" strip on a settled week (`deriveWeekDayResults`) and the empty-dot count on assignment
+ * day (`app/nemesis/page.tsx`) key off this SAME constant, so the two exhibits always show the
+ * same number of dots regardless of how many of those 7 days actually have a real question row
+ * in a given environment (design-diff audit: they briefly didn't, in a sparsely-seeded dev DB
+ * where one calendar day's `daily` question had never been created). */
+export const NEMESIS_SHARED_WEEK_DAYS = 7;
 
 export type PairingOutcome = 'in_progress' | 'cancelled' | 'win' | 'loss' | 'draw' | 'unknown';
 
@@ -86,16 +96,36 @@ export function scoreMarginFromHistory(entry: Pick<NemesisHistoryEntry, 'my_scor
 }
 
 /**
- * The week-strip dots for `VerdictCard`, viewer-relative — re-pinned in fable review round 4
- * after round 3's head-to-head "who took the day" model was found to contradict the real scorer
+ * Per-row viewer-relative day result — re-pinned in fable review round 4 after round 3's
+ * head-to-head "who took the day" model was found to contradict the real scorer
  * (`scoreNemesisWeek`, `packages/engine/src/scoring.ts`, awards each side's point independently —
  * a both-win day gives BOTH players +1 — so the dots have to mirror the viewer's own accrual, not
  * a comparison between sides, or the strip would contradict the `my_score`/`their_score` printed
  * above it). `win`/`loss` iff the viewer picked that row and was graded that way; `pending` while
  * the row is unsettled (masked pre-lock, or graded `null`); `neutral` for a `void` row or a row
- * the viewer never picked — the scorer awards nothing in either case. Every scoreboard row is
- * included, nemesis-bonus rows too (`question_date: null`) — `nemesis:conclude` counts those
- * toward the score, so dropping them would desync the dots from `my_score`/`their_score`.
+ * the viewer never picked — the scorer awards nothing in either case. Shared by both
+ * `deriveDayResults` and `deriveWeekDayResults` below — the two differ only in which rows they
+ * feed it and how they're keyed/counted, not in the per-row result rule itself.
+ */
+function dayResultForRow(row: Pick<PairingScoreboardRow, 'a' | 'b'>, viewerIsA: boolean): DayResult {
+  const own = viewerIsA ? row.a : row.b;
+  if (!own) return 'neutral'; // no pick this row
+  if (own.result === 'void') return 'neutral';
+  if (own.result === 'win') return 'win';
+  if (own.result === 'loss') return 'loss';
+  // 'pending', or a null result — the row hasn't graded (or is still masked) yet.
+  return 'pending';
+}
+
+/**
+ * Row-order-based day results, one per scoreboard row — INCLUDES the nemesis-bonus row
+ * (`question_date: null`), since `nemesis:conclude` counts it toward the score and dropping it
+ * would desync this list from `my_score`/`their_score`. No current production caller (design-diff
+ * audit: the day-by-day dot strip that used to render this moved to `NemesisHeadToHeadBanner`'s
+ * own strip, which needs exactly `NEMESIS_SHARED_WEEK_DAYS` calendar-keyed entries instead — see
+ * `deriveWeekDayResults` below — not this row-order shape); kept, and still exercised directly by
+ * `test/nemesis/verdict.test.ts`, as the score-accurate row-order variant for any future caller
+ * that needs per-row (not per-calendar-day) results.
  */
 export function deriveDayResults(
   scoreboard: readonly PairingScoreboardRow[],
@@ -103,13 +133,34 @@ export function deriveDayResults(
   pairing: Pick<PairingPublic, 'a' | 'b'>,
 ): DayResult[] {
   const viewerIsA = pairing.a.profile_id === viewerProfileId;
-  return scoreboard.map((row): DayResult => {
-    const own = viewerIsA ? row.a : row.b;
-    if (!own) return 'neutral'; // no pick this row
-    if (own.result === 'void') return 'neutral';
-    if (own.result === 'win') return 'win';
-    if (own.result === 'loss') return 'loss';
-    // 'pending', or a null result — the row hasn't graded (or is still masked) yet.
-    return 'pending';
+  return scoreboard.map((row) => dayResultForRow(row, viewerIsA));
+}
+
+/**
+ * The "DAYS" strip for `NemesisHeadToHeadBanner` (design-diff audit — moved out of `VerdictCard`
+ * in an earlier round; see that banner's own header) — ALWAYS `NEMESIS_SHARED_WEEK_DAYS` (7)
+ * entries, one per calendar day of the week, keyed by `question_date` rather than raw scoreboard
+ * row order. `deriveDayResults` above is deliberately row-order-based and INCLUDES the
+ * nemesis_bonus row (it counts toward the real score) — right for staying in sync with
+ * `my_score`/`their_score`, wrong for a calendar-day strip, which wants exactly one dot per real
+ * day and nothing else. A day with no matching `daily` row (sparse data, or a day the pairing's
+ * week hasn't reached yet) renders `neutral` — the same "nothing to report" bucket a void/no-pick
+ * row already uses — rather than being silently omitted and shrinking the strip.
+ */
+export function deriveWeekDayResults(
+  weekStart: string,
+  scoreboard: readonly PairingScoreboardRow[],
+  viewerProfileId: string,
+  pairing: Pick<PairingPublic, 'a' | 'b'>,
+): DayResult[] {
+  const viewerIsA = pairing.a.profile_id === viewerProfileId;
+  const byDate = new Map<string, PairingScoreboardRow>();
+  for (const row of scoreboard) {
+    if (row.kind === 'daily' && row.question_date) byDate.set(row.question_date, row);
+  }
+  return Array.from({ length: NEMESIS_SHARED_WEEK_DAYS }, (_, i) => {
+    const date = addDaysToDateString(weekStart, i);
+    const row = byDate.get(date);
+    return row ? dayResultForRow(row, viewerIsA) : 'neutral';
   });
 }

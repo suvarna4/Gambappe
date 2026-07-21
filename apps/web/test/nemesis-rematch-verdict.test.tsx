@@ -24,7 +24,6 @@ const wonVerdict: RematchVerdict = {
   youWins: 4,
   opponentWins: 1,
   scoreMargin: 3,
-  dayResults: ['win', 'win', 'loss', 'win', 'neutral'],
 };
 
 const lostVerdict: RematchVerdict = { ...wonVerdict, outcome: 'lost', youWins: 1, opponentWins: 4 };

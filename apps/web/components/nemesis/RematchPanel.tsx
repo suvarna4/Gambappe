@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { nemesisCopy } from '@/lib/copy';
 import type { RematchStatus } from '@/lib/nemesis/types';
-import type { DayResult, VerdictOutcome } from './VerdictCard';
+import type { VerdictOutcome } from './VerdictCard';
 import { VerdictSwipeCard } from './VerdictSwipeCard';
 
 /** The reduced rematch state `GET /me/nemesis-history` now folds into each history entry
@@ -18,13 +18,14 @@ export interface RematchState {
 /** SW10-T2: the verdict-card data for this history row, derived server-side (`app/nemesis/page.tsx`
  * + `lib/nemesis/verdict.ts`) from the entry's own `my_score`/`their_score` plus the pairing's
  * `GET /pairings/:id` scoreboard. `null` for a `cancelled` week — `VerdictOutcome` has no
- * cancelled member, so that row keeps the pre-SW10 plain "Request rematch" button below. */
+ * cancelled member, so that row keeps the pre-SW10 plain "Request rematch" button below. No
+ * `dayResults` here (design-diff audit): that strip now renders on `NemesisHeadToHeadBanner`,
+ * a sibling of this panel, not inside `VerdictCard` — see that component's own header. */
 export interface RematchVerdict {
   outcome: VerdictOutcome;
   youWins: number;
   opponentWins: number;
   scoreMargin: number;
-  dayResults: ReadonlyArray<DayResult>;
 }
 
 export interface RematchPanelProps {
@@ -189,10 +190,10 @@ export function RematchPanel({ viewerProfileId, opponent, rematchRequest, verdic
           youWins={verdict.youWins}
           opponentWins={verdict.opponentWins}
           scoreMargin={verdict.scoreMargin}
-          dayResults={verdict.dayResults}
           onRunItBack={() => void handleRequest()}
           onNewFate={() => {}}
           disabled={busy}
+          className="flex flex-1 flex-col"
         />
         {error ? (
           <p className="text-loss mt-1 text-xs" data-testid="rematch-error">

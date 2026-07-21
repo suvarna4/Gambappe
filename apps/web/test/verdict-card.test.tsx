@@ -12,7 +12,6 @@ const base = {
   youWins: 2,
   opponentWins: 3,
   scoreMargin: 1,
-  dayResults: ['loss', 'win', 'loss', 'win', 'neutral'] as const,
 };
 
 describe('VerdictCard', () => {
@@ -78,14 +77,15 @@ describe('VerdictCard', () => {
     expect(html).not.toContain('<button');
   });
 
-  it('shares one template between the winner and loser variants — same markup skeleton, only text differs', () => {
+  it('shares one template between the winner and loser variants — same markup skeleton, only text/color differs', () => {
     const loser = renderToStaticMarkup(<VerdictCard {...base} outcome="lost" />);
     const winner = renderToStaticMarkup(<VerdictCard {...base} outcome="won" />);
-    // Normalize away the one attribute value that's supposed to differ (`data-outcome`) and every
-    // text node, leaving just the tag/attribute skeleton. If winner/loser were copy-pasted into
-    // separate markup instead of one component branching on `outcome`, this would diverge.
-    const skeleton = (html: string) =>
-      html.replace(/data-outcome="[^"]*"/g, 'data-outcome="X"').replace(/>[^<]+</g, '><');
+    // Normalize away every attribute value and text node, leaving just the tag skeleton — the
+    // outcome legitimately drives some attribute values now (`data-outcome`, and `OutcomeStamp`'s
+    // win/loss color classes via `@receipts/ui`'s `Stamp`), so this checks tag/nesting structure
+    // rather than literal string equality. If winner/loser were copy-pasted into separate markup
+    // instead of one component branching on `outcome`, the tag structure itself would diverge.
+    const skeleton = (html: string) => html.replace(/ [a-z-]+="[^"]*"/g, '').replace(/>[^<]+</g, '><');
     expect(skeleton(loser)).toEqual(skeleton(winner));
   });
 });
