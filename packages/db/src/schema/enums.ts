@@ -20,6 +20,7 @@ import {
   QUEUE_STATUS,
   QUESTION_KIND,
   QUESTION_STATUS,
+  CALLOUT_STATUS,
   REMATCH_STATUS,
   REPORT_CONTEXT,
   REPORT_REASON,
@@ -49,6 +50,7 @@ export const postStatusEnum = pgEnum('post_status', [...POST_STATUS]);
 export const reportStatusEnum = pgEnum('report_status', [...REPORT_STATUS]);
 export const walletLinkStatusEnum = pgEnum('wallet_link_status', [...WALLET_LINK_STATUS]);
 export const rematchStatusEnum = pgEnum('rematch_status', [...REMATCH_STATUS]);
+export const calloutStatusEnum = pgEnum('callout_status', [...CALLOUT_STATUS]);
 export const threadContextEnum = pgEnum('thread_context', [...THREAD_CONTEXT]);
 export const reportContextEnum = pgEnum('report_context', [...REPORT_CONTEXT]);
 export const reportReasonEnum = pgEnum('report_reason', [...REPORT_REASON]);

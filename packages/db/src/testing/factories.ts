@@ -8,6 +8,7 @@ import { slugifyHandle } from '@receipts/core';
 import type { Db } from '../client.js';
 import { markets, picks, profiles, questions } from '../schema/index.js';
 import type {
+  callouts,
   duoMatches,
   duos,
   fingerprints,
@@ -16,6 +17,7 @@ import type {
   placementItems,
   ratings,
   seasons,
+  topicFollows,
 } from '../schema/index.js';
 
 export type ProfileRow = typeof profiles.$inferInsert;
@@ -30,6 +32,8 @@ export type SeasonRow = typeof seasons.$inferInsert;
 export type NemesisPairingRow = typeof nemesisPairings.$inferInsert;
 export type DuoRow = typeof duos.$inferInsert;
 export type DuoMatchRow = typeof duoMatches.$inferInsert;
+export type TopicFollowRow = typeof topicFollows.$inferInsert;
+export type CalloutRow = typeof callouts.$inferInsert;
 
 let seq = 0;
 function nextSeq(): number {
@@ -342,6 +346,42 @@ export function buildDuoMatch(
     winnerDuoId: duoAId,
     ratingAppliedAt: null,
     ratingSnapshot: null,
+    ...overrides,
+  };
+}
+
+/** A `topic_follows` row (journeys plan §4/§5 WS16-T2). Composite PK (profile, category). */
+export function buildTopicFollow(
+  profileId: string,
+  overrides: Partial<TopicFollowRow> = {},
+): TopicFollowRow {
+  return {
+    profileId,
+    category: 'economics',
+    createdAt: T0,
+    ...overrides,
+  };
+}
+
+/**
+ * A `callouts` row (journeys plan §4/§5 WS20-T3). Defaults to a fresh `pending` challenge with
+ * a 24h expiry and no opponent/pairing yet — the shape `acceptCallout` consumes.
+ */
+export function buildCallout(
+  challengerProfileId: string,
+  overrides: Partial<CalloutRow> = {},
+): CalloutRow {
+  const n = nextSeq();
+  return {
+    id: uuidv7(),
+    challengerProfileId,
+    opponentProfileId: null,
+    tokenHash: `test-token-hash-${n}`,
+    status: 'pending',
+    expiresAt: new Date(T0.getTime() + 24 * 3600_000),
+    pairingId: null,
+    createdAt: T0,
+    updatedAt: T0,
     ...overrides,
   };
 }
