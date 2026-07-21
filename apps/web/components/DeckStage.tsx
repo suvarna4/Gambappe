@@ -99,19 +99,27 @@ export function DeckStage({ question, viewerSlot, underLabel, streakSlot }: Deck
           {rightRail}
         </div>
 
-        {/* The card column. `flex-1` (no `justify-center` at this level — the actual centering
-            now happens one level down, inside `viewerSlot` itself, design-diff audit) passes
-            real height down so `SwipeBallot`'s own wells row can pin to the true bottom of the
-            stage instead of just trailing wherever the card happens to end (the mockup's own
-            `.wells` sits flush against `.scr`'s bottom edge, `.stage{flex:1}` absorbing all the
-            leftover space above it) — see `SwipeBallot.tsx`'s own note for the rest of this
-            chain. No top padding here (the mockup's own `.stage` has none either — its card is
-            centered purely by `.stage`'s own `align-items:center`, no extra inset on top of that)
-            and only `pb-[17px]` at the bottom, matching the mockup's own `.wells{padding:0 14px
-            12px}` bottom inset (12px × 1.4) — an earlier pass used a uniform `py-8` here, which
-            padded the BOTTOM of the whole column on top of `.wells`'s own inset, pushing the wells
-            row well short of the true bottom edge instead of flush against it. The under-card
-            still peeks from behind so finishing today reveals tomorrow. */}
+        {/* The card column. `flex-1` (no `justify-center` at THIS level, design-diff audit)
+            passes real height down so `SwipeBallot`'s own wells row can pin to the true bottom
+            of the stage instead of just trailing wherever the card happens to end (the mockup's
+            own `.wells` sits flush against `.scr`'s bottom edge, `.stage{flex:1}` absorbing all
+            the leftover space above it). No top padding here (the mockup's own `.stage` has none
+            either — its card is centered purely by `.stage`'s own `align-items:center`, no extra
+            inset on top of that) and only `pb-[17px]` at the bottom, matching the mockup's own
+            `.wells{padding:0 14px 12px}` bottom inset (12px × 1.4) — an earlier pass used a
+            uniform `py-8` here, which padded the BOTTOM of the whole column on top of `.wells`'s
+            own inset, pushing the wells row well short of the true bottom edge instead of flush
+            against it. The under-card still peeks from behind so finishing today reveals
+            tomorrow.
+
+            The centering itself lives one level down, in the nested `flex-1 justify-center` div
+            below — DeckStage still owns it (this is NOT delegated into `viewerSlot`): for the
+            interactive swipe path `SwipeBallot` has its own matching `flex-1 justify-center`
+            wrapper around its card+hints block, so this one is a no-op there (its child already
+            fills 100% of it); for the flag-off / non-open states (`PickButtons`, loading,
+            `DeckStates`'s other statuses), none of which set `flex-1` on themselves, this wrapper
+            is what still centers them the way it always did — see `SwipeBallot.tsx`'s own note
+            for the rest of the pin-to-bottom chain on the interactive path specifically. */}
         <div className="relative z-10 mx-auto flex w-full max-w-sm flex-1 flex-col px-9 pb-[17px]">
           <div className="relative flex flex-1 flex-col justify-center">
             <UnderCard
