@@ -34,4 +34,6 @@ export * from './repositories/duo-matches.js';
 export * from './repositories/duo-ladder.js';
 export * from './repositories/push-subscriptions.js';
 export * from './repositories/threads.js';
+export * from './repositories/topics.js';
+export * from './repositories/callouts.js';
 export * from './streak-replay.js';

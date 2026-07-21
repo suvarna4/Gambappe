@@ -15,6 +15,8 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import {
+  calloutStatusEnum,
+  marketCategoryEnum,
   notificationChannelEnum,
   notificationStatusEnum,
   postStatusEnum,
@@ -25,6 +27,7 @@ import {
   walletLinkStatusEnum,
 } from './enums.js';
 import { profiles, users } from './identity.js';
+import { nemesisPairings } from './modes.js';
 
 /** `posts` (§5.6). Claimed profiles only (enforced in API). Body ≤ POST_MAX_CHARS. */
 export const posts = pgTable(
@@ -199,6 +202,54 @@ export const analyticsEvents = pgTable(
     primaryKey({ columns: [t.id, t.ts] }),
     index('analytics_events_event_ts_idx').on(t.event, t.ts),
     index('analytics_events_profile_ts_idx').on(t.profileId, t.ts),
+  ],
+);
+
+/**
+ * `topic_follows` (journeys plan §4/§5 WS16-T2): a `(profile, market category)` follow driving
+ * the stack feed's topic selection. Ghosts allowed (resolved via the ghost cookie, WS18-T2).
+ * Composite PK, no surrogate id — a follow is fully identified by profile + category.
+ */
+export const topicFollows = pgTable(
+  'topic_follows',
+  {
+    profileId: uuid('profile_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    category: marketCategoryEnum('category').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.profileId, t.category] })],
+);
+
+/**
+ * `callouts` (journeys plan §4/§5 WS20-T3, D-J5): a signed challenge link. The challenger mints
+ * one; whoever accepts (claimed-only) becomes `opponent` and a next-week nemesis pairing is
+ * created (`pairingId`). Only the SHA-256 of the token is stored (`tokenHash`) — the raw token
+ * lives solely in the shared URL, never at rest.
+ */
+export const callouts = pgTable(
+  'callouts',
+  {
+    id: uuid('id').primaryKey(),
+    challengerProfileId: uuid('challenger_profile_id')
+      .notNull()
+      .references(() => profiles.id),
+    /** Null until accepted (journeys plan §4). */
+    opponentProfileId: uuid('opponent_profile_id').references(() => profiles.id),
+    /** SHA-256(token) hex — the raw token is never persisted. */
+    tokenHash: text('token_hash').notNull(),
+    status: calloutStatusEnum('status').notNull().default('pending'),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    /** The next-week pairing created on accept. */
+    pairingId: uuid('pairing_id').references(() => nemesisPairings.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('callouts_token_hash_uq').on(t.tokenHash),
+    index('callouts_challenger_idx').on(t.challengerProfileId, t.createdAt),
+    index('callouts_opponent_idx').on(t.opponentProfileId),
   ],
 );
 
