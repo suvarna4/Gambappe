@@ -52,6 +52,10 @@ export const RATE_LIMIT_RULES = {
   share_token: { keyType: 'ip', limit: RL_SHARE_TOKEN_IP_H, windowSeconds: HOUR },
   internal_revalidate: { keyType: 'global', limit: RL_REVALIDATE_MIN, windowSeconds: MINUTE },
   api_v1_get_backstop: { keyType: 'ip', limit: RL_GET_IP_MIN, windowSeconds: MINUTE },
+  // journeys plan (WS18-T2): topic follow/unfollow toggle, profile-keyed (ghost incl.). Its own
+  // bucket so a follow spree can't drain another action's quota. Literal (not a §14.1 core
+  // constant) because the journeys plan didn't pin a number and WS18-T2 owns no core file.
+  topic_follow: { keyType: 'profile', limit: 60, windowSeconds: HOUR },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type RateLimitAction = keyof typeof RATE_LIMIT_RULES;
