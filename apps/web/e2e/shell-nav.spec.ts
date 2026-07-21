@@ -42,7 +42,7 @@ const ROOMS = [
   { key: 'sweat', href: '/sweat' },
   { key: 'rivals', href: '/nemesis' },
   { key: 'crowd', href: '/q' },
-  { key: 'you', href: '/settings' },
+  { key: 'you', href: '/you' },
 ] as const;
 
 test.describe('WS17-T1 app shell — bottom tab bar (D-J6)', () => {
