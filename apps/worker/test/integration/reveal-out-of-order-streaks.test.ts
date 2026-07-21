@@ -42,7 +42,7 @@ import {
   type Db,
 } from '@receipts/db';
 import { buildMarket, buildPick, buildProfile, buildQuestion, computeEdge } from '@receipts/db/testing';
-import { runRevealFire } from '../../src/jobs/reveal-fire.js';
+import { settleQuestion } from '../../src/lib/settle-question.js';
 
 const dbUrl =
   process.env.TEST_DATABASE_URL ?? 'postgres://receipts:receipts@localhost:5432/receipts_test';
@@ -127,7 +127,7 @@ describe('reveal:fire out of order (audit 9.1 — monotonic streak write)', () =
         { profile: loser, side: 'yes', won: true },
       ],
     });
-    expect((await runRevealFire(db, pool, boss, day0.id as string, new Date('2026-10-31T20:00:01Z'))).status).toBe('revealed');
+    expect((await settleQuestion(db, pool, day0.id as string, new Date('2026-10-31T20:00:01Z'))).status).toBe('revealed');
 
     const day1 = await insertGradedDaily({
       questionDate: '2026-11-01',
@@ -136,7 +136,7 @@ describe('reveal:fire out of order (audit 9.1 — monotonic streak write)', () =
         { profile: loser, side: 'yes', won: true },
       ],
     });
-    expect((await runRevealFire(db, pool, boss, day1.id as string, new Date('2026-11-01T20:00:01Z'))).status).toBe('revealed');
+    expect((await settleQuestion(db, pool, day1.id as string, new Date('2026-11-01T20:00:01Z'))).status).toBe('revealed');
 
     // D−2 (11-02): the LAGGING day — locked, market unresolved, picks still pending.
     const lagMarket = buildMarket({ status: 'closed' });
@@ -176,7 +176,7 @@ describe('reveal:fire out of order (audit 9.1 — monotonic streak write)', () =
         { profile: loser, side: 'yes', won: true },
       ],
     });
-    const outcomeD = await runRevealFire(db, pool, boss, dayD.id as string, new Date('2026-11-04T20:00:01Z'));
+    const outcomeD = await settleQuestion(db, pool, dayD.id as string, new Date('2026-11-04T20:00:01Z'));
     expect(outcomeD).toMatchObject({ status: 'revealed', participantCount: 2 });
 
     // Both profiles are now counted through D: 10-31, 11-01, [11-02 invisible], 11-03 void,
@@ -195,7 +195,7 @@ describe('reveal:fire out of order (audit 9.1 — monotonic streak write)', () =
     // 11-01 = revealed and passes.
     const graded = await gradeResolvedQuestionTx(db, lagDay.id as string, 'yes', new Date('2026-11-05T08:00:00Z'));
     expect(graded).toMatchObject({ graded: true, winCount: 1, lossCount: 1 });
-    const outcomeLate = await runRevealFire(db, pool, boss, lagDay.id as string, new Date('2026-11-05T09:00:00Z'));
+    const outcomeLate = await settleQuestion(db, pool, lagDay.id as string, new Date('2026-11-05T09:00:00Z'));
     expect(outcomeLate).toMatchObject({ status: 'revealed', participantCount: 2 });
 
     // THE FIX'S CONTRACT — assert per profile:

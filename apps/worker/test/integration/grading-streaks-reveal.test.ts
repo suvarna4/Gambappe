@@ -28,7 +28,7 @@ import {
 } from '@receipts/db';
 import { buildMarket, buildPick, buildProfile, buildQuestion, computeEdge } from '@receipts/db/testing';
 import { runGradeFollowup } from '../../src/jobs/grade-followup.js';
-import { runRevealFire } from '../../src/jobs/reveal-fire.js';
+import { settleQuestion } from '../../src/lib/settle-question.js';
 import { runStreakSweep } from '../../src/jobs/streak-sweep.js';
 import { runStreakFreezeGrant } from '../../src/jobs/streak-freeze-grant.js';
 import { revealHashKey } from '../../src/jobs/percentiles.js';
@@ -103,12 +103,12 @@ async function insertGradedDaily(opts: {
 }
 
 describe('grade:followup (§6.5, §8.6)', () => {
-  it('computes + caches percentiles and schedules reveal:fire; a re-run is idempotent (crash-recovery AC)', async () => {
+  it('computes + caches percentiles and SETTLES the daily in the same tick (D-J3); a re-run is idempotent (crash-recovery AC)', async () => {
     const winner = buildProfile();
     const loser = buildProfile();
     const question = await insertGradedDaily({
       questionDate: '2026-08-01',
-      revealAt: new Date('2026-08-01T00:00:00Z'), // already in the past relative to `at` below
+      revealAt: new Date('2026-08-01T00:00:00Z'), // reveal_at is now irrelevant — settlement follows resolution
       picksSpec: [
         { profile: winner, side: 'yes', won: true, entry: 0.5 },
         { profile: loser, side: 'no', won: false, entry: 0.5 },
@@ -116,19 +116,33 @@ describe('grade:followup (§6.5, §8.6)', () => {
     });
     const at = new Date('2026-08-01T20:05:00Z');
 
-    await runGradeFollowup(db, redis, boss, question.id as string, at);
+    await runGradeFollowup(db, pool, redis, question.id as string, at);
     const hashAfterFirst = await redis.hgetall(revealHashKey(question.id as string));
     expect(Object.keys(hashAfterFirst)).toHaveLength(2);
     expect(Number(hashAfterFirst[winner.id as string])).toBeCloseTo(100, 5);
     expect(Number(hashAfterFirst[loser.id as string])).toBeCloseTo(0, 5);
 
-    // Re-run (simulating a worker restart before ack) — must be a safe, idempotent no-op.
-    await runGradeFollowup(db, redis, boss, question.id as string, at);
+    // D-J3: no clock-scheduled reveal:fire is enqueued; grade:followup settles the daily itself,
+    // in this tick. The question is `revealed` with `revealed_at` stamped immediately.
+    const [afterFirst] = await db.select().from(questions).where(eq(questions.id, question.id as string));
+    expect(afterFirst!.status).toBe('revealed');
+    expect(afterFirst!.revealedAt).toEqual(at);
+    const [winnerAfter] = await db.select().from(profiles).where(eq(profiles.id, winner.id as string));
+    expect(winnerAfter!.currentStreak).toBe(1); // settle applied the streak in-tick
+
+    // Re-run (simulating a worker restart before ack) — must be a safe, idempotent no-op: the
+    // settle is already committed, so revealed_at / streak are unchanged.
+    await runGradeFollowup(db, pool, redis, question.id as string, at);
     const hashAfterSecond = await redis.hgetall(revealHashKey(question.id as string));
     expect(hashAfterSecond).toEqual(hashAfterFirst);
+    const [afterSecond] = await db.select().from(questions).where(eq(questions.id, question.id as string));
+    expect(afterSecond!.revealedAt).toEqual(at); // unchanged by the re-run
+    const [winnerAfterSecond] = await db.select().from(profiles).where(eq(profiles.id, winner.id as string));
+    expect(winnerAfterSecond!.currentStreak).toBe(1); // not double-incremented
 
+    // No clock-scheduled reveal job exists anymore (D-J3): none was enqueued.
     const jobs = await db.execute(sql`SELECT id FROM pgboss.job WHERE name = 'reveal:fire'`);
-    expect(jobs.rows.length).toBeGreaterThanOrEqual(1); // both runs enqueue; reveal:fire itself is idempotent
+    expect(jobs.rows).toHaveLength(0);
   });
 
   it('publishes a nemesis_bonus question immediately on grading — no held reveal (§8.8.1, WS5-T1)', async () => {
@@ -148,7 +162,7 @@ describe('grade:followup (§6.5, §8.6)', () => {
     await db.insert(questions).values(bonusQuestion);
 
     const at = new Date('2026-08-05T10:00:01Z');
-    await runGradeFollowup(db, redis, boss, bonusQuestion.id as string, at);
+    await runGradeFollowup(db, pool, redis, bonusQuestion.id as string, at);
 
     const [row] = await db.select().from(questions).where(eq(questions.id, bonusQuestion.id as string));
     expect(row!.status).toBe('revealed');
@@ -158,7 +172,7 @@ describe('grade:followup (§6.5, §8.6)', () => {
     expect(hash).toEqual({});
 
     // Idempotent re-run: revealQuestionTx only transitions from `locked` — a redelivered job is a no-op.
-    await runGradeFollowup(db, redis, boss, bonusQuestion.id as string, at);
+    await runGradeFollowup(db, pool, redis, bonusQuestion.id as string, at);
     const [rowAgain] = await db.select().from(questions).where(eq(questions.id, bonusQuestion.id as string));
     expect(rowAgain!.status).toBe('revealed');
     expect(rowAgain!.revealedAt).toEqual(at); // unchanged by the second run
@@ -179,7 +193,7 @@ describe('grade:followup (§6.5, §8.6)', () => {
     });
     await db.insert(questions).values(bonusQuestion);
 
-    await expect(runGradeFollowup(db, redis, boss, bonusQuestion.id as string, new Date())).resolves.toBeUndefined();
+    await expect(runGradeFollowup(db, pool, redis, bonusQuestion.id as string, new Date())).resolves.toBeUndefined();
     const [row] = await db.select().from(questions).where(eq(questions.id, bonusQuestion.id as string));
     expect(row!.status).toBe('revealed'); // §8.8.1: no held reveal — immediate, unlike daily
     const hash = await redis.hgetall(revealHashKey(bonusQuestion.id as string));
@@ -187,8 +201,8 @@ describe('grade:followup (§6.5, §8.6)', () => {
   });
 });
 
-describe('reveal:fire (§6.6–6.7, badge boundary §6.7/WS3-T6)', () => {
-  it('not yet settled → re-arms rather than revealing', async () => {
+describe('settle (§6.6–6.7, badge boundary §6.7/WS3-T6)', () => {
+  it('not yet graded → no-op, never reveals (D-J3: no re-arm, settle only follows a resolved market)', async () => {
     const market = buildMarket({ status: 'closed' });
     await db.insert(markets).values(market);
     const question = buildQuestion(market.id as string, {
@@ -199,8 +213,8 @@ describe('reveal:fire (§6.6–6.7, badge boundary §6.7/WS3-T6)', () => {
     });
     await db.insert(questions).values(question);
 
-    const outcome = await runRevealFire(db, pool, boss, question.id as string, new Date('2026-08-10T00:10:00Z'));
-    expect(outcome.status).toBe('re_armed');
+    const outcome = await settleQuestion(db, pool, question.id as string, new Date('2026-08-10T00:10:00Z'));
+    expect(outcome.status).toBe('noop');
 
     const [row] = await db.select().from(questions).where(eq(questions.id, question.id as string));
     expect(row!.status).toBe('locked');
@@ -244,7 +258,7 @@ describe('reveal:fire (§6.6–6.7, badge boundary §6.7/WS3-T6)', () => {
     });
 
     const at = new Date('2026-08-13T20:00:01Z');
-    const outcome = await runRevealFire(db, pool, boss, day3.id as string, at);
+    const outcome = await settleQuestion(db, pool, day3.id as string, at);
     expect(outcome).toMatchObject({ status: 'revealed', participantCount: 1, calledItCount: 1 });
 
     const [profileAfter] = await db.select().from(profiles).where(eq(profiles.id, participant.id));
@@ -271,7 +285,7 @@ describe('reveal:fire (§6.6–6.7, badge boundary §6.7/WS3-T6)', () => {
     expect(badgeEvents[0]!.profileId).toBe(participant.id);
 
     // Idempotent re-fire: already revealed → no-op, no double streak increment / double event.
-    const second = await runRevealFire(db, pool, boss, day3.id as string, at);
+    const second = await settleQuestion(db, pool, day3.id as string, at);
     expect(second.status).toBe('noop');
     const [profileAfterSecond] = await db.select().from(profiles).where(eq(profiles.id, participant.id));
     expect(profileAfterSecond!.currentStreak).toBe(2); // unchanged
@@ -289,7 +303,7 @@ describe('reveal:fire (§6.6–6.7, badge boundary §6.7/WS3-T6)', () => {
       picksSpec: [{ profile: participant, side: 'yes', won: true, entry: 0.21 }],
     });
 
-    const outcome = await runRevealFire(db, pool, boss, day.id as string, new Date('2026-08-20T20:00:01Z'));
+    const outcome = await settleQuestion(db, pool, day.id as string, new Date('2026-08-20T20:00:01Z'));
     expect(outcome).toMatchObject({ status: 'revealed', calledItCount: 0 });
   });
 
@@ -305,7 +319,7 @@ describe('reveal:fire (§6.6–6.7, badge boundary §6.7/WS3-T6)', () => {
       status: 'locked',
       picksSpec: [{ profile: p1, side: 'yes', won: true, entry: 0.5 }],
     });
-    await runRevealFire(db, pool, boss, dayA.id as string, new Date('2026-08-27T20:00:01Z'));
+    await settleQuestion(db, pool, dayA.id as string, new Date('2026-08-27T20:00:01Z'));
 
     const dayB = await insertGradedDaily({
       questionDate: '2026-08-28',
@@ -313,7 +327,7 @@ describe('reveal:fire (§6.6–6.7, badge boundary §6.7/WS3-T6)', () => {
       status: 'locked',
       picksSpec: [{ profile: p1, side: 'yes', won: true, entry: 0.5 }],
     });
-    await runRevealFire(db, pool, boss, dayB.id as string, new Date('2026-08-28T20:00:01Z'));
+    await settleQuestion(db, pool, dayB.id as string, new Date('2026-08-28T20:00:01Z'));
 
     const [p1AfterTwoWins] = await db.select().from(profiles).where(eq(profiles.id, p1.id));
     expect(p1AfterTwoWins!.currentStreak).toBe(2);

@@ -4,7 +4,7 @@
  * once per trigger (dedupe on re-fire), and no beat is ever written for a question still
  * `locked` (§6.5 publication rule).
  *
- * Streak fixtures use REAL sequential `runRevealFire` calls (not hand-seeded `profiles` streak
+ * Streak fixtures use REAL sequential `settleQuestion` calls (not hand-seeded `profiles` streak
  * columns) so `current_streak`/`last_counted_date` reflect an actual replay over real history —
  * matching how `applyStreakForParticipant`'s full-history replay (`streak-replay.ts`) really
  * behaves, per `grading-streaks-reveal.test.ts`'s own convention for its multi-day scenarios.
@@ -29,7 +29,7 @@ import PgBoss from 'pg-boss';
 import type pg from 'pg';
 import { connect, markets, notifications, picks, profiles, questions, type Db } from '@receipts/db';
 import { buildMarket, buildPick, buildProfile, buildQuestion, computeEdge } from '@receipts/db/testing';
-import { runRevealFire } from '../../src/jobs/reveal-fire.js';
+import { settleQuestion } from '../../src/lib/settle-question.js';
 
 const dbUrl =
   process.env.TEST_DATABASE_URL ?? 'postgres://receipts:receipts@localhost:5432/receipts_test';
@@ -58,7 +58,7 @@ afterAll(async () => {
   await pool.end();
 });
 
-/** Inserts + reveals (for real, via `runRevealFire`) one daily with a single pick for
+/** Inserts + settles (for real, via `settleQuestion`) one daily with a single pick for
  * `participant`, plus a filler pick from a throwaway profile so crowd counts are sane. Returns
  * the reveal outcome so callers can assert on it when needed. */
 async function revealDailyFor(opts: {
@@ -99,7 +99,7 @@ async function revealDailyFor(opts: {
       gradedAt: new Date(`${opts.questionDate}T17:00:00Z`),
     }),
   ]);
-  return runRevealFire(db, pool, boss, question.id as string, opts.at);
+  return settleQuestion(db, pool, question.id as string, opts.at);
 }
 
 describe('reveal:fire beat wiring (WS9-T3, §13.3)', () => {
@@ -109,57 +109,59 @@ describe('reveal:fire beat wiring (WS9-T3, §13.3)', () => {
     await revealDailyFor({ questionDate: '2026-08-01', participant, won: true, entry: 0.5, at: new Date('2026-08-01T20:00:01Z') });
     await revealDailyFor({ questionDate: '2026-08-02', participant, won: true, entry: 0.5, at: new Date('2026-08-02T20:00:01Z') });
     // 3rd consecutive win -> currentStreak lands on STREAK_MILESTONES[0]=3; also a longshot win
-    // (implied prob 0.15 <= LONGSHOT_THRESHOLD) -> called_it too. WS9-T4: this reveal also fires
-    // the general `reveal` beat (email+push) for BOTH the participant and that day's filler —
-    // 4 (streak_milestone + called_it + reveal x2) for the participant, 2 (reveal x2) for filler.
+    // (implied prob 0.15 <= LONGSHOT_THRESHOLD) -> called_it too. D-J3 (WS19-T1): each settle now
+    // also fires ONE per-settle push per participant, gated to the first settle of that profile's
+    // ET day — day 3 is a fresh ET date so both the participant and that day's filler get one.
+    // beatsWritten on day 3 = participant (streak_milestone + called_it + settle push) + filler
+    // (settle push) = 4.
     const outcome = await revealDailyFor({ questionDate: '2026-08-03', participant, won: true, entry: 0.15, at: new Date('2026-08-03T20:00:01Z') });
-    expect(outcome).toMatchObject({ status: 'revealed', calledItCount: 1, beatsWritten: 6 });
+    expect(outcome).toMatchObject({ status: 'revealed', calledItCount: 1, beatsWritten: 4, pushed: 2 });
 
-    // Scoped to the per-outcome beats only (WS9-T3's original assertion) — the `reveal` kind is
-    // asserted separately below since it now fires on every day, not just day 3.
+    // The per-outcome beats (WS9-T3) are unchanged — email-only, date-scoped dedupe. Scope to the
+    // email channel to isolate them from the per-settle push rows.
     const outcomeRows = await db
       .select()
       .from(notifications)
-      .where(and(eq(notifications.profileId, participant.id as string), sql`kind != 'reveal'`));
+      .where(and(eq(notifications.profileId, participant.id as string), eq(notifications.channel, 'email')));
     expect(outcomeRows).toHaveLength(2);
     expect(outcomeRows.map((r) => r.kind).sort()).toEqual(['called_it', 'streak_milestone']);
     for (const row of outcomeRows) {
-      expect(row.channel).toBe('email');
       expect(row.status).toBe('queued');
       expect(row.dedupeKey).toBe(`${row.kind}:2026-08-03:${participant.id}`);
     }
     const milestoneRow = outcomeRows.find((r) => r.kind === 'streak_milestone')!;
     expect(milestoneRow.payload).toEqual({ n: 3 });
 
-    // WS9-T4: the general `reveal` beat fired for the participant on ALL THREE reveal days
-    // (08-01, 08-02, 08-03), each on both channels, each with its own date-scoped dedupe key.
-    const revealRows = await db
+    // D-J3: the per-settle push (`reveal_settle`, push channel) fired for the participant on ALL
+    // THREE settle days (08-01, 08-02, 08-03) — each is a distinct ET date, so each is that
+    // profile's first settle of the day. Date-scoped dedupe key, no `:channel` suffix (push only).
+    const pushRows = await db
       .select()
       .from(notifications)
-      .where(and(eq(notifications.profileId, participant.id as string), eq(notifications.kind, 'reveal')));
-    expect(revealRows).toHaveLength(6); // 3 days x 2 channels
-    expect(revealRows.map((r) => r.channel).sort()).toEqual(['email', 'email', 'email', 'push', 'push', 'push']);
-    const day3RevealKeys = revealRows.filter((r) => r.dedupeKey?.startsWith('reveal:2026-08-03:')).map((r) => r.dedupeKey);
-    expect(day3RevealKeys.sort()).toEqual([
-      `reveal:2026-08-03:${participant.id}:email`,
-      `reveal:2026-08-03:${participant.id}:push`,
+      .where(and(eq(notifications.profileId, participant.id as string), eq(notifications.channel, 'push')));
+    expect(pushRows).toHaveLength(3);
+    expect(pushRows.every((r) => r.kind === 'reveal_settle')).toBe(true);
+    expect(pushRows.map((r) => r.dedupeKey).sort()).toEqual([
+      `reveal_settle:2026-08-01:${participant.id}`,
+      `reveal_settle:2026-08-02:${participant.id}`,
+      `reveal_settle:2026-08-03:${participant.id}`,
     ]);
+    const day3Push = pushRows.find((r) => r.dedupeKey === `reveal_settle:2026-08-03:${participant.id}`)!;
+    expect(day3Push.payload).toMatchObject({ line: `⚡ ${(await db.select().from(questions).where(eq(questions.questionDate, '2026-08-03')))[0]!.headline} — it's done. Your receipt just graded itself.` });
 
-    // Re-fire (stale redelivery re-examining an already-revealed question) must not duplicate —
-    // proves the "never before revealed" AC holds under redelivery too (a stale re-fire is a
-    // structural `noop`, so it can't write a second `reveal` row any more than it can a second
-    // streak/called_it row).
+    // Re-settle (stale redelivery re-examining an already-settled question) must not duplicate —
+    // a stale re-run is a structural `noop`, so it can't write a second push or per-outcome beat.
     const questionRow = (await db.select().from(questions).where(eq(questions.questionDate, '2026-08-03')))[0]!;
-    const second = await runRevealFire(db, pool, boss, questionRow.id, new Date('2026-08-03T20:00:01Z'));
+    const second = await settleQuestion(db, pool, questionRow.id, new Date('2026-08-03T20:00:01Z'));
     expect(second.status).toBe('noop');
     const rowsAfterSecond = await db
       .select()
       .from(notifications)
       .where(eq(notifications.profileId, participant.id as string));
-    expect(rowsAfterSecond).toHaveLength(8); // 2 outcome + 6 reveal(3 days x 2 channels), unchanged
+    expect(rowsAfterSecond).toHaveLength(5); // 2 outcome (email) + 3 settle pushes, unchanged
   });
 
-  it('never writes a beat for a question that is still locked/unsettled (§6.5 publication rule)', async () => {
+  it('never writes a beat/push for a question that is still locked/ungraded (§6.5 publication rule)', async () => {
     const participant = buildProfile();
     await db.insert(profiles).values(participant);
     const market = buildMarket({ status: 'closed' });
@@ -167,13 +169,13 @@ describe('reveal:fire beat wiring (WS9-T3, §13.3)', () => {
     const question = buildQuestion(market.id as string, {
       questionDate: '2026-08-20',
       status: 'locked',
-      settledAt: null, // not settled -> reveal:fire re-arms, never reveals
+      settledAt: null, // not graded -> settle is a no-op (D-J3: no re-arm), never reveals
       revealAt: new Date('2026-08-20T00:00:00Z'),
     });
     await db.insert(questions).values(question);
 
-    const outcome = await runRevealFire(db, pool, boss, question.id as string, new Date('2026-08-20T00:10:00Z'));
-    expect(outcome.status).toBe('re_armed');
+    const outcome = await settleQuestion(db, pool, question.id as string, new Date('2026-08-20T00:10:00Z'));
+    expect(outcome.status).toBe('noop');
 
     const [row] = await db.select().from(questions).where(eq(questions.id, question.id));
     expect(row!.status).toBe('locked'); // explicitly still locked, not revealed
@@ -184,14 +186,12 @@ describe('reveal:fire beat wiring (WS9-T3, §13.3)', () => {
       .where(eq(notifications.profileId, participant.id as string));
     expect(beatRows).toHaveLength(0);
 
-    // WS9-T4 AC (§19.3): "reveal notification never sent before question `revealed`" — explicit,
-    // kind-scoped check (not just "zero rows total" above) so this AC has a dedicated assertion
-    // even if some future beat starts firing for still-locked questions for an unrelated reason.
-    const revealRows = await db
+    // AC: "settle push never sent before the question settles" — explicit, kind-scoped check.
+    const pushRows = await db
       .select()
       .from(notifications)
-      .where(and(eq(notifications.profileId, participant.id as string), eq(notifications.kind, 'reveal')));
-    expect(revealRows).toHaveLength(0);
+      .where(and(eq(notifications.profileId, participant.id as string), eq(notifications.kind, 'reveal_settle')));
+    expect(pushRows).toHaveLength(0);
   });
 
   it('fires streak_busted (not streak_milestone) when a >=3 streak resets, with the pre-reset length', async () => {
@@ -224,13 +224,13 @@ describe('reveal:fire beat wiring (WS9-T3, §13.3)', () => {
         gradedAt: new Date('2026-08-08T17:00:00Z'),
       }),
     );
-    await runRevealFire(db, pool, boss, gapQuestion.id as string, new Date('2026-08-08T20:00:01Z'));
+    await settleQuestion(db, pool, gapQuestion.id as string, new Date('2026-08-08T20:00:01Z'));
 
     // 08-09: participant answers again -> gap uncovered (no freeze) -> streak resets to 1.
-    // WS9-T4: this reveal also fires the general `reveal` beat (email+push) for both the
-    // participant (streak_busted(1) + reveal x2) and that day's filler (reveal x2) -> 5 total.
+    // D-J3: this settle fires the per-settle push for both the participant (streak_busted(1) email
+    // + settle push) and that day's fresh filler (settle push) -> beatsWritten 3.
     const outcome = await revealDailyFor({ questionDate: '2026-08-09', participant, won: true, entry: 0.5, at: new Date('2026-08-09T20:00:01Z') });
-    expect(outcome).toMatchObject({ status: 'revealed', beatsWritten: 5 });
+    expect(outcome).toMatchObject({ status: 'revealed', beatsWritten: 3, pushed: 2 });
 
     const rows = await db
       .select()
