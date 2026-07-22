@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-22T02:35:33.200Z",
+  "updated_at": "2026-07-22T02:40:21.170Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2214,12 +2214,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": "Spec: docs/auth-login-fix-plan.md §2 WS25-T1. Fixes the broken 'Continue with Google' button (client_id=undefined when AUTH_GOOGLE_ID/SECRET are unset) by gating it in apps/web/lib/auth-providers.ts and apps/web/auth.ts's buildProviders(), mirroring the X/Twitter gate already there.",
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-code-session-1784685874",
       "branch": "feat/ws25-t1-gate-google-provider",
       "pr": null,
       "claimed_at": "2026-07-22T02:04:34.630Z",
-      "updated_at": "2026-07-22T02:04:34.630Z"
+      "updated_at": "2026-07-22T02:40:21.169Z"
     },
     "WS15-T10": {
       "title": "Auto-deploy workflow: 15-min cron redeploys staging when main moves",
