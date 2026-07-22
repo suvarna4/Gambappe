@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-22T01:57:13.641Z",
+  "updated_at": "2026-07-22T01:58:35.202Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2287,12 +2287,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": "Owner request: hands-off staging deploys (all flags stay on via project env). Skips cleanly when deploy secrets are absent; activates when VERCEL_TOKEN/FLY_API_TOKEN (+optional STAGING_DATABASE_URL) are added as repo secrets.",
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-code-web-session-54bb90dd",
       "branch": "claude/ws15-t10-auto-deploy",
-      "pr": null,
+      "pr": "https://github.com/Gambappe/Gambappe/pull/137",
       "claimed_at": "2026-07-22T01:57:13.641Z",
-      "updated_at": "2026-07-22T01:57:13.641Z"
+      "updated_at": "2026-07-22T01:58:35.202Z"
     }
   }
 }
