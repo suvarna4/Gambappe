@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-22T03:51:14.096Z",
+  "updated_at": "2026-07-22T03:55:48.991Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2300,12 +2300,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": "Live-verified 2026-07-22: WTI daily reported status=determined result=yes hours after close; adapter only accepts settled/finalized so settle-on-resolution never fired and the daily never revealed.",
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-code-web-session-54bb90dd",
       "branch": "claude/ws15-t11-kalshi-determined",
-      "pr": null,
+      "pr": "https://github.com/Gambappe/Gambappe/pull/142",
       "claimed_at": "2026-07-22T03:51:14.096Z",
-      "updated_at": "2026-07-22T03:51:14.096Z"
+      "updated_at": "2026-07-22T03:55:48.991Z"
     }
   }
 }
