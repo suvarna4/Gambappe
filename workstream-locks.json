@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-22T02:03:04.132Z",
+  "updated_at": "2026-07-22T02:03:05.993Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2242,21 +2242,6 @@
       ],
       "mock_start_ok": false,
       "note": "Spec: docs/auth-login-fix-plan.md §2 WS25-T3. This is the fix for the reported bug: email sign-in ('Save' button on /claim) currently throws unconditionally in production, surfacing Auth.js's generic Configuration error page for every real user. Uses the WS25-T2 transport with a real magic-link template; retires apps/web/lib/magic-link-mailbox.ts (dead once this lands); corrects BOTH stale 'WS9 scope' comments in auth.ts (the top-of-file docblock and the inline comment above the old throw), not just one.",
-      "status": "available",
-      "owner": null,
-      "branch": null,
-      "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-22T01:47:58.163Z"
-    },
-    "WS25-T4": {
-      "title": "Make a Resend send failure degrade gracefully instead of hitting Auth.js's generic Configuration error page",
-      "phase": "A0",
-      "depends_on": [
-        "WS25-T3"
-      ],
-      "mock_start_ok": false,
-      "note": "Spec: docs/auth-login-fix-plan.md §2 WS25-T4. Defense in depth: even with real Resend wired, a send failure (bad key, Resend outage, missing EMAIL_FROM) must not crash into the raw error page. Empirically confirm (new test) the error shape Auth.js needs to redirect gracefully instead of re-trusting the existing unverified code comment about the rate-limit throw's behavior.",
       "status": "available",
       "owner": null,
       "branch": null,
