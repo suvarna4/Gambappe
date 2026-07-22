@@ -18,6 +18,15 @@
  * which can lose this component's mounted state. The actual claim call happens once, from
  * `/claim`'s post-auth branch (`ClaimCompletion`), which is why every sign-in action redirects
  * to `/claim` regardless of where `ClaimEntry` was opened from.
+ *
+ * `authError` (design-diff follow-up to WS25): `/claim`'s `?error=...` query param, present when
+ * Auth.js's `pages.error`/`pages.signIn` (`auth.ts` sets BOTH to `/claim` — see that file's own
+ * comment for why one alone isn't enough) redirect back here after a sign-in failure — an
+ * expired or already-used magic-link token, a WS25-T4-wrapped rate limit/transport failure, an
+ * OAuth callback error. When present, the ghost-confirmation ceremony is skipped (the visitor
+ * already went through it once to get this far) and the sign-in phase shows a clear retry
+ * message instead of silently re-showing the same pre-auth flow indistinguishably from a fresh
+ * visit.
  */
 import { useEffect, useState } from 'react';
 import type { z } from 'zod';
@@ -31,8 +40,10 @@ import {
   CLAIM_SIGNIN_EMAIL_LABEL,
   CLAIM_SIGNIN_EMAIL_PLACEHOLDER,
   CLAIM_SIGNIN_EMAIL_SUBMIT_LABEL,
+  CLAIM_SIGNIN_ERROR,
   CLAIM_SIGNIN_GOOGLE_LABEL,
   CLAIM_SIGNIN_HEADING,
+  CLAIM_SIGNIN_LINK_EXPIRED,
   CLAIM_SIGNIN_SUBHEADING,
   CLAIM_SIGNIN_X_LABEL,
   CLAIM_ALREADY_CLAIMED,
@@ -60,17 +71,28 @@ export interface ClaimEntryProps {
   enabledProviders?: AuthProviderId[];
   /** 'overlay': meant to sit inside a dismissible sheet. 'inline': normal page content (`/claim`). */
   presentation?: 'overlay' | 'inline';
+  /** `/claim`'s `?error=...` param — see this file's header comment. Only ever passed by
+   * `/claim`'s own page (the only surface Auth.js's `pages.error` redirects to). */
+  authError?: string;
 }
 
 export default function ClaimEntry({
   enabledProviders = ['email'],
   presentation = 'overlay',
+  authError,
 }: ClaimEntryProps) {
   const [phase, setPhase] = useState<Phase>('loading');
   const [me, setMe] = useState<MeResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    if (authError) {
+      // Skip the ghost-confirmation ceremony and `/api/v1/me` round-trip — the visitor already
+      // went through sign-in once to get here; showing the retry form immediately, with a clear
+      // message, matters more than re-confirming "is this you."
+      setPhase('signin');
+      return;
+    }
     let cancelled = false;
     fetch('/api/v1/me', { credentials: 'same-origin' })
       .then(async (res) => {
@@ -174,6 +196,11 @@ export default function ClaimEntry({
   // phase === 'signin'
   return (
     <div className={containerClass} data-testid="claim-entry" data-phase="signin">
+      {authError && (
+        <p className="text-loss text-sm" data-testid="claim-auth-error">
+          {authError === 'Verification' ? CLAIM_SIGNIN_LINK_EXPIRED : CLAIM_SIGNIN_ERROR}
+        </p>
+      )}
       <div className="space-y-1">
         <h2 className="text-lg font-bold">{CLAIM_SIGNIN_HEADING}</h2>
         <p className={`${mutedText} text-sm`}>{CLAIM_SIGNIN_SUBHEADING}</p>

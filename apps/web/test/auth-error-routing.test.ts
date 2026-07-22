@@ -13,7 +13,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { Auth, skipCSRFCheck, type AuthConfig } from '@auth/core';
-import { EmailSignInError } from '@auth/core/errors';
+import { EmailSignInError, Verification } from '@auth/core/errors';
 import { ApiError } from '@receipts/core';
 
 const fakeAdapter = {
@@ -29,12 +29,16 @@ const fakeAdapter = {
  * dependency (an `@auth/core` peer dep `apps/web` doesn't otherwise need) for what amounts to a
  * config literal.
  */
-function buildConfig(sendVerificationRequest: () => Promise<void>): AuthConfig {
+function buildConfig(
+  sendVerificationRequest: () => Promise<void>,
+  pages?: AuthConfig['pages'],
+): AuthConfig {
   return {
     secret: 'test-secret-at-least-this-long-for-auth-js',
     trustHost: true,
     basePath: '/api/auth',
     skipCSRFCheck,
+    pages,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- minimal test double, not the real DrizzleAdapter shape
     adapter: fakeAdapter as any,
     providers: [
@@ -110,5 +114,45 @@ describe('Auth.js redirect routing on a sendVerificationRequest failure (WS25-T4
     const location = new URL(res.headers.get('location')!);
     expect(location.pathname).toBe('/api/auth/error');
     expect(location.searchParams.get('error')).toBe('Configuration');
+  });
+});
+
+/**
+ * WS25-T6: `@auth/core`'s `Auth()` picks the redirect destination from the THROWN ERROR'S OWN
+ * `kind` (`(isAuthError && error.kind) || "error"`, `@auth/core/src/index.ts`), not a single
+ * fixed page — `Verification` (kind: "error") and `EmailSignInError` (kind: "signIn", inherited
+ * from `SignInError`) route to DIFFERENT default pages. Setting only `pages.error` (an earlier,
+ * incomplete version of this fix) left `EmailSignInError` — WS25-T4's own rate-limit/transport
+ * failure wrapper — falling through to Auth.js's unbranded default `/api/auth/signin` instead of
+ * `/claim`. This suite proves `auth.ts`'s actual `pages: { error: '/claim', signIn: '/claim' }`
+ * configuration (mirrored here) covers both kinds.
+ */
+describe('Auth.js redirect routing with pages.error + pages.signIn both set to /claim (WS25-T6)', () => {
+  const pages = { error: '/claim', signIn: '/claim' };
+
+  it('Verification (kind: "error" — an expired/already-used magic-link token) routes to /claim', async () => {
+    const res = await postEmailSignIn(buildConfig(rejectingSend(new Verification('boom')), pages));
+    const location = new URL(res.headers.get('location')!);
+    expect(location.pathname).toBe('/claim');
+    expect(location.searchParams.get('error')).toBe('Verification');
+  });
+
+  it('EmailSignInError (kind: "signIn" — WS25-T4\'s rate-limit/transport wrapper) ALSO routes to /claim, not the default /api/auth/signin', async () => {
+    const res = await postEmailSignIn(buildConfig(rejectingSend(new EmailSignInError('boom')), pages));
+    const location = new URL(res.headers.get('location')!);
+    expect(location.pathname).toBe('/claim');
+  });
+
+  it('a raw Error (kind defaults to "error") also routes to /claim', async () => {
+    const res = await postEmailSignIn(buildConfig(rejectingSend(new Error('boom')), pages));
+    const location = new URL(res.headers.get('location')!);
+    expect(location.pathname).toBe('/claim');
+    expect(location.searchParams.get('error')).toBe('Configuration');
+  });
+
+  it('a successful send is unaffected — still redirects to verify-request, not /claim', async () => {
+    const res = await postEmailSignIn(buildConfig(async () => {}, pages));
+    const location = new URL(res.headers.get('location')!);
+    expect(location.pathname).toBe('/api/auth/verify-request');
   });
 });

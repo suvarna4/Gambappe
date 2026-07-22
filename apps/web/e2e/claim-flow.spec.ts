@@ -89,3 +89,34 @@ test('/claim page carries the 18+ footer notice', async ({ page }) => {
   await page.goto('/claim');
   await expect(page.locator('footer')).toContainText('18+');
 });
+
+test('/claim?error=Verification shows the expired-link message, not a stale ghost-confirm card', async ({
+  page,
+}) => {
+  // Design-diff follow-up to WS25: auth.ts's `pages: { error: '/claim' }` sends Auth.js sign-in
+  // failures here instead of its own generic page. `Verification` is the code for an
+  // expired/already-used magic-link token.
+  await page.goto('/claim?error=Verification');
+  const entry = page.getByTestId('claim-entry');
+  await expect(entry).toHaveAttribute('data-phase', 'signin');
+  await expect(page.getByTestId('claim-auth-error')).toHaveText(
+    'That link expired or was already used. Enter your email again for a fresh one.',
+  );
+  // Still fully functional — the same retry form as a normal fresh visit.
+  await expect(entry.getByLabel('Continue with email')).toBeVisible();
+  await expect(entry.getByRole('button', { name: 'Save' })).toBeVisible();
+});
+
+test('/claim?error=Configuration (rate limit / transport / misc failures) shows the generic retry message', async ({
+  page,
+}) => {
+  await page.goto('/claim?error=Configuration');
+  await expect(page.getByTestId('claim-auth-error')).toHaveText(
+    'Something went wrong signing you in. Try again.',
+  );
+});
+
+test('/claim with no ?error= param never shows the auth-error banner', async ({ page }) => {
+  await page.goto('/claim');
+  await expect(page.getByTestId('claim-auth-error')).toHaveCount(0);
+});

@@ -132,6 +132,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
     cookies: {
       sessionToken: { name: sessionCookieName, options: sessionCookieOptions },
     },
+    // Design-diff follow-up to WS25: without this, ANY sign-in failure that reaches Auth.js's
+    // top-level error routing lands on an Auth.js-owned page instead of this app's UI — the same
+    // class of bug WS25 fixed on the send side, just on the verify side. Both keys are required,
+    // not just `error`: Auth.js's own `Auth()` (`@auth/core`) picks the redirect destination from
+    // the THROWN ERROR'S OWN `kind` (`(isAuthError && error.kind) || "error"`) — `Verification`
+    // (an expired/already-used magic-link token) has `kind: "error"` and only `pages.error`
+    // catches it, but `EmailSignInError` (WS25-T4's rate-limit/transport-failure wrapper) and
+    // every OAuth callback error class extend `SignInError`, whose `kind` is `"signIn"` — those
+    // fall through to Auth.js's own default `/api/auth/signin` unless `pages.signIn` is ALSO set.
+    // Both point at `/claim`, which reads `?error=...` (`ClaimEntry`'s `authError` prop) and
+    // shows a clear, on-brand retry message regardless of which kind sent it there.
+    pages: { error: '/claim', signIn: '/claim' },
     experimental: { enableWebAuthn: false },
     trustHost: true,
     callbacks: {
