@@ -49,8 +49,10 @@ settled-market samples):
   (this is exactly the bug WS15-T1 fixed after staging synced 0 Kalshi markets).
   `open_interest_fp` (fixed-point string, contracts) is the reliably-populated activity
   signal; the candidate floor passes on `max(liquidity, open_interest × notional)`.
-- `status` vocabulary: `open` and terminal `finalized` observed live; `settled` kept as an
-  accepted alias. Settled markets carry `result: "yes" | "no"`.
+- `status` vocabulary: `open`, terminal `finalized`, and `determined` (WS15-T11, live-verified
+  2026-07-22: outcome-known-settlement-pending — a staging daily sat at `determined`/`yes` for
+  hours) observed live; `settled` kept as an accepted alias. All three terminal statuses carry
+  `result: "yes" | "no"`.
 - Still unverified: the exact `result` token for voided/no-contest markets (`"void"`
   assumed). Per DD-7/§7.3 "never guess," an unrecognized token on a finalized market stays
   `unresolved` (fails safe, retried by `settlement:poll`).

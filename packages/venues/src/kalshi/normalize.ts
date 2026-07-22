@@ -91,7 +91,14 @@ export function kalshiActivityUsd(market: KalshiMarket): number {
  */
 export function kalshiResolution(market: KalshiMarket): VenueResolution {
   const status = market.status;
-  if (status !== 'settled' && status !== 'finalized') return { state: 'unresolved' };
+  // 'determined' (WS15-T11, live-verified 2026-07-22): Kalshi's outcome-known-settlement-pending
+  // state — the market carries its final result (a staging daily sat at determined/yes for
+  // hours while this list rejected it, so settle-on-resolution never fired). The never-guess
+  // rule is preserved by the result check below: 'determined' with an empty/unknown result
+  // token still returns unresolved.
+  if (status !== 'settled' && status !== 'finalized' && status !== 'determined') {
+    return { state: 'unresolved' };
+  }
   const result = (market.result ?? '').trim().toLowerCase();
   if (result === 'yes' || result === 'no') return { state: 'resolved', outcome: result };
   if (result === 'void' || result === 'voided') return { state: 'voided' };

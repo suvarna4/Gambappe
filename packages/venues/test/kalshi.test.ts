@@ -157,6 +157,29 @@ describe('KalshiAdapter — resolution mapping (never guess)', () => {
     expect(kalshiResolution(market)).toEqual({ state: 'unresolved' });
   });
 
+  it("maps determined + result to resolved (WS15-T11 — outcome known, settlement pending)", () => {
+    const market: KalshiMarket = {
+      ticker: 'X',
+      title: 'x',
+      status: 'determined',
+      close_time: NOW,
+      result: 'yes',
+    };
+    expect(kalshiResolution(market)).toEqual({ state: 'resolved', outcome: 'yes' });
+    expect(kalshiResolution({ ...market, result: 'no' })).toEqual({ state: 'resolved', outcome: 'no' });
+  });
+
+  it("treats determined WITHOUT a result token as unresolved (never guess)", () => {
+    const market: KalshiMarket = {
+      ticker: 'X',
+      title: 'x',
+      status: 'determined',
+      close_time: NOW,
+      result: '',
+    };
+    expect(kalshiResolution(market)).toEqual({ state: 'unresolved' });
+  });
+
   it('treats an unrecognized result token on a settled market as unresolved (never guess)', () => {
     const market: KalshiMarket = {
       ticker: 'X',
