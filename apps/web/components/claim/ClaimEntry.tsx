@@ -45,14 +45,25 @@ type MeResponse = z.infer<typeof getMeResponseSchema>;
 type Phase = 'loading' | 'confirm-ghost' | 'signin' | 'already-claimed' | 'error';
 
 export interface ClaimEntryProps {
-  /** Which sign-in options to render (design doc §11.1: X may ship disabled). */
+  /**
+   * Which sign-in options to render (design doc §11.1: X may ship disabled). Every caller
+   * should compute this via `getEnabledAuthProviders()` (`apps/web/lib/auth-providers.ts`) in
+   * a server-component ancestor and thread it down — WS25-T1 (design-diff audit): the default
+   * below used to be `['google', 'email']`, unconditionally offering Google regardless of
+   * whether `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` were configured, which several call sites
+   * silently relied on by omitting this prop entirely. `'email'`-only is the safe fallback —
+   * Google requires real OAuth credentials the server can't complete without, so a caller that
+   * forgets to pass this prop under-offers (no button, rather than a broken one) instead of
+   * over-offering. A caller that DOES want Google shown still needs to pass the real computed
+   * list explicitly; this default alone doesn't turn Google on anywhere it wasn't already wired.
+   */
   enabledProviders?: AuthProviderId[];
   /** 'overlay': meant to sit inside a dismissible sheet. 'inline': normal page content (`/claim`). */
   presentation?: 'overlay' | 'inline';
 }
 
 export default function ClaimEntry({
-  enabledProviders = ['google', 'email'],
+  enabledProviders = ['email'],
   presentation = 'overlay',
 }: ClaimEntryProps) {
   const [phase, setPhase] = useState<Phase>('loading');

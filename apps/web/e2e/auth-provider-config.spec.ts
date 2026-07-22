@@ -43,3 +43,29 @@ test('identity resolution on a ghost-minting route does not 500 (real auth() mus
   const body = (await JSON.parse(bodyText)) as { error?: { code?: string } };
   expect(body.error?.code).toBe('NOT_FOUND');
 });
+
+/**
+ * WS25-T1: regression test for a real production-breaking bug — `buildProviders()` used to push
+ * `Google({...})` unconditionally, regardless of whether `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`
+ * were configured. Neither is set anywhere in this repo's e2e/CI env (grepped
+ * `playwright.config.ts` and the GitHub Actions workflows), so a real server here previously
+ * registered a Google provider whose OAuth authorize URL server-verified to contain
+ * `client_id=undefined` (confirmed manually against a running `next dev` instance during this
+ * bug's investigation) — Google's own server rejects that, and Auth.js surfaces the failure as
+ * its generic `/api/auth/error?error=Configuration` page for every real user who clicked
+ * "Continue with Google." `getEnabledAuthProviders()` (the UI-facing gate) already has full unit
+ * coverage in `test/auth-providers.test.ts`, including the "included when configured" case —
+ * `buildProviders()` itself can't be unit-tested at all (it's inside `auth.ts`, which `vitest`
+ * can't import, per this file's other test's own header comment), so this is the only place its
+ * "excluded when unconfigured" behavior is verified end-to-end.
+ */
+test('the real server never registers a Google provider it can\'t complete (buildProviders() gate)', async ({
+  request,
+}) => {
+  const res = await request.get('/api/auth/providers');
+  expect(res.status()).toBe(200);
+  const providers = (await res.json()) as Record<string, { id: string }>;
+  expect(providers).not.toHaveProperty('google');
+  // Sanity check this endpoint actually works and isn't just empty/broken.
+  expect(providers).toHaveProperty('email');
+});

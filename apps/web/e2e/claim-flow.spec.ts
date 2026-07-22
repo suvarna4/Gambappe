@@ -41,10 +41,13 @@ test('claim prompt engine "Save" opens the claim sheet on the sign-in step', asy
   // No session/ghost cookie in a fresh browser context → GET /me 401s → sign-in phase directly.
   const entry = sheet.getByTestId('claim-entry');
   await expect(entry).toHaveAttribute('data-phase', 'signin');
-  // This gallery example doesn't pass `enabledProviders`, so it uses the documented default
-  // (§11.1: "V1 may ship email+Google only") — no X button here; the separate ClaimSheet gallery
-  // demo below exercises `enabledProviders` including X.
-  await expect(entry.getByRole('button', { name: 'Continue with Google' })).toBeVisible();
+  // This gallery example doesn't pass `enabledProviders`, so it uses `ClaimEntry`'s own safe
+  // default (WS25-T1: `['email']`, not the pre-fix `['google', 'email']`) — this repo's e2e/CI
+  // env never sets `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` (grepped `playwright.config.ts` and the
+  // GitHub Actions workflows), so a real caller here should never offer a Google button the
+  // server can't complete either way; the separate ClaimSheet gallery demo below exercises
+  // `enabledProviders` explicitly including both google and x.
+  await expect(entry.getByRole('button', { name: 'Continue with Google' })).toHaveCount(0);
   await expect(entry.getByRole('button', { name: 'Continue with X' })).toHaveCount(0);
   await expect(entry.getByLabel('Continue with email')).toBeVisible();
   await expect(entry.getByRole('button', { name: 'Save' })).toBeVisible();
@@ -71,7 +74,10 @@ test('/claim renders the sign-in entry point directly when no session exists', a
   await page.goto('/claim');
   const entry = page.getByTestId('claim-entry');
   await expect(entry).toHaveAttribute('data-phase', 'signin');
-  await expect(entry.getByRole('button', { name: 'Continue with Google' })).toBeVisible();
+  // WS25-T1: `/claim` correctly computes `enabledProviders` via `getEnabledAuthProviders()`
+  // (`app/claim/page.tsx`) — this repo's e2e/CI env never sets `AUTH_GOOGLE_ID`/
+  // `AUTH_GOOGLE_SECRET`, so Google is correctly absent here, not a broken button.
+  await expect(entry.getByRole('button', { name: 'Continue with Google' })).toHaveCount(0);
   await expect(entry.getByLabel('Continue with email')).toBeVisible();
   // D-J8 (WS21-T1): the neutral "SAVE YOUR RECORD" TicketFrame restyle — Save wording, no "claim".
   await expect(page.getByText('SAVE YOUR RECORD')).toBeVisible();

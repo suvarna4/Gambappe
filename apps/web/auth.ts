@@ -1,10 +1,12 @@
 /**
  * Auth.js v5 configuration (design doc §11.1–11.2, WS2-T2).
  *
- * Providers: Email magic link (TTL `MAGIC_LINK_TTL_MIN`), Google OAuth, X/Twitter OAuth
- * (included only when `AUTH_TWITTER_ID`/`AUTH_TWITTER_SECRET` are configured — an env-presence
- * gate rather than a formal `core/flags.ts` entry, per the task brief: minimal, no shared-file
- * churn). Database sessions (not JWT) via the Drizzle adapter against the existing
+ * Providers: Email magic link (TTL `MAGIC_LINK_TTL_MIN`, always enabled), Google OAuth and
+ * X/Twitter OAuth (each included only when its own `AUTH_<PROVIDER>_ID`/`_SECRET` pair is
+ * configured — an env-presence gate rather than a formal `core/flags.ts` entry, per the task
+ * brief: minimal, no shared-file churn; WS25-T1 extended this gate to Google, which originally
+ * shipped unconditional — see `buildProviders()`). Database sessions (not JWT) via the Drizzle
+ * adapter against the existing
  * `users`/`accounts`/`sessions`/`verification_tokens` tables (`packages/db/src/schema/identity.ts`).
  * `allowDangerousEmailAccountLinking: false` — verified-email linking only (§11.1).
  *
@@ -61,8 +63,6 @@ function buildAdapter(): Adapter {
 
 function buildProviders(): NextAuthConfig['providers'] {
   const providers: NextAuthConfig['providers'] = [
-    // §11.1: verified-email linking only — explicit even though it's also the library default.
-    Google({ allowDangerousEmailAccountLinking: false }),
     Nodemailer({
       id: 'email',
       name: 'Email',
@@ -100,6 +100,19 @@ function buildProviders(): NextAuthConfig['providers'] {
       },
     }),
   ];
+
+  // WS25-T1 (design-diff audit): Google used to be pushed unconditionally above, regardless of
+  // whether AUTH_GOOGLE_ID/AUTH_GOOGLE_SECRET were configured — next-auth's Google provider
+  // doesn't validate their presence itself, it just builds an OAuth authorize URL with
+  // `client_id=undefined`, which Google's server rejects and Auth.js surfaces as its generic
+  // `/api/auth/error?error=Configuration` page. Now gated the same way X already was, so the
+  // server-side provider list matches what `getEnabledAuthProviders()` advertises to the UI
+  // (`apps/web/lib/auth-providers.ts`) — no provider is ever registered that the claim UI
+  // wouldn't also offer, and vice versa.
+  if (process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET) {
+    // §11.1: verified-email linking only — explicit even though it's also the library default.
+    providers.push(Google({ allowDangerousEmailAccountLinking: false }));
+  }
 
   if (process.env.AUTH_TWITTER_ID && process.env.AUTH_TWITTER_SECRET) {
     // X provides no reliable verified-email claim (§11.1) — X-only accounts stand alone unless

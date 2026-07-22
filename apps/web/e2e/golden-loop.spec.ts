@@ -286,7 +286,10 @@ test.describe('WS14-T1 golden loop (§17.1)', () => {
     await expect(entry).toContainText('1-day streak');
     await entry.getByRole('button', { name: "That's me — continue" }).click();
     await expect(entry).toHaveAttribute('data-phase', 'signin');
-    await expect(entry.getByRole('button', { name: 'Continue with Google' })).toBeVisible();
+    // WS25-T1: Google is correctly gated off here — this repo's e2e/CI env never sets
+    // AUTH_GOOGLE_ID/AUTH_GOOGLE_SECRET (see auth-provider-config.spec.ts's own regression test
+    // for the server-side half of this gate).
+    await expect(entry.getByRole('button', { name: 'Continue with Google' })).toHaveCount(0);
     await expect(entry.getByLabel('Continue with email')).toBeVisible();
 
     // 5b. Bridge the unautomatable OAuth/email hop (header comment #3), then let the REAL
