@@ -1,0 +1,124 @@
+# WS15-T10: hands-off staging deploys (owner request). Every 15 minutes: if main has moved
+# since the last successful auto-deploy, apply migrations, refresh the Fly worker, and deploy
+# web to Vercel production. Feature flags are project env on Vercel / secrets on Fly — this
+# workflow never touches them, so whatever is enabled stays enabled.
+#
+# ACTIVATION — the deploy legs each no-op with a notice until their repo secret exists:
+#   VERCEL_TOKEN           -> web deploy (Vercel production)
+#   FLY_API_TOKEN          -> worker image build + machine update
+#   STAGING_DATABASE_URL   -> drizzle migrations (Neon DIRECT host, not the pooler)
+name: auto-deploy staging
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: auto-deploy-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  # Vercel project link (ids are not secrets). The CLI reads these instead of .vercel/.
+  VERCEL_ORG_ID: mDAhtoXfLZFOn0uXvuUEQP9L
+  VERCEL_PROJECT_ID: prj_WbRwltQajlT2uZiu17soB3EE2EZu
+  FLY_APP: gambappe-worker
+  HEALTH_URL: https://gambappe.vercel.app/api/health
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # Skip the whole run when HEAD was already deployed by a previous tick. The marker is
+      # best-effort (cache eviction just causes one redundant deploy — harmless, idempotent).
+      - name: Restore last-deployed marker
+        id: marker
+        uses: actions/cache/restore@v4
+        with:
+          path: .last-deployed-sha
+          key: auto-deploy-sha-${{ github.sha }}
+          restore-keys: auto-deploy-sha-
+
+      - name: Decide whether to deploy
+        id: decide
+        run: |
+          last="$(cat .last-deployed-sha 2>/dev/null || echo none)"
+          echo "last deployed: $last | head: $GITHUB_SHA"
+          if [ "$last" = "$GITHUB_SHA" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "HEAD already deployed — nothing to do." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Migrations (Neon)
+        if: steps.decide.outputs.changed == 'true'
+        env:
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: |
+          if [ -z "$STAGING_DATABASE_URL" ]; then
+            echo "STAGING_DATABASE_URL secret not set — skipping migrations." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          corepack enable
+          pnpm install --frozen-lockfile --filter @receipts/db...
+          DATABASE_URL="$STAGING_DATABASE_URL" pnpm --filter @receipts/db db:migrate
+          echo "Migrations applied." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Worker (Fly)
+        if: steps.decide.outputs.changed == 'true'
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          if [ -z "$FLY_API_TOKEN" ]; then
+            echo "FLY_API_TOKEN secret not set — skipping worker deploy." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          IMAGE="registry.fly.io/$FLY_APP:auto-${GITHUB_SHA::12}"
+          docker build -f apps/worker/Dockerfile -t "$IMAGE" .
+          echo "$FLY_API_TOKEN" | docker login registry.fly.io -u x --password-stdin
+          docker push "$IMAGE"
+
+          AUTH="Authorization: Bearer $FLY_API_TOKEN"
+          MACHINE_ID="$(curl -sSf -H "$AUTH" "https://api.machines.dev/v1/apps/$FLY_APP/machines" | jq -r '.[0].id')"
+          [ -n "$MACHINE_ID" ] && [ "$MACHINE_ID" != null ] || { echo "no machine found for $FLY_APP" >&2; exit 1; }
+          # Machine update re-snapshots app secrets, so flag/env changes ride along too.
+          curl -sSf -X POST -H "$AUTH" -H 'Content-Type: application/json' \
+            "https://api.machines.dev/v1/apps/$FLY_APP/machines/$MACHINE_ID" \
+            -d "{\"config\":{\"image\":\"$IMAGE\",\"guest\":{\"cpu_kind\":\"shared\",\"cpus\":1,\"memory_mb\":512},\"restart\":{\"policy\":\"always\"}}}" > /dev/null
+          for i in $(seq 1 24); do
+            STATE="$(curl -sS -H "$AUTH" "https://api.machines.dev/v1/apps/$FLY_APP/machines/$MACHINE_ID" | jq -r .state)"
+            [ "$STATE" = started ] && break
+            [ "$STATE" = stopped ] && curl -sS -X POST -H "$AUTH" "https://api.machines.dev/v1/apps/$FLY_APP/machines/$MACHINE_ID/start" > /dev/null
+            sleep 5
+          done
+          echo "Worker on $IMAGE (machine $MACHINE_ID: $STATE)." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Web (Vercel production)
+        if: steps.decide.outputs.changed == 'true'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "VERCEL_TOKEN secret not set — skipping web deploy." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          npx vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"
+          curl -sSf --max-time 30 "$HEALTH_URL"
+          echo "Web deployed; health OK." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Save last-deployed marker
+        if: steps.decide.outputs.changed == 'true'
+        run: echo "$GITHUB_SHA" > .last-deployed-sha
+
+      - uses: actions/cache/save@v4
+        if: steps.decide.outputs.changed == 'true'
+        with:
+          path: .last-deployed-sha
+          key: auto-deploy-sha-${{ github.sha }}
