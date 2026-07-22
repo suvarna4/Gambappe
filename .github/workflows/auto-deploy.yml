@@ -75,6 +75,9 @@ jobs:
           fi
           corepack enable
           pnpm install --frozen-lockfile --filter @receipts/db...
+          # migrate.ts runs from source via tsx, but its imports resolve @receipts/core
+          # through package exports -> dist/, so the dependency chain must be built first.
+          pnpm --filter "@receipts/db..." build
           DATABASE_URL="$STAGING_DATABASE_URL" pnpm --filter @receipts/db db:migrate
           echo "Migrations applied." >> "$GITHUB_STEP_SUMMARY"
 
