@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-22T03:11:40.966Z",
+  "updated_at": "2026-07-22T03:11:42.607Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2240,12 +2240,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": "Spec: docs/auth-login-fix-plan.md §2 WS25-T2 (see 'Revision 2' + 'Why packages/core and not packages/venues' for full rationale). Moves apps/worker/src/lib/email-transport.ts into packages/core/src/email-transport.ts, re-exported via the existing @receipts/core/server subpath (flat file alongside notifications-token.ts/share-token.ts, matching server.ts's existing barrel pattern). Only LoggingEmailTransport logs -- it now takes a minimal structurally-typed logger via an OPTIONAL injection param (default no-op) instead of importing pino directly, so packages/core gains no new dependency. apps/worker/src/lib/email-transport.ts is deleted (not shimmed); THREE call sites migrate: notify-dispatch.ts (real use, passes its logger), email-transport.test.ts (moves with the code), and integration/notify-dispatch.test.ts (11 zero-arg LoggingEmailTransport() calls that bypass defaultEmailTransport() to inject an inspectable transport -- only its import path changes, thanks to the optional-logger design). Requires the contract-change PR label + a same-PR receipts-design-doc.md §4.2 amendment per §0.2's rule, including why packages/core (not packages/venues, the structural precedent for real/mock adapters) is the right home.",
-      "status": "in_review",
+      "status": "done",
       "owner": "claude-code-session-1784687180",
       "branch": "feat/ws25-t2-shared-email-transport",
       "pr": "https://github.com/Gambappe/Gambappe/pull/139",
       "claimed_at": "2026-07-22T02:26:20.968Z",
-      "updated_at": "2026-07-22T03:05:59.477Z"
+      "updated_at": "2026-07-22T03:11:42.606Z"
     },
     "WS25-T3": {
       "title": "Wire real Resend delivery into auth.ts's sendVerificationRequest; remove the unconditional production throw",
