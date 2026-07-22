@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-22T05:42:06.019Z",
+  "updated_at": "2026-07-22T05:43:04.144Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2315,12 +2315,12 @@
       ],
       "mock_start_ok": false,
       "note": "Design-diff follow-up discovered while verifying WS25-T4/T5 live: auth.ts has no pages.error configured, so any sign-in failure that reaches Auth.js's top-level error routing (an expired/already-used magic-link token, a WS25-T4-wrapped rate-limit/transport failure, an OAuth callback error) lands on Auth.js's own generic unbranded /api/auth/error page instead of this app's UI -- the same class of bug WS25 fixed on the send side, just on the verify side. Sets pages: { error: '/claim' } in auth.ts; /claim reads ?error=... and passes it to ClaimEntry (new authError prop), which shows a clear on-brand retry message (distinguishing Verification -- expired/already-used link -- from everything else) instead of silently re-showing the pre-auth flow indistinguishably from a fresh visit.",
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-code-session-1784698925",
       "branch": "feat/ws25-t6-branded-auth-error-page",
       "pr": null,
       "claimed_at": "2026-07-22T05:42:06.018Z",
-      "updated_at": "2026-07-22T05:42:06.018Z"
+      "updated_at": "2026-07-22T05:43:04.144Z"
     }
   }
 }
