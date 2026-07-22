@@ -18,6 +18,7 @@
     "load-test": "pnpm run load-test:spectator && pnpm run load-test:reveal"
   },
   "dependencies": {
+    "@auth/core": "0.41.2",
     "@auth/drizzle-adapter": "^1.11.2",
     "@receipts/core": "workspace:*",
     "@receipts/db": "workspace:*",
