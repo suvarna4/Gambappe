@@ -13,6 +13,7 @@
 import { useEffect, useState } from 'react';
 import type { z } from 'zod';
 import type { NotificationSettings, ProfileSettings, getMeResponseSchema } from '@receipts/core';
+import type { AuthProviderId } from '@/lib/auth-providers';
 import ClaimEntry from '@/components/claim/ClaimEntry';
 import { PushOptInButton } from '@/lib/push/PushOptInButton';
 import { settingsCopy } from '@/lib/copy';
@@ -31,9 +32,12 @@ export interface SettingsClientProps {
    * stay live either way (§4.6: "UI must render coherently with any flag off" cuts the other
    * way here — hiding a still-functional preference would be the incoherent state). */
   vapidPublicKey: string | null;
+  /** Computed server-side by `page.tsx` (`getEnabledAuthProviders()`) — which sign-in options the
+   * unclaimed-visitor `ClaimEntry` below should offer. */
+  enabledProviders: AuthProviderId[];
 }
 
-export default function SettingsClient({ vapidPublicKey }: SettingsClientProps) {
+export default function SettingsClient({ vapidPublicKey, enabledProviders }: SettingsClientProps) {
   const [phase, setPhase] = useState<Phase>('loading');
   const [me, setMe] = useState<MeResponse | null>(null);
   const [settings, setSettings] = useState<ProfileSettings | null>(null);
@@ -139,7 +143,7 @@ export default function SettingsClient({ vapidPublicKey }: SettingsClientProps) 
     return (
       <div className="space-y-4" data-testid="settings-not-claimed">
         <p className="text-muted text-sm">{settingsCopy.claimRequiredNotice}</p>
-        <ClaimEntry presentation="inline" />
+        <ClaimEntry presentation="inline" enabledProviders={enabledProviders} />
       </div>
     );
   }

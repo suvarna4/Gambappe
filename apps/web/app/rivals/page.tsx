@@ -4,6 +4,7 @@ import { isFlagEnabled, now } from '@receipts/core';
 import { getProfileByUserId } from '@receipts/db';
 import { auth } from '../../auth';
 import { getDb } from '@/lib/stores';
+import { getEnabledAuthProviders } from '@/lib/auth-providers';
 import ClaimEntry from '@/components/claim/ClaimEntry';
 import { NemesisRoom } from '../nemesis/NemesisRoom';
 import { DuoRoom } from '../duo/DuoRoom';
@@ -106,7 +107,7 @@ export default async function RivalsPage({ searchParams }: PageProps) {
   if (!isClaimed || !profile) {
     body = (
       <div className="space-y-4" data-testid="rivals-save-gate">
-        <ClaimEntry presentation="inline" />
+        <ClaimEntry presentation="inline" enabledProviders={getEnabledAuthProviders()} />
       </div>
     );
   } else if (activeTab === 'duo') {

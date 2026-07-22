@@ -28,6 +28,7 @@ import Link from 'next/link';
 import type { z } from 'zod';
 import { DUO_MIN_PICKS } from '@receipts/core';
 import type { getCurrentDuoResponseSchema, getMeResponseSchema } from '@receipts/core';
+import type { AuthProviderId } from '@/lib/auth-providers';
 import ClaimEntry from '@/components/claim/ClaimEntry';
 import { TicketCard } from '@receipts/ui';
 import { duoCopy } from '@/lib/copy';
@@ -45,7 +46,12 @@ const EMPTY_CURRENT: CurrentDuo = { duo: null, match: null };
 type Phase = 'loading' | 'not-claimed' | 'ready' | 'error';
 type QueuePhase = 'idle' | 'joining' | 'queued' | 'leaving';
 
-export default function DuoHubClient() {
+export interface DuoHubClientProps {
+  /** Computed server-side by `DuoRoom` (mirrors `SettingsClient`'s `vapidPublicKey` prop pattern) — which sign-in options the unclaimed-visitor `ClaimEntry` below should offer. */
+  enabledProviders: AuthProviderId[];
+}
+
+export default function DuoHubClient({ enabledProviders }: DuoHubClientProps) {
   const [phase, setPhase] = useState<Phase>('loading');
   const [me, setMe] = useState<MeResponse | null>(null);
   const [current, setCurrent] = useState<CurrentDuo>(EMPTY_CURRENT);
@@ -147,7 +153,7 @@ export default function DuoHubClient() {
     return (
       <div className="space-y-4" data-testid="duo-hub-not-claimed">
         <p className="text-muted text-sm">{duoCopy.claimRequiredNotice}</p>
-        <ClaimEntry presentation="inline" />
+        <ClaimEntry presentation="inline" enabledProviders={enabledProviders} />
       </div>
     );
   }

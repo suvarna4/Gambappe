@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { isFlagEnabled } from '@receipts/core';
+import { getEnabledAuthProviders } from '@/lib/auth-providers';
 import DuoHubClient from '@/components/duo/DuoHubClient';
 import { duoCopy } from '@/lib/copy';
 
@@ -26,7 +27,7 @@ export function DuoRoom() {
   return (
     <>
       <h1 className="text-2xl font-bold">{duoCopy.hubHeading}</h1>
-      <DuoHubClient />
+      <DuoHubClient enabledProviders={getEnabledAuthProviders()} />
     </>
   );
 }
