@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-22T05:43:04.144Z",
+  "updated_at": "2026-07-22T06:11:08.355Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2318,9 +2318,9 @@
       "status": "in_review",
       "owner": "claude-code-session-1784698925",
       "branch": "feat/ws25-t6-branded-auth-error-page",
-      "pr": null,
+      "pr": "https://github.com/Gambappe/Gambappe/pull/147",
       "claimed_at": "2026-07-22T05:42:06.018Z",
-      "updated_at": "2026-07-22T05:43:04.144Z"
+      "updated_at": "2026-07-22T06:11:08.354Z"
     }
   }
 }
