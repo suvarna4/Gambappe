@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-22T03:05:57.934Z",
+  "updated_at": "2026-07-22T03:05:59.477Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2243,9 +2243,9 @@
       "status": "in_review",
       "owner": "claude-code-session-1784687180",
       "branch": "feat/ws25-t2-shared-email-transport",
-      "pr": null,
+      "pr": "https://github.com/Gambappe/Gambappe/pull/139",
       "claimed_at": "2026-07-22T02:26:20.968Z",
-      "updated_at": "2026-07-22T02:35:33.200Z"
+      "updated_at": "2026-07-22T03:05:59.477Z"
     },
     "WS25-T3": {
       "title": "Wire real Resend delivery into auth.ts's sendVerificationRequest; remove the unconditional production throw",
