@@ -63,15 +63,19 @@ import type pg from 'pg';
  * 3. **Claim completion bypasses the OAuth/email hop via a directly-seeded Auth.js session,
  *    not a real magic-link click-through.** `claim-flow.spec.ts`'s own header comment already
  *    documents why: "no real Google credentials in this sandbox, and the email provider's
- *    'click the emailed link' step happens out of band." A second, harder blocker for actually
- *    completing it here: `apps/web/auth.ts`'s magic-link stub only records to the in-memory
- *    mailbox when `NODE_ENV !== 'production'`, but `next start` (this suite's `webServer`,
- *    `playwright.config.ts`) hard-forces `NODE_ENV=production` — so the stub throws instead of
- *    ever recording a link, in every e2e run, not just this sandbox's credential gap. Rather
- *    than weakening that production gate (a real account-takeover surface if it slipped into an
- *    actual prod deploy) just to make one test's click-through automatable, this test verifies
- *    the pre-auth UI wiring (ghost confirmation card, sign-in options) exactly like
- *    `claim-flow.spec.ts` does, then bridges the one genuinely unautomatable hop the same way
+ *    'click the emailed link' step happens out of band." WS25-T3 wired `apps/web/auth.ts`'s
+ *    magic-link `sendVerificationRequest` to the shared `@receipts/core/server` transport, which
+ *    no longer throws under `NODE_ENV=production` (`next start`, this suite's `webServer`,
+ *    `playwright.config.ts`, hard-forces that) — the send now genuinely succeeds via the
+ *    transport's own logging stub when `RESEND_API_KEY` is unset, same as any other environment
+ *    without a real Resend key. What's still missing for a real click-through: `auth.ts` calls
+ *    `defaultEmailTransport(logger)` inline per send, so nothing retains the constructed
+ *    `LoggingEmailTransport` instance for a test to read the issued URL back out of — there is
+ *    no injectable-transport seam here (unlike `apps/worker`'s tests, which construct/inject
+ *    `LoggingEmailTransport` directly). Adding that seam is tracked as regression-coverage work,
+ *    not done here. Until then, this test verifies the pre-auth UI wiring (ghost confirmation
+ *    card, sign-in options) exactly like `claim-flow.spec.ts` does, then bridges the one
+ *    genuinely unautomatable hop the same way
  *    step 2 above bridges lock/reveal: a direct, real `users` + `sessions` row (Auth.js
  *    "database" strategy validates sessions by a raw `sessions.session_token` equality lookup,
  *    `@auth/drizzle-adapter`'s `getSessionAndUser` — no signing/hashing involved, unlike the

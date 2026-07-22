@@ -10,8 +10,11 @@
  * `users`/`accounts`/`sessions`/`verification_tokens` tables (`packages/db/src/schema/identity.ts`).
  * `allowDangerousEmailAccountLinking: false` — verified-email linking only (§11.1).
  *
- * Real magic-link delivery (Resend) is WS9 scope; `sendVerificationRequest` below is the
- * pluggable stub called out in the WS2 task brief.
+ * Magic-link delivery (WS25-T3) goes through `@receipts/core/server`'s shared `EmailTransport`
+ * (originally WS9-T1's `apps/worker` implementation, extracted to `packages/core` by WS25-T2) —
+ * see `sendVerificationRequest` below. That transport already degrades to a non-production
+ * logging stub when `RESEND_API_KEY` is unset, so this file no longer needs its own
+ * `NODE_ENV`-branched stub/throw.
  *
  * Config is built via NextAuth's "lazy initialization" form (a function, not a plain object) —
  * this defers `getDb()` (and therefore requiring `DATABASE_URL`) until the first actual
@@ -28,11 +31,13 @@ import Nodemailer from 'next-auth/providers/nodemailer';
 import Twitter from 'next-auth/providers/twitter';
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 import { MAGIC_LINK_TTL_MIN } from '@receipts/core';
+import { defaultEmailTransport } from '@receipts/core/server';
 import { accounts, sessions, users, verificationTokens } from '@receipts/db';
 import { getDb } from './lib/stores';
 import { enforceAuthEmailSendLimit } from './lib/auth-email-limit';
 import { sessionCookieConfig, SESSION_MAX_AGE_S } from './lib/auth-cookies';
-import { recordMagicLink } from './lib/magic-link-mailbox';
+import { renderMagicLinkEmail } from './lib/auth-email-template';
+import { logger } from './lib/logger';
 
 /**
  * `DrizzleAdapter`'s generic dialect parameter (Postgres/MySQL/SQLite) can't be inferred
@@ -79,24 +84,20 @@ function buildProviders(): NextAuthConfig['providers'] {
       maxAge: MAGIC_LINK_TTL_MIN * 60,
       async sendVerificationRequest({ identifier, url, request }) {
         // §14.1 "Auth email sends | email+IP | 5/hour" (audit 2.4), enforced BEFORE any
-        // dispatch (including the non-production mailbox stub, so the limit is exercisable
-        // end-to-end today). Runs strictly at send time inside this handler — nothing here
+        // dispatch (including the non-production logging-stub transport, so the limit is
+        // exercisable end-to-end today). Runs strictly at send time inside this handler — nothing here
         // executes during `next build`'s module evaluation (see the lazy-init note in this
         // file's header), and an over-limit throw surfaces as Auth.js's normal EmailSignin
         // error redirect, never a 500 from `auth()` itself.
         await enforceAuthEmailSendLimit(identifier, request.headers);
 
-        // WS2-T2 stub: real Resend sending is WS9 scope (§13.2). Outside production, store the
-        // link in the in-memory mailbox so test harnesses and local dev can read it back
-        // without a mail provider — never logged (§16.2 forbids logging emails unconditionally,
-        // not just in production; `getLastMagicLink` is the intended read-back path).
-        if (process.env.NODE_ENV !== 'production') {
-          recordMagicLink(identifier, url);
-          return;
-        }
-        throw new Error(
-          'sendVerificationRequest: production email sending is not wired yet (WS9 scope)',
-        );
+        // WS25-T3: real send via the shared transport (§13.2, `@receipts/core/server`). No
+        // `NODE_ENV` branch here — `defaultEmailTransport()` already selects the real Resend
+        // transport when `RESEND_API_KEY` is set and a non-production logging stub otherwise
+        // (never logs `identifier`/the recipient email itself, §16.2), so this call is identical
+        // in every environment; only the transport underneath it differs.
+        const { subject, html, text } = renderMagicLinkEmail(url, MAGIC_LINK_TTL_MIN);
+        await defaultEmailTransport(logger).send({ to: identifier, subject, html, text });
       },
     }),
   ];

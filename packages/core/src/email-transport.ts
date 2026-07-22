@@ -72,11 +72,18 @@ export interface StubTransportLogger {
 const noopLogger: StubTransportLogger = { info: () => {} };
 
 /**
- * Non-production / no-`RESEND_API_KEY` stub (mirrors `apps/web/lib/magic-link-mailbox.ts`):
- * logs that a send happened WITHOUT the recipient's email (§16.2 forbids logging emails
- * unconditionally, not just in production), and keeps an in-memory last-email-per-recipient
- * mailbox for local dev / integration tests to read back — same "never used in production"
- * posture as the magic-link mailbox.
+ * Non-production / no-`RESEND_API_KEY` stub: logs that a send happened WITHOUT the recipient's
+ * email (§16.2 forbids logging emails unconditionally, not just in production), and keeps an
+ * in-memory last-email-per-recipient mailbox for local dev / integration tests to read back —
+ * never used in production. WS25-T3: `apps/web/auth.ts`'s magic-link `sendVerificationRequest`
+ * now falls back to this stub too (via `defaultEmailTransport()`) instead of the bespoke
+ * `apps/web/lib/magic-link-mailbox.ts` it used to use, which is retired. NOTE: unlike
+ * `magic-link-mailbox.ts`'s module-level singleton `Map`, `defaultEmailTransport()` constructs a
+ * fresh, uncaptured `LoggingEmailTransport` on every call — nothing currently retains a
+ * reference, so `auth.ts`'s magic links have no read-back path today. Read-back for that caller
+ * requires the caller to hold onto (or be injected) the same instance across calls, the way
+ * `apps/worker`'s integration tests already do; a future task adding that here should not assume
+ * this class alone reproduces `getLastMagicLink`'s capability.
  *
  * The logger is optional (default: no-op) rather than a required constructor argument — callers
  * that only care about the read-back mailbox (e.g. tests injecting this transport directly)
