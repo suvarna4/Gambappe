@@ -19,7 +19,7 @@ import {
   addSessionCookie,
   connectDb,
   drainDeck,
-  pruneExpiredTopics,
+  pruneAllOpenTopics,
   seedClaimedProfileWithSession,
   seedTopicCard,
   type DbHandle,
@@ -54,8 +54,8 @@ test.describe('Journey 6 · reachability matrix (D-J6)', () => {
     await context.clearCookies();
 
     // Two open topic cards → `/` deals the mixed deck with an open card on stage. Prune expired
-    // (un-throwable) topics first so the drain can reach `deck-cleared` (see `pruneExpiredTopics`).
-    await pruneExpiredTopics(handle.db);
+    // (un-throwable) topics first so the drain can reach `deck-cleared` (see `pruneAllOpenTopics`).
+    await pruneAllOpenTopics(handle.db);
     await seedTopicCard(handle.db, 'Journey 6 — reachability card A');
     await seedTopicCard(handle.db, 'Journey 6 — reachability card B');
 

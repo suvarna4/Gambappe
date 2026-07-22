@@ -21,7 +21,7 @@ import { expect, test } from '@playwright/test';
 import {
   connectDb,
   drainDeck,
-  pruneExpiredTopics,
+  pruneAllOpenTopics,
   seedTopicCard,
   type DbHandle,
 } from './_journey-helpers';
@@ -50,7 +50,7 @@ test.describe('Journey 1 · stack deck → /sweat (D-J2/D-J3)', () => {
     // fresh visitor cares about): every card they THREW becomes one of their positions on `/sweat`
     // (`sweat-row` count == throws). Prune expired (un-throwable) topics first so the drain can
     // reach `deck-cleared`, and seed two guaranteed-throwable cards so the deck has >= 2 to throw.
-    await pruneExpiredTopics(handle.db);
+    await pruneAllOpenTopics(handle.db);
     const tag = randomUUID().slice(0, 8);
     await seedTopicCard(handle.db, `Journey 1 first card ${tag}`);
     await seedTopicCard(handle.db, `Journey 1 second card ${tag}`);

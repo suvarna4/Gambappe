@@ -239,6 +239,28 @@ export async function pruneExpiredTopics(db: Db): Promise<void> {
   await db.delete(questions).where(inArray(questions.id, ids));
 }
 
+/**
+ * Prune EVERY open `kind='topic'` card (and its picks), not just expired ones. The `/` deck is
+ * viewer-free so it deals up to 8 open topics from the shared DB — and seeded cards carry a
+ * far-future `lock_at`, so they never expire and ACCUMULATE across CI runs. `pruneExpiredTopics`
+ * leaves those, so a drain-to-`deck-cleared` faces a deck of up-to-8 stale-but-open cards and does
+ * not reliably clear. The deck journeys (1 + 6) call this instead, then seed exactly their own
+ * cards, so the deck contains only a couple of fresh, throwable cards and `drainDeck` clears it
+ * deterministically. Safe under `fullyParallel`: the deck is dealt client-side at `page.goto`, so
+ * pruning after another test has loaded its deck cannot change that deck; and both deck journeys
+ * seed >=2 cards immediately after pruning, so the on-stage deck is always small but non-empty.
+ */
+export async function pruneAllOpenTopics(db: Db): Promise<void> {
+  const open = await db
+    .select({ id: questions.id })
+    .from(questions)
+    .where(and(eq(questions.kind, 'topic'), eq(questions.status, 'open')));
+  if (open.length === 0) return;
+  const ids = open.map((r) => r.id as string);
+  await db.delete(picks).where(inArray(picks.questionId, ids));
+  await db.delete(questions).where(inArray(questions.id, ids));
+}
+
 /** Seed a market + question + a pending pick for `profileId` — a `/sweat` "position". */
 export async function seedPendingPosition(
   db: Db,
