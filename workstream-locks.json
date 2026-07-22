@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-22T02:40:21.170Z",
+  "updated_at": "2026-07-22T03:05:57.934Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2217,9 +2217,9 @@
       "status": "in_review",
       "owner": "claude-code-session-1784685874",
       "branch": "feat/ws25-t1-gate-google-provider",
-      "pr": null,
+      "pr": "https://github.com/Gambappe/Gambappe/pull/138",
       "claimed_at": "2026-07-22T02:04:34.630Z",
-      "updated_at": "2026-07-22T02:40:21.169Z"
+      "updated_at": "2026-07-22T03:05:57.934Z"
     },
     "WS15-T10": {
       "title": "Auto-deploy workflow: 15-min cron redeploys staging when main moves",
