@@ -31,7 +31,7 @@ import {
 } from '@receipts/db';
 import { buildProfile } from '@receipts/db/testing';
 import type { JobContext } from '../../src/context.js';
-import { LoggingEmailTransport } from '../../src/lib/email-transport.js';
+import { LoggingEmailTransport } from '@receipts/core/server';
 import { LoggingPushTransport, type PushTransport, type PushSendResult } from '../../src/lib/push-transport.js';
 import { notifyDispatchHandler, runNotifyDispatch, runPushNotifyDispatch } from '../../src/jobs/notify-dispatch.js';
 

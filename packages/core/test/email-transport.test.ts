@@ -1,13 +1,16 @@
 /**
  * WS9-T1: EmailTransport implementations — Resend REST call shape + the non-production
  * logging stub's read-back mailbox (mirrors WS2-T2's magic-link-mailbox.ts pattern).
+ *
+ * WS25-T2 (auth login fix): moved here from `apps/worker/test/email-transport.test.ts` when
+ * the transport moved to `packages/core/src/email-transport.ts`.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   defaultEmailTransport,
   LoggingEmailTransport,
   ResendEmailTransport,
-} from '../src/lib/email-transport.js';
+} from '../src/email-transport.js';
 
 describe('ResendEmailTransport', () => {
   const originalFetch = globalThis.fetch;
@@ -66,6 +69,24 @@ describe('LoggingEmailTransport (non-production stub)', () => {
     expect(transport.getLastEmail('a@example.com')?.subject).toBe('second');
     expect(transport.getLastEmail('b@example.com')?.subject).toBe('other');
     expect(transport.getLastEmail('nobody@example.com')).toBeUndefined();
+  });
+
+  it('reports each send through an injected logger, without the recipient email', async () => {
+    const info = vi.fn();
+    const transport = new LoggingEmailTransport({ info });
+    await transport.send({ to: 'a@example.com', subject: 'first', html: 'h', text: 't' });
+
+    expect(info).toHaveBeenCalledTimes(1);
+    const [obj, msg] = info.mock.calls[0]!;
+    expect(obj).toEqual({ subject: 'first' });
+    expect(msg).toMatch(/stub transport/);
+  });
+
+  it('defaults to a no-op logger when none is supplied', async () => {
+    const transport = new LoggingEmailTransport();
+    await expect(
+      transport.send({ to: 'a@example.com', subject: 'first', html: 'h', text: 't' }),
+    ).resolves.toBeUndefined();
   });
 });
 
