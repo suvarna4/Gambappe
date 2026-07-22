@@ -9,6 +9,10 @@ on:
   push:
     branches: [claude/work-lock-file-tasks-fohjki]
 
+# The auto-commit step pushes the regenerated PNGs back to the branch.
+permissions:
+  contents: write
+
 jobs:
   update-baselines:
     runs-on: ubuntu-latest
