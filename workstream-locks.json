@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-22T05:26:50.363Z",
+  "updated_at": "2026-07-22T05:32:13.456Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2287,12 +2287,12 @@
       ],
       "mock_start_ok": false,
       "note": "Spec: docs/auth-login-fix-plan.md §2 WS25-T5. First test in the repo to actually exercise the production email sign-in branch at all (today only the dev-mode stub path is tested, per golden-loop.spec.ts's own header comment on why it bypasses real sign-in). Also confirms apps/web/e2e/auth-provider-config.spec.ts and apps/worker's notification-dispatch tests both stay green through T2/T3/T4's edits (T2 migrates apps/worker's real production import, not just a copy).",
-      "status": "in_review",
+      "status": "done",
       "owner": "claude-code-session-1784695759",
       "branch": "feat/ws25-t5-signin-regression-coverage",
       "pr": "https://github.com/Gambappe/Gambappe/pull/146",
       "claimed_at": "2026-07-22T04:49:19.654Z",
-      "updated_at": "2026-07-22T05:26:50.363Z"
+      "updated_at": "2026-07-22T05:32:13.455Z"
     },
     "WS15-T11": {
       "title": "Kalshi resolution: accept 'determined' as terminal status",
