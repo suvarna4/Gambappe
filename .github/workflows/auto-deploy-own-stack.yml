@@ -1,21 +1,14 @@
-# WS15-T10: hands-off staging deploys (owner request). Deploys the collaborator's stack
-# (`gambappe.vercel.app` + `gambappe-worker`): apply migrations, refresh the Fly worker, and
-# deploy web to Vercel production. Feature flags are project env on Vercel / secrets on Fly —
-# this workflow never touches them, so whatever is enabled stays enabled.
+# Parallel deploy to YOUR OWN stack (your Vercel project + Fly app + Neon + Upstash), running
+# alongside the collaborator's `auto-deploy-staging.yml` without touching it. Same three legs
+# (migrate Neon → refresh Fly worker → deploy Vercel web), same deploy-on-merge + poll + manual
+# triggers, but driven entirely by a separate `MY_*` set of secrets/vars — so this whole workflow
+# is INERT until you configure them.
 #
-# TRIGGERS: immediately on every push to `main` (deploy-on-merge), plus a 15-min poll as a
-# safety net (catches a merge whose push event was missed) and manual `workflow_dispatch`. The
-# `.last-deployed-sha` marker makes re-runs on an already-deployed HEAD a no-op, so the extra
-# triggers never double-deploy.
-#
-# ACTIVATION — the deploy legs each no-op with a notice until their repo secret exists:
-#   VERCEL_TOKEN           -> web deploy (Vercel production)
-#   FLY_API_TOKEN          -> worker image build + machine update
-#   STAGING_DATABASE_URL   -> drizzle migrations (Neon DIRECT host, not the pooler)
-#
-# A viewer's OWN stack deploys in parallel from `auto-deploy-own-stack.yml` (inert until its
-# `MY_*` secrets/vars are set), so this collaborator pipeline stays untouched.
-name: auto-deploy staging
+# ACTIVATION (Repo → Settings → Secrets and variables → Actions):
+#   Secrets:  MY_STAGING_DATABASE_URL (Neon DIRECT url) · MY_FLY_API_TOKEN · MY_VERCEL_TOKEN
+#   Variables: MY_VERCEL_ORG_ID · MY_VERCEL_PROJECT_ID · MY_FLY_APP · MY_HEALTH_URL
+# Each leg no-ops with a notice if its secret/var is missing, so you can light them up one at a time.
+name: auto-deploy (own stack)
 
 on:
   push:
@@ -25,18 +18,18 @@ on:
   workflow_dispatch: {}
 
 concurrency:
-  group: auto-deploy-staging
+  group: auto-deploy-own-stack
   cancel-in-progress: false
 
 permissions:
   contents: read
 
 env:
-  # Vercel project link (ids are not secrets). The CLI reads these instead of .vercel/.
-  VERCEL_ORG_ID: mDAhtoXfLZFOn0uXvuUEQP9L
-  VERCEL_PROJECT_ID: prj_WbRwltQajlT2uZiu17soB3EE2EZu
-  FLY_APP: gambappe-worker
-  HEALTH_URL: https://gambappe.vercel.app/api/health
+  # Non-secret project ids/urls, supplied as repo VARIABLES (empty until you set them).
+  VERCEL_ORG_ID: ${{ vars.MY_VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ vars.MY_VERCEL_PROJECT_ID }}
+  FLY_APP: ${{ vars.MY_FLY_APP }}
+  HEALTH_URL: ${{ vars.MY_HEALTH_URL }}
 
 jobs:
   deploy:
@@ -45,24 +38,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Skip the whole run when HEAD was already deployed by a previous tick. The marker is
-      # best-effort (cache eviction just causes one redundant deploy — harmless, idempotent).
+      # Separate marker namespace from the collaborator pipeline so the two never collide.
       - name: Restore last-deployed marker
         id: marker
         uses: actions/cache/restore@v4
         with:
-          path: .last-deployed-sha
-          key: auto-deploy-sha-${{ github.sha }}
-          restore-keys: auto-deploy-sha-
+          path: .last-deployed-own-sha
+          key: auto-deploy-own-sha-${{ github.sha }}
+          restore-keys: auto-deploy-own-sha-
 
       - name: Decide whether to deploy
         id: decide
         run: |
-          last="$(cat .last-deployed-sha 2>/dev/null || echo none)"
+          last="$(cat .last-deployed-own-sha 2>/dev/null || echo none)"
           echo "last deployed: $last | head: $GITHUB_SHA"
           if [ "$last" = "$GITHUB_SHA" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "HEAD already deployed — nothing to do." >> "$GITHUB_STEP_SUMMARY"
+            echo "HEAD already deployed to own stack — nothing to do." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
@@ -70,24 +62,24 @@ jobs:
       - name: Migrations (Neon)
         if: steps.decide.outputs.changed == 'true'
         env:
-          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          STAGING_DATABASE_URL: ${{ secrets.MY_STAGING_DATABASE_URL }}
         run: |
           if [ -z "$STAGING_DATABASE_URL" ]; then
-            echo "STAGING_DATABASE_URL secret not set — skipping migrations." >> "$GITHUB_STEP_SUMMARY"
+            echo "MY_STAGING_DATABASE_URL secret not set — skipping migrations." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           corepack enable
           pnpm install --frozen-lockfile --filter @receipts/db...
           DATABASE_URL="$STAGING_DATABASE_URL" pnpm --filter @receipts/db db:migrate
-          echo "Migrations applied." >> "$GITHUB_STEP_SUMMARY"
+          echo "Migrations applied (own stack)." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Worker (Fly)
         if: steps.decide.outputs.changed == 'true'
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.MY_FLY_API_TOKEN }}
         run: |
-          if [ -z "$FLY_API_TOKEN" ]; then
-            echo "FLY_API_TOKEN secret not set — skipping worker deploy." >> "$GITHUB_STEP_SUMMARY"
+          if [ -z "$FLY_API_TOKEN" ] || [ -z "$FLY_APP" ]; then
+            echo "MY_FLY_API_TOKEN or MY_FLY_APP not set — skipping worker deploy." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           IMAGE="registry.fly.io/$FLY_APP:auto-${GITHUB_SHA::12}"
@@ -113,22 +105,22 @@ jobs:
       - name: Web (Vercel production)
         if: steps.decide.outputs.changed == 'true'
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TOKEN: ${{ secrets.MY_VERCEL_TOKEN }}
         run: |
-          if [ -z "$VERCEL_TOKEN" ]; then
-            echo "VERCEL_TOKEN secret not set — skipping web deploy." >> "$GITHUB_STEP_SUMMARY"
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "MY_VERCEL_TOKEN / MY_VERCEL_ORG_ID / MY_VERCEL_PROJECT_ID not all set — skipping web deploy." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           npx vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"
-          curl -sSf --max-time 30 "$HEALTH_URL"
-          echo "Web deployed; health OK." >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$HEALTH_URL" ]; then curl -sSf --max-time 30 "$HEALTH_URL"; fi
+          echo "Web deployed (own stack); health OK." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Save last-deployed marker
         if: steps.decide.outputs.changed == 'true'
-        run: echo "$GITHUB_SHA" > .last-deployed-sha
+        run: echo "$GITHUB_SHA" > .last-deployed-own-sha
 
       - uses: actions/cache/save@v4
         if: steps.decide.outputs.changed == 'true'
         with:
-          path: .last-deployed-sha
-          key: auto-deploy-sha-${{ github.sha }}
+          path: .last-deployed-own-sha
+          key: auto-deploy-own-sha-${{ github.sha }}
