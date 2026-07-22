@@ -16,6 +16,14 @@
  * logging stub when `RESEND_API_KEY` is unset, so this file no longer needs its own
  * `NODE_ENV`-branched stub/throw.
  *
+ * WS25-T4: any failure inside `sendVerificationRequest` (rate limit, transport/misconfiguration)
+ * is caught and re-thrown as `EmailSignInError` — see that handler's own comment and
+ * `apps/web/test/auth-error-routing.test.ts` for why: an error that ISN'T an `@auth/core`
+ * `AuthError` subclass makes Auth.js's own top-level catch block (`@auth/core`'s `Auth()`)
+ * default to its generic `/api/auth/error?error=Configuration` page — the exact page this whole
+ * WS25 effort exists to get users off of. `EmailSignInError`'s `kind: "signIn"` instead routes
+ * back to the sign-in page, a graceful, retry-inviting result instead of a dead end.
+ *
  * Config is built via NextAuth's "lazy initialization" form (a function, not a plain object) —
  * this defers `getDb()` (and therefore requiring `DATABASE_URL`) until the first actual
  * request. `next build`'s page-data-collection step imports/evaluates this module without
@@ -30,6 +38,7 @@ import Google from 'next-auth/providers/google';
 import Nodemailer from 'next-auth/providers/nodemailer';
 import Twitter from 'next-auth/providers/twitter';
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
+import { EmailSignInError } from '@auth/core/errors';
 import { MAGIC_LINK_TTL_MIN } from '@receipts/core';
 import { defaultEmailTransport } from '@receipts/core/server';
 import { accounts, sessions, users, verificationTokens } from '@receipts/db';
@@ -83,21 +92,41 @@ function buildProviders(): NextAuthConfig['providers'] {
       from: process.env.EMAIL_FROM ?? 'noreply@receipts.example',
       maxAge: MAGIC_LINK_TTL_MIN * 60,
       async sendVerificationRequest({ identifier, url, request }) {
-        // §14.1 "Auth email sends | email+IP | 5/hour" (audit 2.4), enforced BEFORE any
-        // dispatch (including the non-production logging-stub transport, so the limit is
-        // exercisable end-to-end today). Runs strictly at send time inside this handler — nothing here
-        // executes during `next build`'s module evaluation (see the lazy-init note in this
-        // file's header), and an over-limit throw surfaces as Auth.js's normal EmailSignin
-        // error redirect, never a 500 from `auth()` itself.
-        await enforceAuthEmailSendLimit(identifier, request.headers);
+        // WS25-T4: everything below is wrapped in one try/catch — §14.1's rate limit, the
+        // transport's own misconfiguration throw (missing EMAIL_FROM), and a real Resend send
+        // failure are all `sendVerificationRequest`-internal failures with the identical
+        // underlying problem: an error that isn't an `@auth/core` `AuthError` subclass makes
+        // Auth.js default to its generic `/api/auth/error?error=Configuration` page (empirically
+        // confirmed, not assumed — `apps/web/test/auth-error-routing.test.ts` — this file's OWN
+        // prior comment here claimed the rate-limit throw already got "Auth.js's normal
+        // EmailSignin error redirect," which that test proves false: a plain `ApiError` routes
+        // to the generic page exactly like an unwrapped transport failure does). One catch
+        // normalizes all three into the same graceful, retry-inviting redirect.
+        try {
+          // §14.1 "Auth email sends | email+IP | 5/hour" (audit 2.4), enforced BEFORE any
+          // dispatch. Runs strictly at send time inside this handler — nothing here executes
+          // during `next build`'s module evaluation (see the lazy-init note in this file's
+          // header).
+          await enforceAuthEmailSendLimit(identifier, request.headers);
 
-        // WS25-T3: real send via the shared transport (§13.2, `@receipts/core/server`). No
-        // `NODE_ENV` branch here — `defaultEmailTransport()` already selects the real Resend
-        // transport when `RESEND_API_KEY` is set and a non-production logging stub otherwise
-        // (never logs `identifier`/the recipient email itself, §16.2), so this call is identical
-        // in every environment; only the transport underneath it differs.
-        const { subject, html, text } = renderMagicLinkEmail(url, MAGIC_LINK_TTL_MIN);
-        await defaultEmailTransport(logger).send({ to: identifier, subject, html, text });
+          // WS25-T3: real send via the shared transport (§13.2, `@receipts/core/server`). No
+          // `NODE_ENV` branch here — `defaultEmailTransport()` already selects the real Resend
+          // transport when `RESEND_API_KEY` is set and a non-production logging stub otherwise
+          // (never logs `identifier`/the recipient email itself, §16.2), so this call is
+          // identical in every environment; only the transport underneath it differs. Also
+          // covers `defaultEmailTransport()`'s own synchronous throw when `RESEND_API_KEY` is
+          // set but `EMAIL_FROM` is missing — that call is inside this same try block.
+          const { subject, html, text } = renderMagicLinkEmail(url, MAGIC_LINK_TTL_MIN);
+          await defaultEmailTransport(logger).send({ to: identifier, subject, html, text });
+        } catch (err) {
+          // Never logs `identifier`/the recipient email (§16.2) — only the failure itself.
+          const message = err instanceof Error ? err.message : String(err);
+          logger.error({ err: message }, 'sendVerificationRequest failed');
+          // `AuthError`'s published .d.ts only declares the plain `Error(message, options)`
+          // shape (its richer runtime constructor isn't reflected in the type declarations),
+          // hence `{ cause: err }` rather than passing `err` itself as the first argument.
+          throw new EmailSignInError(message, { cause: err });
+        }
       },
     }),
   ];
