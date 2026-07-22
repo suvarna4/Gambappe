@@ -198,6 +198,16 @@ export async function seedTopicCard(
     status: 'open',
     closeTime: new Date(Date.now() + 30 * 24 * 3600_000),
     yesPrice: 0.6,
+    // FRESH price timestamp (the factory's default is 1h ago, `T0`). A throw is a real pick, and the
+    // pick route's §6.2 step-4 price-stamp ladder (`lib/price-stamp.ts`) only accepts the DB-fallback
+    // reading when it's <= `PRICE_FALLBACK_STALENESS_S` (300s) old — the Redis cache is empty and the
+    // venue adapter is unreachable in e2e, so a 1h-stale `yes_price_updated_at` leaves NO usable rung
+    // and every throw 503s `PRICE_UNAVAILABLE`, so the pick never commits and the deck never clears
+    // (this is exactly why journeys 1 & 6 couldn't reach `deck-cleared`). Topic markets are
+    // non-volatile (`is_volatile` defaults false), so a fresh fallback reading is all the ladder
+    // needs; `golden-loop.spec.ts` instead primes the Redis `price:*` cache — either keeps the pick
+    // route off the live-venue fallback.
+    yesPriceUpdatedAt: new Date(),
   });
   await db.insert(markets).values(market);
   const question = buildQuestion(market.id as string, {
@@ -380,36 +390,5 @@ export async function drainDeck(page: Page, maxSteps = 30): Promise<number> {
       .catch(() => false);
     if (advanced) throws += 1;
   }
-
-  // DIAGNOSTIC (temporary, WS23-T1): if the drain never reached `deck-cleared`, dump the on-stage
-  // state to stdout so CI shows exactly what card is stuck (the trace artifact isn't reachable from
-  // the agent env). Remove once the deck-clear flake is understood.
-  const cleared = await page.getByTestId('deck-cleared').isVisible().catch(() => false);
-  if (!cleared) {
-    const snapshot = await page
-      .evaluate(() => {
-        const present = (id: string) => !!document.querySelector(`[data-testid="${id}"]`);
-        const text = (id: string) =>
-          document.querySelector(`[data-testid="${id}"]`)?.textContent?.trim().slice(0, 120) ?? null;
-        const deck = document.querySelector('[data-testid="deck-queue"]');
-        return {
-          progress: text('deck-progress'),
-          hasDeckQueue: present('deck-queue'),
-          hasDeckCleared: present('deck-cleared'),
-          hasNoQuestionToday: present('no-question-today'),
-          hasBallotInteractive: present('ballot-card-interactive'),
-          hasPickYes: present('pick-yes'),
-          hasAgeGateConfirm: present('age-gate-confirm'),
-          hasViewerStripSwipe: present('viewer-strip-swipe'),
-          hasViewerStripPick: present('viewer-strip-pick'),
-          hasViewerStripPickButtons: present('viewer-strip-pick-buttons'),
-          hasViewerStripLoading: present('viewer-strip-loading'),
-          deckHtml: deck ? deck.innerHTML.replace(/\s+/g, ' ').slice(0, 1200) : null,
-        };
-      })
-      .catch((e) => ({ evalError: String(e) }));
-    console.log('[drainDeck] NOT CLEARED after', maxSteps, 'steps; throws=', throws, 'state=', JSON.stringify(snapshot));
-  }
-
   return throws;
 }
