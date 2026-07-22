@@ -1,0 +1,34 @@
+{
+  "tasks": {
+    "WS24-T1": {
+      "title": "Gate the Google sign-in provider on env-presence, matching the existing X/Twitter pattern",
+      "phase": "P0",
+      "depends_on": [],
+      "note": "Spec: docs/auth-login-fix-plan.md §2 WS24-T1. Fixes the broken 'Continue with Google' button (client_id=undefined when AUTH_GOOGLE_ID/SECRET are unset) by gating it in apps/web/lib/auth-providers.ts and apps/web/auth.ts's buildProviders(), mirroring the X/Twitter gate already there."
+    },
+    "WS24-T2": {
+      "title": "Extract the Resend email transport to packages/core/src/server for reuse by apps/web",
+      "phase": "P0",
+      "depends_on": [],
+      "note": "Spec: docs/auth-login-fix-plan.md §2 WS24-T2. Moves apps/worker/src/lib/email-transport.ts (EmailTransport/ResendEmailTransport/LoggingEmailTransport/defaultEmailTransport) to the existing @receipts/core/server subpath, pure move + re-export, apps/worker's own usage updated to the new import path with no behavior change."
+    },
+    "WS24-T3": {
+      "title": "Wire real Resend delivery into auth.ts's sendVerificationRequest; remove the unconditional production throw",
+      "phase": "P0",
+      "depends_on": ["WS24-T2"],
+      "note": "Spec: docs/auth-login-fix-plan.md §2 WS24-T3. This is the fix for the reported bug: email sign-in ('Save' button on /claim) currently throws unconditionally in production, surfacing Auth.js's generic Configuration error page for every real user. Uses the shared transport from WS24-T2 with a real magic-link template; reconciles with (replaces) the existing dev-only recordMagicLink stub."
+    },
+    "WS24-T4": {
+      "title": "Make a Resend send failure degrade gracefully instead of hitting Auth.js's generic Configuration error page",
+      "phase": "P0",
+      "depends_on": ["WS24-T3"],
+      "note": "Spec: docs/auth-login-fix-plan.md §2 WS24-T4. Defense in depth: even with real Resend wired, a send failure (bad key, Resend outage, missing EMAIL_FROM) must not crash into the raw error page. Empirically confirm (new test) the error shape Auth.js needs to redirect gracefully instead of re-trusting the existing unverified code comment about the rate-limit throw's behavior."
+    },
+    "WS24-T5": {
+      "title": "Regression coverage for the full sign-in path (provider gating + transport selection + send success/failure)",
+      "phase": "P0",
+      "depends_on": ["WS24-T1", "WS24-T3", "WS24-T4"],
+      "note": "Spec: docs/auth-login-fix-plan.md §2 WS24-T5. First test in the repo to actually exercise the production email sign-in branch at all (today only the dev-mode stub path is tested, per golden-loop.spec.ts's own header comment on why it bypasses real sign-in)."
+    }
+  }
+}
