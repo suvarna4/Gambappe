@@ -64,26 +64,65 @@ only fixes the code so that (a) an unconfigured Google button never renders inst
 breaking, and (b) email sign-in actually sends through Resend once `RESEND_API_KEY` is
 provisioned, with a graceful failure path if it isn't or if the send itself fails.
 
-## Revision note
+## Revision history
 
-This plan originally proposed task IDs `WS24-T1..T5` and extracting the email transport
-to `packages/core/src/server`. An independent review caught two problems, both addressed
-below: `WS16`–`WS24` is already fully allocated to `docs/journeys-plan.md` (`WS24-T1`
+**Revision 1.** This plan originally proposed task IDs `WS24-T1..T5` and extracting the
+email transport to `packages/core/src/server`. An independent review caught two
+problems: `WS16`–`WS24` is already fully allocated to `docs/journeys-plan.md` (`WS24-T1`
 specifically already exists, `done`, as the Departures-board pilot — the ID collision
 would have silently dropped this plan's real WS24-T1 during `add-tasks` and left WS24-T5
-pointing at the wrong, unrelated task), so this plan now uses the next-free range,
+pointing at the wrong, unrelated task), so this plan moved to the next-free range,
 `WS25-T1..T5`, under its own phase namespace (`A0`, matching how `journeys-plan.md` uses
 `J0..JQ` and `swipe-ux-plan.md` uses `SP1..SPQ` rather than reusing the closed, historical
-`P0` "48-hour build" wave). And the `packages/core` extraction turned out not to be the
-"pure move, zero behavior change" it was described as — `email-transport.ts` imports
-`apps/worker`'s own pino logger (a new dependency `packages/core` doesn't have), the
-`@receipts/core/server` subpath is a single flat barrel file
-(`packages/core/src/server.ts`) not a directory, `apps/worker`'s test imports the file by
-its current path directly, and any `packages/core` change needs a `contract-change`-
-labeled PR with a design-doc §4.2 amendment in the same PR (`receipts-design-doc.md:26`)
-— none of which this bug-fix plan needs to take on. WS25-T2 now duplicates the ~90-line
-transport into `apps/web/lib/` (swapping in `apps/web/lib/logger.ts`, which already
-exists) instead.
+`P0` "48-hour build" wave). And the `packages/core` extraction wasn't the "pure move,
+zero behavior change" it was described as — `email-transport.ts` imports `apps/worker`'s
+own pino logger (a new dependency `packages/core` doesn't have), the `@receipts/core/server`
+subpath is a single flat barrel file (`packages/core/src/server.ts`) not a directory,
+`apps/worker`'s test imports the file by its current path directly, and any `packages/core`
+change needs a `contract-change`-labeled PR with a design-doc §4.2 amendment in the same
+PR (`receipts-design-doc.md:26`). Revision 1 responded by dropping the extraction in
+favor of duplicating the transport into `apps/web/lib/`.
+
+**Revision 2 (current).** Duplication was explicitly requested to be revisited in favor
+of the shared-package approach. Doing that properly — not just reverting to Revision 0's
+naive version — resolves every concern Revision 1 raised, rather than reintroducing them:
+
+- **The pino-dependency problem is avoidable, not fundamental.** Only one of the three
+  transport classes ever logs — `LoggingEmailTransport` (its stub "email sent" line);
+  `ResendEmailTransport` never calls a logger at all, and `defaultEmailTransport()`
+  itself doesn't either. So the shared module takes a minimal, structurally-typed logger
+  (`{ info(obj: Record<string, unknown>, msg: string): void }`) via a constructor/function
+  parameter instead of importing a concrete pino instance. `packages/core` gains no new
+  runtime dependency; each app passes in its own already-existing logger
+  (`apps/worker/src/logger.ts`'s `logger`, `apps/web/lib/logger.ts`'s `logger`) at the
+  call site. This is also just better design for genuinely shared code independent of
+  this plan's constraints — a library shouldn't hardcode which app's logger instance it
+  writes to.
+- **The flat-file-vs-directory problem disappears by following the existing pattern
+  instead of fighting it.** `packages/core/src/server.ts` already re-exports flat
+  sibling files (`export * from './notifications-token.js'; export * from
+  './share-token.js';`). Adding `packages/core/src/email-transport.ts` alongside them
+  and adding one more `export * from './email-transport.js';` line to `server.ts` fits
+  that convention exactly — no directory restructure, no change to the `package.json`
+  `exports` map.
+- **The `contract-change` process doesn't go away — it's a real repo rule — so this plan
+  now requires it explicitly** (label + same-PR `receipts-design-doc.md` §4.2 amendment)
+  instead of routing around it.
+- **The test-import problem is solved by migrating, not shimming.**
+  `apps/worker/src/lib/email-transport.ts` is deleted outright (no forwarding
+  re-export left behind); `apps/worker/src/jobs/notify-dispatch.ts` (the one real call
+  site, confirmed via grep — `defaultEmailTransport()` at line 361) updates its import
+  to `@receipts/core/server` and now passes its own `logger` explicitly;
+  `apps/worker/test/email-transport.test.ts` moves to `packages/core`'s own test suite
+  with an updated import path, asserting the exact same behavior it did before. Net
+  effect: one copy of the logic, one copy of its tests, both apps consuming it.
+
+`apps/web` no longer gets its own local copy at all (Revision 1's `apps/web/lib/
+email-transport.ts` and its cross-reference-comment requirement are gone) — WS25-T3
+becomes a second, ordinary consumer of the same shared module `apps/worker` already
+uses, the way `signUnsubscribeToken` (also `@receipts/core/server`) already works —
+`notify-dispatch.ts` already imports it from that exact subpath today, so this isn't a
+new pattern for that file, just one more export from it.
 
 ## 1. Design
 
@@ -91,21 +130,19 @@ exists) instead.
   ships independently, makes the broken button disappear immediately in any
   under-configured environment (including this one) without waiting on the rest of this
   plan.
-- **WS25-T2** duplicates the existing, already-tested `EmailTransport` /
+- **WS25-T2** extracts the existing, already-tested `EmailTransport` /
   `ResendEmailTransport` / `LoggingEmailTransport` / `defaultEmailTransport()` from
-  `apps/worker/src/lib/email-transport.ts` into a new `apps/web/lib/email-transport.ts`,
-  swapping the pino logger import for `apps/web/lib/logger.ts` (same pino setup, just the
-  web app's own instance — no new dependency, no `packages/core` contract-change
-  process). `apps/worker`'s copy keeps its exact current logic and tests untouched, but
-  this task makes the now-two-copy reality *discoverable in the code itself*, not just in
-  this doc: each file gets a one-line comment pointing at its sibling ("kept in sync
-  manually with `apps/worker/src/lib/email-transport.ts` — if you fix something here,
-  check there too," and the mirror in the other direction), and `apps/worker`'s own
-  header comment is corrected where this task makes it factually wrong (see WS25-T2's AC)
-  — a comment-only fix, not a behavior change, so it doesn't reopen the "pure move"
-  concern the revision above already resolved.
+  `apps/worker/src/lib/email-transport.ts` into `packages/core/src/email-transport.ts`,
+  re-exported via the existing `@receipts/core/server` subpath, with the logger
+  dependency-injected (see "Revision 2" above) so `packages/core` takes on no new
+  runtime dependency. `apps/worker`'s copy is deleted, its one real call site
+  (`notify-dispatch.ts`) migrates to the shared import, and its test moves with the
+  code. This is a genuine single-source-of-truth move, not a duplication — and, per
+  §0.2's rule, ships as a `contract-change`-labeled PR with the matching design-doc
+  §4.2 amendment in the same PR.
 - **WS25-T3** is the actual fix for Bug B: `auth.ts`'s `sendVerificationRequest` calls
-  the new local transport instead of throwing. `apps/web/lib/magic-link-mailbox.ts`'s
+  the shared transport (from `@receipts/core/server`, passing `apps/web/lib/logger.ts`'s
+  `logger`) instead of throwing. `apps/web/lib/magic-link-mailbox.ts`'s
   `recordMagicLink`/`getLastMagicLink`/`clearMagicLinkMailbox` are retired (grepped: only
   `auth.ts` calls `recordMagicLink`, nothing calls `getLastMagicLink`/
   `clearMagicLinkMailbox` today — this is dead-code removal, not an API change anything
@@ -131,10 +168,10 @@ behavior of all three to test against).
 | ID | Title | Phase | Depends | AC |
 |---|---|---|---|---|
 | WS25-T1 | Gate the Google sign-in provider on env-presence, matching the existing X/Twitter pattern | A0 | — | `getEnabledAuthProviders()` excludes `'google'` unless both `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` are set; `auth.ts`'s `buildProviders()` applies the identical gate so the server-side provider list matches what the claim UI advertises (no button the server can't complete); unit tests cover all four configured/unconfigured combinations of google×x; `'email'` stays unconditionally enabled (unaffected). |
-| WS25-T2 | Duplicate the Resend email transport into `apps/web/lib/email-transport.ts` | A0 | — | New `apps/web/lib/email-transport.ts` carries `EmailTransport`/`ResendEmailTransport`/`LoggingEmailTransport`/`defaultEmailTransport`, ported from `apps/worker/src/lib/email-transport.ts` with only the logger import swapped to `apps/web/lib/logger.ts`; `apps/worker`'s copy's logic and its own test (`apps/worker/test/email-transport.test.ts`) are untouched, but its header comment is corrected — the two sentences claiming it "mirrors `apps/web/lib/magic-link-mailbox.ts`'s ... pattern" and that "the auth email flow itself isn't touched here" both become false the moment WS25-T3 lands (that file is deleted, and the auth flow *is* touched, by this sibling copy), so this task must fix that comment as part of landing the sibling, not leave it dangling; both this new file and the worker's file get a one-line cross-reference comment pointing at each other so the duplication is discoverable from either side, not only from this plan doc; the new web-side copy gets its own unit tests (send success, missing-`RESEND_API_KEY` stub selection, missing-`EMAIL_FROM`-while-key-set throw) mirroring the worker copy's existing coverage; no `packages/core` files touched, no `contract-change` label needed. |
-| WS25-T3 | Wire real Resend delivery into `auth.ts`'s `sendVerificationRequest`; remove the unconditional production throw | A0 | WS25-T2 | `sendVerificationRequest` calls `defaultEmailTransport().send(...)` (from WS25-T2) with a real magic-link template (subject/html/text, following `lib/copy.ts`'s existing brand-voice conventions and `apps/worker/src/lib/notification-email-template.ts`'s existing template style) in every environment — no more `NODE_ENV` branch, since the transport itself already degrades to a logging stub when `RESEND_API_KEY` is unset; `apps/web/lib/magic-link-mailbox.ts` and its `recordMagicLink` call site are removed (confirmed dead once this lands — nothing else calls `getLastMagicLink`/`clearMagicLinkMailbox` today); **both** stale "WS9 scope" comments in `auth.ts` are corrected to describe what's actually wired — the top-of-file module docblock ("Real magic-link delivery (Resend) is WS9 scope...") *and* the inline comment directly above the old throw ("WS2-T2 stub: real Resend sending is WS9 scope...") — not just whichever one sits next to the code being edited; `enforceAuthEmailSendLimit` still runs before any send attempt, unchanged. |
+| WS25-T2 | Extract the Resend email transport to `packages/core/src/email-transport.ts` (contract-change), with the logger dependency-injected | A0 | — | New `packages/core/src/email-transport.ts` carries `EmailTransport`/`ResendEmailTransport`/`LoggingEmailTransport`/`defaultEmailTransport`, ported from `apps/worker/src/lib/email-transport.ts`; only `LoggingEmailTransport` logs, and it now takes a minimal structurally-typed logger (`{ info(obj, msg): void }`) via injection rather than importing a concrete pino instance — `defaultEmailTransport(logger)` threads it through, `packages/core`'s `package.json` gains no new dependency; exported via `packages/core/src/server.ts` (`export * from './email-transport.js';`), matching that file's existing flat-barrel pattern — no directory restructure, no `package.json` `exports` change; `apps/worker/src/lib/email-transport.ts` is deleted (not shimmed); `apps/worker/src/jobs/notify-dispatch.ts` (the one real call site) imports from `@receipts/core/server` instead and passes its own `logger` (`../logger.js`) explicitly; `apps/worker/test/email-transport.test.ts` moves to `packages/core`'s test suite with its import path updated, covering the exact same behavior as before; PR carries the `contract-change` label and amends `receipts-design-doc.md` §4.2 in the same PR documenting the new `@receipts/core/server` export. |
+| WS25-T3 | Wire real Resend delivery into `auth.ts`'s `sendVerificationRequest`; remove the unconditional production throw | A0 | WS25-T2 | `sendVerificationRequest` calls `defaultEmailTransport(logger).send(...)` (imported from `@receipts/core/server`, `logger` from `apps/web/lib/logger.ts`) with a real magic-link template (subject/html/text, following `lib/copy.ts`'s existing brand-voice conventions and `apps/worker/src/lib/notification-email-template.ts`'s existing template style) in every environment — no more `NODE_ENV` branch, since the transport itself already degrades to a logging stub when `RESEND_API_KEY` is unset; `apps/web/lib/magic-link-mailbox.ts` and its `recordMagicLink` call site are removed (confirmed dead once this lands — nothing else calls `getLastMagicLink`/`clearMagicLinkMailbox` today); **both** stale "WS9 scope" comments in `auth.ts` are corrected to describe what's actually wired — the top-of-file module docblock ("Real magic-link delivery (Resend) is WS9 scope...") *and* the inline comment directly above the old throw ("WS2-T2 stub: real Resend sending is WS9 scope...") — not just whichever one sits next to the code being edited; `enforceAuthEmailSendLimit` still runs before any send attempt, unchanged. |
 | WS25-T4 | Make a Resend send failure degrade gracefully instead of hitting Auth.js's generic Configuration error page | A0 | WS25-T3 | Empirically confirm (new test, not just re-trusting the existing rate-limit comment) what error shape/class Auth.js needs thrown from inside `sendVerificationRequest` to redirect to its normal `EmailSignin`-error state rather than the generic `Configuration` page; a `ResendEmailTransport` send failure (mocked non-2xx/network error) and a missing-`EMAIL_FROM`-while-`RESEND_API_KEY`-set misconfiguration both use that shape; a user hitting either case lands on a page that says sign-in failed and invites a retry, never the raw "Server error / check the server logs" page. |
-| WS25-T5 | Regression coverage for the full sign-in path (provider gating + transport selection + send success/failure) | A0 | WS25-T1, WS25-T3, WS25-T4 | Unit tests: all four provider-gating combinations (already listed under T1, consolidated here if not already merged); transport selection (stub vs. real) by env; a mocked successful Resend send. Integration/e2e: a production-mode (`next start`, `NODE_ENV=production`) run of the email sign-in step against a mocked Resend endpoint reaches `/api/auth/verify-request` on success and the graceful failure state (from T4) on a forced send failure — this is the first test in the repo to actually exercise the production email branch at all (today only the dev-mode stub path is tested, per `golden-loop.spec.ts`'s own header comment on why it bypasses real sign-in). `apps/web/e2e/auth-provider-config.spec.ts` (existing, unrelated bug it guards against) is confirmed still green. |
+| WS25-T5 | Regression coverage for the full sign-in path (provider gating + transport selection + send success/failure) | A0 | WS25-T1, WS25-T3, WS25-T4 | Unit tests: all four provider-gating combinations (already listed under T1, consolidated here if not already merged); transport selection (stub vs. real) by env; a mocked successful Resend send. Integration/e2e: a production-mode (`next start`, `NODE_ENV=production`) run of the email sign-in step against a mocked Resend endpoint reaches `/api/auth/verify-request` on success and the graceful failure state (from T4) on a forced send failure — this is the first test in the repo to actually exercise the production email branch at all (today only the dev-mode stub path is tested, per `golden-loop.spec.ts`'s own header comment on why it bypasses real sign-in). `apps/web/e2e/auth-provider-config.spec.ts` (existing, unrelated bug it guards against) is confirmed still green. `apps/worker`'s own notification-dispatch tests (the real consumer migrated in WS25-T2) are confirmed still green post-migration — this is the regression safety net for the worker side, since WS25-T2 touches its real production import, not just a copy. |
 
 ## 3. Explicitly out of scope
 
@@ -143,11 +180,11 @@ behavior of all three to test against).
   configuration, not a code change, and nobody working this plan holds those credentials.
 - Wiring up X/Twitter for real (it's already correctly gated off when unconfigured, so it
   has no user-facing bug — only Google and email do).
-- Extracting the email transport to a shared `packages/core` (or any other shared
-  package) location — deliberately deferred; see "Revision note" above. This plan
-  accepts two genuinely duplicated copies (`apps/worker` and, after WS25-T2,
-  `apps/web`) as a known, tracked tradeoff rather than a false "no duplication" claim —
-  the cross-reference comments WS25-T2 adds are the tracking mechanism. A future task
-  should revisit a real shared extraction once the manual-sync cost has actually bitten
-  (a bug fixed in one copy and missed in the other), not wait for some third consumer
-  that isn't the actual risk here.
+- Generalizing the email transport for future use cases beyond the two it now serves
+  (product notifications via `apps/worker`, auth magic-links via `apps/web`) — e.g. a
+  templating abstraction, provider fallback/retry, or multi-provider support. WS25-T2
+  moves the existing implementation as-is; broadening its interface is a separate task
+  if a third real use case ever needs it.
+- Any further `packages/core` reorganization beyond adding the one new
+  `email-transport.ts` file and its `server.ts` re-export line — no changes to
+  `notifications-token.ts`/`share-token.ts` or the rest of the package.

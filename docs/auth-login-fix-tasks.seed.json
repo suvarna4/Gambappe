@@ -7,16 +7,16 @@
       "note": "Spec: docs/auth-login-fix-plan.md §2 WS25-T1. Fixes the broken 'Continue with Google' button (client_id=undefined when AUTH_GOOGLE_ID/SECRET are unset) by gating it in apps/web/lib/auth-providers.ts and apps/web/auth.ts's buildProviders(), mirroring the X/Twitter gate already there."
     },
     "WS25-T2": {
-      "title": "Duplicate the Resend email transport into apps/web/lib/email-transport.ts",
+      "title": "Extract the Resend email transport to packages/core/src/email-transport.ts (contract-change), with the logger dependency-injected",
       "phase": "A0",
       "depends_on": [],
-      "note": "Spec: docs/auth-login-fix-plan.md §2 WS25-T2. Ports apps/worker/src/lib/email-transport.ts (EmailTransport/ResendEmailTransport/LoggingEmailTransport/defaultEmailTransport) into apps/web/lib/, swapping the logger import for apps/web/lib/logger.ts. Deliberately a duplication, not a packages/core extraction (see plan's Revision note for why) -- apps/worker's copy's logic and tests are untouched, but its header comment is fixed where WS25-T3 makes it factually stale (references to magic-link-mailbox.ts and 'auth email flow untouched'), and both files get a one-line comment cross-referencing their sibling so the duplication is discoverable in the code, not only in this plan doc."
+      "note": "Spec: docs/auth-login-fix-plan.md §2 WS25-T2 (see 'Revision 2' for full rationale). Moves apps/worker/src/lib/email-transport.ts into packages/core/src/email-transport.ts, re-exported via the existing @receipts/core/server subpath (flat file alongside notifications-token.ts/share-token.ts, matching server.ts's existing barrel pattern). Only LoggingEmailTransport logs -- it now takes a minimal structurally-typed logger via injection instead of importing pino directly, so packages/core gains no new dependency. apps/worker/src/lib/email-transport.ts is deleted (not shimmed); its one real call site (apps/worker/src/jobs/notify-dispatch.ts) and its test move to the new location/import path. Requires the contract-change PR label + a same-PR receipts-design-doc.md §4.2 amendment per §0.2's rule."
     },
     "WS25-T3": {
       "title": "Wire real Resend delivery into auth.ts's sendVerificationRequest; remove the unconditional production throw",
       "phase": "A0",
       "depends_on": ["WS25-T2"],
-      "note": "Spec: docs/auth-login-fix-plan.md §2 WS25-T3. This is the fix for the reported bug: email sign-in ('Save' button on /claim) currently throws unconditionally in production, surfacing Auth.js's generic Configuration error page for every real user. Uses the WS25-T2 transport with a real magic-link template; retires apps/web/lib/magic-link-mailbox.ts (dead once this lands); corrects BOTH stale 'WS9 scope' comments in auth.ts (the top-of-file docblock and the inline comment above the old throw), not just one."
+      "note": "Spec: docs/auth-login-fix-plan.md §2 WS25-T3. This is the fix for the reported bug: email sign-in ('Save' button on /claim) currently throws unconditionally in production, surfacing Auth.js's generic Configuration error page for every real user. Imports defaultEmailTransport from @receipts/core/server (WS25-T2), passes apps/web/lib/logger.ts's logger, with a real magic-link template; retires apps/web/lib/magic-link-mailbox.ts (dead once this lands); corrects BOTH stale 'WS9 scope' comments in auth.ts (the top-of-file docblock and the inline comment above the old throw), not just one."
     },
     "WS25-T4": {
       "title": "Make a Resend send failure degrade gracefully instead of hitting Auth.js's generic Configuration error page",
@@ -28,7 +28,7 @@
       "title": "Regression coverage for the full sign-in path (provider gating + transport selection + send success/failure)",
       "phase": "A0",
       "depends_on": ["WS25-T1", "WS25-T3", "WS25-T4"],
-      "note": "Spec: docs/auth-login-fix-plan.md §2 WS25-T5. First test in the repo to actually exercise the production email sign-in branch at all (today only the dev-mode stub path is tested, per golden-loop.spec.ts's own header comment on why it bypasses real sign-in). Also confirms apps/web/e2e/auth-provider-config.spec.ts stays green through T3/T4's edits."
+      "note": "Spec: docs/auth-login-fix-plan.md §2 WS25-T5. First test in the repo to actually exercise the production email sign-in branch at all (today only the dev-mode stub path is tested, per golden-loop.spec.ts's own header comment on why it bypasses real sign-in). Also confirms apps/web/e2e/auth-provider-config.spec.ts and apps/worker's notification-dispatch tests both stay green through T2/T3/T4's edits (T2 migrates apps/worker's real production import, not just a copy)."
     }
   }
 }
