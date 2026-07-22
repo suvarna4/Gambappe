@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-22T04:24:07.623Z",
+  "updated_at": "2026-07-22T04:44:06.466Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2273,9 +2273,9 @@
       "status": "in_review",
       "owner": "claude-code-session-1784693001",
       "branch": "feat/ws25-t4-graceful-email-failure",
-      "pr": null,
+      "pr": "https://github.com/Gambappe/Gambappe/pull/145",
       "claimed_at": "2026-07-22T04:03:21.746Z",
-      "updated_at": "2026-07-22T04:24:07.622Z"
+      "updated_at": "2026-07-22T04:44:06.445Z"
     },
     "WS25-T5": {
       "title": "Regression coverage for the full sign-in path (provider gating + transport selection + send success/failure)",
