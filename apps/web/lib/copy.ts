@@ -94,6 +94,16 @@ export const CLAIM_SIGNIN_EMAIL_SUBMIT_LABEL = 'Save';
 export const CLAIM_SIGNIN_EMAIL_SENT =
   "Check your email for a sign-in link. You can close this and come back once you've clicked it.";
 
+/** Shown on `/claim` when Auth.js redirects back with `?error=...` (design-diff follow-up to
+ * WS25: previously any sign-in failure past the send step landed on Auth.js's own generic,
+ * off-brand error page instead of here). `Verification` covers a link that's expired or was
+ * already clicked once — the single most common real case; everything else (rate limit,
+ * transport failure, misconfiguration) shares one generic retry message rather than exposing
+ * internal error codes to the user. */
+export const CLAIM_SIGNIN_LINK_EXPIRED =
+  'That link expired or was already used. Enter your email again for a fresh one.';
+export const CLAIM_SIGNIN_ERROR = 'Something went wrong signing you in. Try again.';
+
 /** INV-9 (§6.2 step 0 wording: "an explicit 'I'm 18+' confirm"). */
 export const CLAIM_AGE_ATTEST_HEADING = 'One more thing';
 export const CLAIM_AGE_ATTEST_LABEL = "I'm 18 or older";

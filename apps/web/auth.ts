@@ -132,6 +132,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
     cookies: {
       sessionToken: { name: sessionCookieName, options: sessionCookieOptions },
     },
+    // Design-diff follow-up to WS25: without this, ANY sign-in failure that reaches Auth.js's
+    // top-level error routing (an expired/already-used magic-link token, a WS25-T4-wrapped rate
+    // limit or transport failure, an OAuth callback error) lands on Auth.js's own generic,
+    // unbranded `/api/auth/error` page instead of this app's UI — the same class of bug WS25
+    // fixed on the send side, just on the verify side. `/claim` reads the `?error=` query param
+    // itself (`ClaimEntry`'s `authError` prop) and shows a clear, on-brand retry message.
+    pages: { error: '/claim' },
     experimental: { enableWebAuthn: false },
     trustHost: true,
     callbacks: {
