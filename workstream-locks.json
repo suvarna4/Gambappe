@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-22T05:11:36.333Z",
+  "updated_at": "2026-07-22T05:26:50.363Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2290,9 +2290,9 @@
       "status": "in_review",
       "owner": "claude-code-session-1784695759",
       "branch": "feat/ws25-t5-signin-regression-coverage",
-      "pr": null,
+      "pr": "https://github.com/Gambappe/Gambappe/pull/146",
       "claimed_at": "2026-07-22T04:49:19.654Z",
-      "updated_at": "2026-07-22T05:11:36.332Z"
+      "updated_at": "2026-07-22T05:26:50.363Z"
     },
     "WS15-T11": {
       "title": "Kalshi resolution: accept 'determined' as terminal status",
