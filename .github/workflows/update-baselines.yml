@@ -1,0 +1,86 @@
+# TEMPORARY (home-polish PR): regenerate the Playwright visual baselines that the ticket-mask +
+# deck de-clutter changes intentionally shifted, on the CI linux runner (baselines are
+# platform-specific and can't be rendered in the agent env). Mirrors ci.yml's e2e job, runs the
+# suite with --update-snapshots, and commits the changed PNGs back to the branch. Deleted once the
+# baselines are committed.
+name: update-baselines
+
+on:
+  push:
+    branches: [claude/work-lock-file-tasks-fohjki]
+
+jobs:
+  update-baselines:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: receipts
+          POSTGRES_PASSWORD: receipts
+          POSTGRES_DB: receipts
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U receipts -d receipts"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      CI: 'true'
+      DATABASE_URL: postgres://receipts:receipts@localhost:5432/receipts
+      REDIS_URL: redis://localhost:6379
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      GHOST_COOKIE_SECRET: e2e-test-ghost-cookie-secret
+      SHARE_TOKEN_SECRET: e2e-test-share-token-secret
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace
+        run: pnpm build
+
+      - name: Migrate + seed
+        run: |
+          pnpm db:migrate
+          pnpm db:seed
+        env:
+          ADMIN_SEED_EMAIL: ci-admin@receipts.test
+
+      - name: Install Playwright chromium
+        run: pnpm --filter web exec playwright install --with-deps chromium
+
+      - name: Regenerate visual baselines
+        # --update-snapshots rewrites changed screenshots (and never fails on a screenshot diff);
+        # `|| true` tolerates any unrelated functional flake so the changed PNGs still get committed.
+        run: pnpm --filter web exec playwright test --update-snapshots || true
+
+      - name: Commit updated baselines
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add 'apps/web/e2e/**/*.png'
+          if git diff --cached --quiet; then
+            echo "No baseline changes to commit."
+          else
+            git commit -m "test(home): regenerate visual baselines for ticket-mask + deck de-clutter [skip ci]"
+            git push origin HEAD:claude/work-lock-file-tasks-fohjki
+          fi
