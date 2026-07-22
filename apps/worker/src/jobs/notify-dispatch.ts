@@ -44,7 +44,7 @@ import {
   profileSettingsSchema,
   SCHEDULE_TZ,
 } from '@receipts/core';
-import { signUnsubscribeToken } from '@receipts/core/server';
+import { defaultEmailTransport, signUnsubscribeToken, type EmailTransport } from '@receipts/core/server';
 import {
   getEmailRecipientForNotification,
   getProfileById,
@@ -62,7 +62,6 @@ import {
 } from '@receipts/db';
 import type { JobHandler } from '../heartbeat.js';
 import { logger } from '../logger.js';
-import { defaultEmailTransport, type EmailTransport } from '../lib/email-transport.js';
 import { defaultPushTransport, type PushTransport } from '../lib/push-transport.js';
 import { zonedDateString, zonedLocalTimeToUtc } from '../lib/day-window.js';
 import {
@@ -358,7 +357,7 @@ interface NotifyDispatchJobData {
 }
 
 export const notifyDispatchHandler: JobHandler = async (ctx, data) => {
-  const transport = defaultEmailTransport();
+  const transport = defaultEmailTransport(logger);
   const report = await runNotifyDispatch(ctx.db, transport);
   logger.info({ report }, 'notify:dispatch complete');
 

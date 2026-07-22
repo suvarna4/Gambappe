@@ -1,19 +1,22 @@
 /**
  * Email transport (§13.2 "Email (MVP): Resend..."; Appendix B `RESEND_API_KEY`/`EMAIL_FROM`).
  *
- * Mirrors `apps/web/lib/magic-link-mailbox.ts`'s WS2-T2 pattern for magic-link delivery: a real
- * provider implementation plus a non-production stub, selected by whether the provider's API
- * key is configured — `auth.ts`'s `sendVerificationRequest` literally throws in production
- * without real Resend wiring and says "WS9 scope," so this file is that wiring's email-channel
- * half (the auth email flow itself isn't touched here — out of scope, see PR notes).
+ * WS25-T2 (auth login fix): moved here from `apps/worker/src/lib/email-transport.ts` so
+ * `apps/web`'s Auth.js magic-link `sendVerificationRequest` (WS25-T3) can send real email
+ * through the same transport `notify:dispatch` uses, instead of duplicating the Resend call
+ * shape into a second package. See `receipts-design-doc.md` §4.2 for why this lives in
+ * `packages/core` rather than `packages/venues` (the repo's other real/mock-adapter home,
+ * but scoped to prediction-market data sources, not a generic email provider).
+ *
+ * Node-only (`fetch` is fine, but this is paired with `LoggingEmailTransport`'s logger
+ * injection below, which assumes a server-side caller) — lives under `./server`, not the main
+ * barrel, matching every other file in this directory.
  *
  * Uses the Resend REST API directly via `fetch` rather than the `resend` SDK package — avoids
  * a new dependency for one POST call, and keeps the shape identical to the venue adapters'
  * "plain HTTP, zod-validate the response shape we care about" style (§7.2), scaled down since
  * there's no retry/rate-limit contract to honor here (that's a Resend-side SLA, not ours).
  */
-import { logger } from '../logger.js';
-
 export interface OutboundEmail {
   to: string;
   subject: string;
@@ -58,19 +61,37 @@ export class ResendEmailTransport implements EmailTransport {
 }
 
 /**
- * Non-production / no-`RESEND_API_KEY` stub (mirrors `magic-link-mailbox.ts`): logs that a
- * send happened WITHOUT the recipient's email (§16.2 forbids logging emails unconditionally),
- * and keeps an in-memory last-email-per-recipient mailbox for local dev / integration tests to
- * read back — same "never used in production" posture as the magic-link mailbox.
+ * Minimal structural logger — just enough of pino's `.info(obj, msg)` shape for
+ * `LoggingEmailTransport` to report a send without this package depending on pino itself
+ * (`packages/core` has no logging dependency, and shouldn't gain one just for this).
+ */
+export interface StubTransportLogger {
+  info(obj: Record<string, unknown>, msg: string): void;
+}
+
+const noopLogger: StubTransportLogger = { info: () => {} };
+
+/**
+ * Non-production / no-`RESEND_API_KEY` stub (mirrors `apps/web/lib/magic-link-mailbox.ts`):
+ * logs that a send happened WITHOUT the recipient's email (§16.2 forbids logging emails
+ * unconditionally, not just in production), and keeps an in-memory last-email-per-recipient
+ * mailbox for local dev / integration tests to read back — same "never used in production"
+ * posture as the magic-link mailbox.
+ *
+ * The logger is optional (default: no-op) rather than a required constructor argument — callers
+ * that only care about the read-back mailbox (e.g. tests injecting this transport directly)
+ * don't need to supply one; `defaultEmailTransport()` passes its caller's real logger through.
  */
 export class LoggingEmailTransport implements EmailTransport {
   private readonly mailbox = new Map<string, OutboundEmail>();
 
+  constructor(private readonly logger: StubTransportLogger = noopLogger) {}
+
   async send(email: OutboundEmail): Promise<void> {
     this.mailbox.set(email.to, email);
-    logger.info(
+    this.logger.info(
       { subject: email.subject },
-      'notify:dispatch email (stub transport — RESEND_API_KEY not set)',
+      'email send (stub transport — RESEND_API_KEY not set)',
     );
     await Promise.resolve();
   }
@@ -85,9 +106,9 @@ export class LoggingEmailTransport implements EmailTransport {
 }
 
 /** Selects the real Resend transport when `RESEND_API_KEY` is set, else the logging stub. */
-export function defaultEmailTransport(): EmailTransport {
+export function defaultEmailTransport(logger?: StubTransportLogger): EmailTransport {
   const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) return new LoggingEmailTransport();
+  if (!apiKey) return new LoggingEmailTransport(logger);
   const from = process.env.EMAIL_FROM;
   if (!from) throw new Error('EMAIL_FROM is not set (see .env.example) but RESEND_API_KEY is');
   return new ResendEmailTransport(apiKey, from);
