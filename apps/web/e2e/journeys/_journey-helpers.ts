@@ -286,7 +286,7 @@ export async function revalidate(baseURL: string, path: string): Promise<void> {
 /** Drain the mixed stack on `/`: throw whatever open card is on stage (a well tap = a real,
  * price-stamped pick), skip anything that isn't throwable, bounded so a stuck state fails instead
  * of hanging. Mirrors `stack-deck.spec.ts`'s own drain loop. Returns the number of throws made. */
-export async function drainDeck(page: Page, maxSteps = 16): Promise<number> {
+export async function drainDeck(page: Page, maxSteps = 24): Promise<number> {
   let throws = 0;
   for (let i = 0; i < maxSteps; i += 1) {
     if (await page.getByTestId('deck-cleared').isVisible().catch(() => false)) break;
@@ -295,6 +295,10 @@ export async function drainDeck(page: Page, maxSteps = 16): Promise<number> {
     if (await ageConfirm.isVisible().catch(() => false)) {
       await ageConfirm.click().catch(() => {});
     }
+    const progressBefore = await page
+      .getByTestId('deck-progress')
+      .innerText()
+      .catch(() => '');
     const yesWell = page.getByTestId('pick-yes').first();
     if (await yesWell.isVisible().catch(() => false)) {
       await yesWell.click().catch(() => {});
@@ -307,7 +311,20 @@ export async function drainDeck(page: Page, maxSteps = 16): Promise<number> {
         .catch(() => {});
       await page.keyboard.press('ArrowUp').catch(() => {});
     }
-    await page.waitForTimeout(400);
+    // Wait for the deck to actually advance (or clear) rather than a fixed sleep — the pick POST +
+    // re-render can lag, and a fixed 400ms sometimes fired the next throw before the card changed.
+    await page
+      .waitForFunction(
+        ({ before }) => {
+          const cleared = document.querySelector('[data-testid="deck-cleared"]');
+          if (cleared) return true;
+          const prog = document.querySelector('[data-testid="deck-progress"]');
+          return !!prog && prog.textContent !== before;
+        },
+        { before: progressBefore },
+        { timeout: 5_000 },
+      )
+      .catch(() => {});
   }
   return throws;
 }

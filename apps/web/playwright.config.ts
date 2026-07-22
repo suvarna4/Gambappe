@@ -38,6 +38,12 @@ process.env.FLAG_NEMESIS ??= 'true';
 // WS23-T2's E2E gate). This task's own e2e flipping it on here mirrors FLAG_NEMESIS/FLAG_DUO_QUEUE
 // above (same inherit-into-webServer mechanism).
 process.env.FLAG_CALLOUTS ??= 'true';
+// The per-IP pick rate cap (RL_PICK_IP_H = 120/h) is keyed by source IP — meaningless here where
+// the whole e2e suite (both lanes + retries) throws from ONE runner IP. Left at 120 it 429s later
+// throws and stalls the journey deck-drain (journeys 1/6). Raise it far out of reach for e2e via
+// this override (read in lib/rate-limit-rules.ts); the per-PROFILE cap still guards real abuse.
+// Inherited by BOTH webServers (process.env passthrough), same mechanism as the flags above.
+process.env.RL_PICK_IP_H_OVERRIDE ??= '1000000';
 // WS14-T1 golden-loop.spec.ts calls the real `POST /internal/revalidate` (§9.2) to force fresh
 // ISR after directly advancing question state (lock/reveal) via repository calls instead of the
 // real worker cron — same "harmless test-only default" rationale as the stopgap token above.
@@ -134,8 +140,14 @@ export default defineConfig({
     },
     {
       // WS23-T1 · the six journey specs (`e2e/journeys/*.spec.ts`), against the flags-ON server.
+      // `dependencies: ['chromium']` runs this lane ONLY AFTER the whole chromium lane finishes, so
+      // the two lanes never execute concurrently. That concurrency was the regression: the journeys'
+      // parallel seeding + rendering + DB writes contended with the chromium lane and (a) flaked its
+      // /dev/ui visual screenshots (font/layout not settled) and (b) raced its crowd-board read. With
+      // the lanes serialized (+ the per-IP pick override above), the chromium lane runs undisturbed.
       name: 'journeys',
       testMatch: '**/journeys/**/*.spec.ts',
+      dependencies: ['chromium'],
       use: { ...devices['Desktop Chrome'], baseURL: journeysBaseURL },
     },
   ],

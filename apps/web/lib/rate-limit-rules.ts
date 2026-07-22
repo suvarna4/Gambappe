@@ -34,11 +34,21 @@ const MINUTE = 60;
 const HOUR = 3600;
 const DAY = 86400;
 
+/**
+ * The per-IP pick cap is keyed by source IP, which is meaningless under E2E where the WHOLE suite
+ * (both Playwright lanes + retries) throws from ONE CI runner IP: the combined volume blows past
+ * `RL_PICK_IP_H` (120/h) and later throws 429, stalling the journey deck-drain. `next start` in the
+ * e2e webServers sets `RL_PICK_IP_H_OVERRIDE` to a large value so the per-IP cap can't fire there.
+ * The per-PROFILE cap (`RL_PICK_PROFILE_H`, the one that actually matters — every journey uses a
+ * fresh ghost and stays well under it) is untouched, and the override is unset in prod (no effect).
+ */
+const PICK_IP_LIMIT = Number(process.env.RL_PICK_IP_H_OVERRIDE) || RL_PICK_IP_H;
+
 /** §14.1 table. */
 export const RATE_LIMIT_RULES = {
   ghost_mint: { keyType: 'ip', limit: RL_GHOST_MINT_IP_DAY, windowSeconds: DAY },
   pick_create_profile: { keyType: 'profile', limit: RL_PICK_PROFILE_H, windowSeconds: HOUR },
-  pick_create_ip: { keyType: 'ip', limit: RL_PICK_IP_H, windowSeconds: HOUR },
+  pick_create_ip: { keyType: 'ip', limit: PICK_IP_LIMIT, windowSeconds: HOUR },
   undo: { keyType: 'profile', limit: RL_UNDO_PROFILE_H, windowSeconds: HOUR },
   reactions: { keyType: 'profile', limit: RL_REACT_PROFILE_D, windowSeconds: DAY },
   posts_daily: { keyType: 'profile', limit: RL_POST_PROFILE_D, windowSeconds: DAY },
