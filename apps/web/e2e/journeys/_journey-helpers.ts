@@ -380,5 +380,36 @@ export async function drainDeck(page: Page, maxSteps = 30): Promise<number> {
       .catch(() => false);
     if (advanced) throws += 1;
   }
+
+  // DIAGNOSTIC (temporary, WS23-T1): if the drain never reached `deck-cleared`, dump the on-stage
+  // state to stdout so CI shows exactly what card is stuck (the trace artifact isn't reachable from
+  // the agent env). Remove once the deck-clear flake is understood.
+  const cleared = await page.getByTestId('deck-cleared').isVisible().catch(() => false);
+  if (!cleared) {
+    const snapshot = await page
+      .evaluate(() => {
+        const present = (id: string) => !!document.querySelector(`[data-testid="${id}"]`);
+        const text = (id: string) =>
+          document.querySelector(`[data-testid="${id}"]`)?.textContent?.trim().slice(0, 120) ?? null;
+        const deck = document.querySelector('[data-testid="deck-queue"]');
+        return {
+          progress: text('deck-progress'),
+          hasDeckQueue: present('deck-queue'),
+          hasDeckCleared: present('deck-cleared'),
+          hasNoQuestionToday: present('no-question-today'),
+          hasBallotInteractive: present('ballot-card-interactive'),
+          hasPickYes: present('pick-yes'),
+          hasAgeGateConfirm: present('age-gate-confirm'),
+          hasViewerStripSwipe: present('viewer-strip-swipe'),
+          hasViewerStripPick: present('viewer-strip-pick'),
+          hasViewerStripPickButtons: present('viewer-strip-pick-buttons'),
+          hasViewerStripLoading: present('viewer-strip-loading'),
+          deckHtml: deck ? deck.innerHTML.replace(/\s+/g, ' ').slice(0, 1200) : null,
+        };
+      })
+      .catch((e) => ({ evalError: String(e) }));
+    console.log('[drainDeck] NOT CLEARED after', maxSteps, 'steps; throws=', throws, 'state=', JSON.stringify(snapshot));
+  }
+
   return throws;
 }
