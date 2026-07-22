@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-21T21:24:58.028Z",
+  "updated_at": "2026-07-22T01:41:04.333Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2184,13 +2184,13 @@
         "WS23-T1"
       ],
       "mock_start_ok": false,
-      "note": "Spec: docs/journeys-plan.md §5 WS23-T2. Env-var flag flips (duo_queue precedent, not code defaults); PRD §4.1 + design-doc §6.7/§10.1/§10.3/§10.6 amendments each citing docs/journeys-plan.md; no doc/app contradiction remains.",
-      "status": "claimed",
+      "note": "Rollout merged (0d06e1b). All 22 journeys-plan tasks complete.",
+      "status": "done",
       "owner": "claude-opus-fohjki-agentU",
       "branch": null,
-      "pr": null,
+      "pr": "https://github.com/Gambappe/Gambappe/pull/136",
       "claimed_at": "2026-07-21T21:24:58.028Z",
-      "updated_at": "2026-07-21T21:24:58.028Z"
+      "updated_at": "2026-07-22T01:41:04.331Z"
     },
     "WS24-T1": {
       "title": "STRETCH: Departures-board pilot on /sweat (FlapText + TicketFrame tone='board'), flagged",
