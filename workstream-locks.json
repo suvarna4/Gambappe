@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-22T08:16:06.038Z",
+  "updated_at": "2026-07-22T08:18:38.010Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2327,13 +2327,13 @@
       "phase": "P0",
       "depends_on": [],
       "mock_start_ok": false,
-      "note": "Owner request 2026-07-22: switch auto-deploy from */15 cron to push-on-main; declare environment: production on the deploy job so GitHub Environment secrets (VERCEL_TOKEN, FLY_API_TOKEN, STAGING_DATABASE_URL) resolve — owner stored them in the production environment, not repo secrets.",
-      "status": "claimed",
+      "note": "PR #148 open: push-on-main trigger + environment: production on deploy job (secrets are environment-scoped). File renamed to auto-deploy.yml. Merge = first live push-triggered deploy.",
+      "status": "in_review",
       "owner": "claude-code-web-session-54bb90dd",
-      "branch": null,
-      "pr": null,
+      "branch": "claude/ws15-t12-push-deploy",
+      "pr": "148",
       "claimed_at": "2026-07-22T08:16:06.037Z",
-      "updated_at": "2026-07-22T08:16:06.037Z"
+      "updated_at": "2026-07-22T08:18:38.010Z"
     }
   }
 }
