@@ -74,26 +74,27 @@ describe('SwipeBallot — open state', () => {
     expect(html).toContain('✕');
   });
 
-  it('shows the fallback hint arrows and no tint at rest', () => {
+  it('renders the single yes/no/skip instruction line and no tint at rest', () => {
     const html = render();
-    expect(html).toContain('data-testid="ballot-hints"');
+    // The redundant under-card hint line was removed; the one instruction line remains.
+    expect(html).not.toContain('data-testid="ballot-hints"');
+    expect(html).toContain('data-testid="ballot-key-hint"');
     expect(html).not.toContain('data-testid="ballot-tint"');
   });
 
-  it('renders the desktop keyboard hint (fine-pointer only), axis-ordered against·for (SW2-T4)', () => {
+  it('shows the one instruction line on every viewport (no fine-pointer gate), axis-ordered against·for', () => {
     const html = render();
     const hint = html.match(/data-testid="ballot-key-hint"[^>]*>(.*?)<\/p>/s)?.[1] ?? '';
     expect(hint).toContain('HOLDS');
     expect(hint).toContain('CUTS');
     expect(hint.indexOf('HOLDS')).toBeLessThan(hint.indexOf('CUTS'));
-    expect(html).toContain('[@media(pointer:fine)]:block'); // hidden on touch
+    // No longer hidden on touch — it is the single guide, visible everywhere.
+    expect(html).not.toContain('[@media(pointer:fine)]:block');
   });
 
-  it('keeps the hints on a pre-armed deep link and renders regardless of pick history (SW2-T4)', () => {
-    // arm forces the affordance even for a learned hand; at SSR pickCount is 0 so hints show
-    // either way, but the arm path must not throw or drop them.
+  it('renders the instruction line on a pre-armed deep link without throwing (SW2-T4)', () => {
     const html = render({ arm: true });
-    expect(html).toContain('data-testid="ballot-hints"');
+    expect(html).toContain('data-testid="ballot-key-hint"');
   });
 });
 

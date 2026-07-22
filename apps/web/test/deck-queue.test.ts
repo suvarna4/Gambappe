@@ -119,6 +119,33 @@ describe('idempotency guard', () => {
   });
 });
 
+describe('reset (topic filter re-deal)', () => {
+  it('replaces the deck with the new card set and clears thrown/skips', () => {
+    let s = fresh();
+    s = deckQueueReducer(s, { type: 'throw', id: 'headliner' });
+    s = deckQueueReducer(s, { type: 'skip', id: 'topic-a' });
+    const next = deckQueueReducer(s, { type: 'reset', ids: ['x', 'y'] });
+    expect(next.order).toEqual(['x', 'y']);
+    expect(next.thrown).toEqual([]);
+    expect(next.skips).toBe(0);
+    expect(currentCardId(next)).toBe('x');
+    expect(deckCleared(next)).toBe(false);
+  });
+
+  it('resets to an empty (cleared) deck when the new set is empty', () => {
+    const next = deckQueueReducer(fresh(), { type: 'reset', ids: [] });
+    expect(next.order).toEqual([]);
+    expect(deckCleared(next)).toBe(true);
+  });
+
+  it('makes a stale throw/skip for the OLD front card a no-op after re-deal', () => {
+    const s = deckQueueReducer(fresh(), { type: 'reset', ids: ['x', 'y'] });
+    // 'headliner' was the old front; a late fling/skip callback for it must not touch the new deck.
+    expect(deckQueueReducer(s, { type: 'throw', id: 'headliner' })).toBe(s);
+    expect(deckQueueReducer(s, { type: 'skip', id: 'headliner' })).toBe(s);
+  });
+});
+
 describe('deckPosition (the "N of M" progress chip)', () => {
   it('starts at 1 of M and advances only on throws, not skips', () => {
     let s = fresh();

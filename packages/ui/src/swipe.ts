@@ -41,13 +41,6 @@ export const HAPTIC_UNDO = 6;
 export const NUDGE_IDLE_MS = 3800;
 export const NUDGE_ANIM = '2.6s ease-in-out';
 
-/**
- * Guardrail fade thresholds (D-SW7). After this many successful throws the side rails drop to
- * 40% opacity and the hint arrows unmount — a learned hand doesn't need the signage. Tap wells
- * are NEVER hidden or faded (a11y is permanent, not a tutorial).
- */
-export const LEARNED_PICKS = 5;
-
 /** A busted streak mints an obituary artifact (SW4-T1) only if the broken run was at least
  * this long — a one- or two-day run isn't a story worth a tombstone. */
 export const OBITUARY_MIN_STREAK = 3;
@@ -97,23 +90,13 @@ export function tintOpacity(progress: number): number {
 
 // ---- Guardrail logic (D-SW7). Pure; the component owns the actual localStorage/sessionStorage.
 
-/** localStorage keys / sessionStorage key for the fade-with-experience guardrails (§2.8). */
+/** localStorage / sessionStorage keys for the first-throw + once-per-session idle-nudge guards
+ * (§2.8). The old per-device `picks` counter that faded the rails/hint arrows was removed with the
+ * rails themselves — the single instruction line never fades. */
 export const GUARDRAIL_KEYS = {
   thrown: 'rcpt_thrown',
-  picks: 'rcpt_picks',
   nudged: 'rcpt_nudged',
 } as const;
-
-/** After `LEARNED_PICKS` throws the rails dim (opacity 0.4) and the hint arrows unmount. */
-export function railsFaded(pickCount: number): boolean {
-  return pickCount >= LEARNED_PICKS;
-}
-export function hintsHidden(pickCount: number): boolean {
-  return pickCount >= LEARNED_PICKS;
-}
-export function railsOpacity(pickCount: number): number {
-  return railsFaded(pickCount) ? 0.4 : 1;
-}
 
 /**
  * Whether the idle nudge should play: only on an open question the viewer can act on, only

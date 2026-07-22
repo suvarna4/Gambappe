@@ -1,5 +1,5 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent, Ref } from 'react';
-import { sideAxisPair, Stamp } from '@receipts/ui';
+import { sideAxisPair, Stamp, ticketPerfMask } from '@receipts/ui';
 import type { SameSide } from '@receipts/core';
 import { nemesisCopy } from '@/lib/copy';
 import { DrawBadge } from './DrawBadge';
@@ -68,24 +68,6 @@ function OutcomeStamp({ outcome, className }: { outcome: VerdictOutcome; classNa
   if (outcome === 'won') return <Stamp variant="win" className={className} />;
   if (outcome === 'lost') return <Stamp variant="loss" className={className} />;
   return <DrawBadge className={className} />;
-}
-
-/** Radial-dot "ticket perforation" strip (design-diff audit: `docs/mockups/swipe-ux.html`'s
- * `.perf` — `background-image:radial-gradient(circle at center,var(--ink) 40%,transparent 46%);
- * background-size:10px 10px`, scaled ×1.4 — see this file's own round-4 header note). Punches
- * through to this app's own page background (`bg-bg` `#0B0B0D`, the same token the mockup's
- * `--ink` stands in for) so the holes read as real cut-outs regardless of what's actually behind
- * the card. Bleeds edge-to-edge via a negative margin that exactly cancels the card's own
- * horizontal padding, inset from the card's own top/bottom edge by the scaled mockup values too
- * (top and bottom insets land at the same ≈11px net regardless, because the mockup's own
- * top/bottom padding aren't equal either — 22-11=11, 18-7=11). */
-function Perforation({ edge }: { edge: 'top' | 'bottom' }) {
-  return (
-    <div
-      aria-hidden="true"
-      className={`-mx-[21px] h-[7px] shrink-0 bg-[radial-gradient(circle_at_center,#0B0B0D_40%,transparent_46%)] bg-center [background-size:14px_14px] ${edge === 'top' ? '-mt-[11px]' : '-mb-[7px]'}`}
-    />
-  );
 }
 
 /**
@@ -220,16 +202,17 @@ export function VerdictCard({
       data-outcome={outcome}
       className={`flex flex-1 flex-col gap-3 ${className}`}
     >
+      {/* Outer wrapper carries the drop shadow + centering (unmasked); the inner face carries the
+          perforation mask so the edge holes are real cut-outs and the shadow isn't clipped. */}
+      <div className="mx-auto w-[80%] max-w-[80%] rounded-[14px] shadow-[0_14px_34px_rgba(0,0,0,0.5)]">
       <div
         ref={dragSurfaceRef}
         data-testid="verdict-card-face"
         data-armed={dragSurfaceArmed ? 'true' : 'false'}
-        className={`bg-paper text-ink relative mx-auto flex max-w-[80%] flex-col gap-3 overflow-hidden rounded-[14px] px-[21px] pt-[22px] pb-[18px] shadow-[0_14px_34px_rgba(0,0,0,0.5)] [background-image:linear-gradient(rgba(20,20,20,0.028)_1px,transparent_1px)] [background-size:100%_26px] ${dragSurfaceHandlers ? 'touch-none select-none' : ''}`}
-        style={dragSurfaceStyle}
+        className={`bg-paper text-ink relative flex w-full flex-col gap-3 overflow-hidden rounded-[14px] px-[21px] pt-[22px] pb-[18px] [background-image:linear-gradient(rgba(20,20,20,0.028)_1px,transparent_1px)] [background-size:100%_26px] ${dragSurfaceHandlers ? 'touch-none select-none' : ''}`}
+        style={{ ...ticketPerfMask({ perfTop: true, perfBottom: true, size: 14 }), ...dragSurfaceStyle }}
         {...dragSurfaceHandlers}
       >
-        <Perforation edge="top" />
-
         <div className="text-ink/50 flex items-center justify-between font-mono text-xs tracking-[0.2em] uppercase">
           <span>The verdict</span>
           <span>{nemesisCopy.verdictScore(youWins, opponentWins)}</span>
@@ -252,8 +235,7 @@ export function VerdictCard({
             surface="paper"
           />
         ) : null}
-
-        <Perforation edge="bottom" />
+      </div>
       </div>
 
       {interactive ? (

@@ -8,12 +8,8 @@ import {
   COMMIT_THRESHOLD_RATIO,
   dragProgress,
   dragSide,
-  hintsHidden,
   isCommit,
-  LEARNED_PICKS,
   MAX_TILT_DEG,
-  railsFaded,
-  railsOpacity,
   shouldNudge,
   stampScale,
   STAMP_SCALE_FROM,
@@ -73,14 +69,6 @@ describe('tintOpacity', () => {
 });
 
 describe('guardrails (D-SW7)', () => {
-  it('rails/hints fade only at LEARNED_PICKS and beyond', () => {
-    expect(railsFaded(LEARNED_PICKS - 1)).toBe(false);
-    expect(railsFaded(LEARNED_PICKS)).toBe(true);
-    expect(hintsHidden(LEARNED_PICKS)).toBe(true);
-    expect(railsOpacity(0)).toBe(1);
-    expect(railsOpacity(LEARNED_PICKS)).toBe(0.4);
-  });
-
   it('nudges only on an open question, before first throw, once per session', () => {
     expect(shouldNudge({ isOpen: true, hasThrownEver: false, nudgedThisSession: false })).toBe(
       true,

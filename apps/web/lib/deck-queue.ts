@@ -32,7 +32,11 @@ export interface DeckQueueState {
 
 export type DeckQueueAction =
   | { type: 'throw'; id: string }
-  | { type: 'skip'; id: string };
+  | { type: 'skip'; id: string }
+  // WS-home-filter: re-deal the whole deck from a fresh card set (the topic filter refetched
+  // `GET /api/v1/stack`). Resets `thrown`/`skips` so the "N of M" progress recomputes against the
+  // new total. Carries no `id`, so it bypasses the front-of-deck idempotency guard below.
+  | { type: 'reset'; ids: string[] };
 
 export function initialDeckState(cardIds: string[]): DeckQueueState {
   return { order: [...cardIds], thrown: [], skips: 0 };
@@ -60,6 +64,9 @@ export function deckQueueReducer(
   state: DeckQueueState,
   action: DeckQueueAction,
 ): DeckQueueState {
+  // Re-deal from a fresh card set (topic filter change). No front guard: it replaces the deck.
+  if (action.type === 'reset') return initialDeckState(action.ids);
+
   const front = state.order[0];
   // Idempotency guard: only the card actually on stage can be thrown or skipped.
   if (front === undefined || front !== action.id) return state;

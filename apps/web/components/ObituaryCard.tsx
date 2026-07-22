@@ -1,4 +1,4 @@
-import { sideAxisPair } from '@receipts/ui';
+import { sideAxisPair, ticketPerfMask } from '@receipts/ui';
 import { obituaryCopy } from '@/lib/copy';
 
 export interface ObituaryFact {
@@ -24,13 +24,6 @@ export interface ObituaryCardProps {
   onShare?: () => void;
   className?: string;
 }
-
-const perforationStyle = {
-  backgroundImage: 'radial-gradient(circle at center, #0B0B0D 40%, transparent 42%)',
-  backgroundSize: '10px 10px',
-  backgroundRepeat: 'repeat-x',
-  backgroundPosition: 'center',
-} as const;
 
 /**
  * SW4-T1 · The busted-streak obituary card (swipe-ux-plan §2.7, P3 "the loser is the
@@ -81,9 +74,13 @@ export function ObituaryCard({
 
   return (
     <div data-testid="obituary-card" className={`space-y-2 ${className}`}>
-      <div className="bg-paper text-ink relative flex flex-col rounded-lg px-4 pt-3 pb-3 shadow-[0_14px_34px_rgba(0,0,0,0.5)]">
-        <div aria-hidden="true" className="h-1.5 -translate-y-1" style={perforationStyle} />
-
+      {/* Outer wrapper carries the drop shadow (unmasked); the inner paper layer carries the
+          perforation mask so the holes are real cut-outs and the shadow isn't clipped. */}
+      <div className="rounded-lg shadow-[0_14px_34px_rgba(0,0,0,0.5)]">
+      <div
+        className="bg-paper text-ink relative flex flex-col rounded-lg px-4 pt-3 pb-3"
+        style={ticketPerfMask({ perfTop: true, perfBottom: true })}
+      >
         <p className="text-ink/70 font-mono text-[9px] font-semibold tracking-widest uppercase">
           {obituaryCopy.eyebrow}
         </p>
@@ -121,8 +118,7 @@ export function ObituaryCard({
           </span>
           <span className="text-ink/70 font-mono text-[11px]">🕯 {obituaryCopy.rip(days)}</span>
         </div>
-
-        <div aria-hidden="true" className="mt-3 h-1.5 translate-y-1" style={perforationStyle} />
+      </div>
       </div>
 
       {interactive ? (

@@ -14,11 +14,9 @@ import {
   GUARDRAIL_KEYS,
   HAPTIC_COMMIT,
   HAPTIC_UNDO,
-  hintsHidden,
   impliedCents,
   NUDGE_IDLE_MS,
   prefersReducedMotion,
-  railsOpacity,
   sideAxisPair,
   stampScale,
   tintOpacity,
@@ -95,12 +93,6 @@ export interface SwipeBallotProps {
 /** WS18-T3: minimum upward pointer travel (px) that counts as a skip on release (D-J2). */
 const SKIP_UP_THRESHOLD_PX = 80;
 
-function readCount(key: string): number {
-  if (typeof window === 'undefined') return 0;
-  const n = Number(window.localStorage.getItem(key));
-  return Number.isFinite(n) && n > 0 ? n : 0;
-}
-
 /**
  * SW1-T2 · The swipe-ballot gesture engine (swipe-ux-plan §2.3): drag → arm at the 36%
  * threshold → commit; early release springs back (no accidental pick); the tap wells and
@@ -134,18 +126,12 @@ export function SwipeBallot({
   // WS18-T3: the up-and-out skip animation is playing (mirrors `flingSide`'s horizontal exit).
   const [skipping, setSkipping] = useState(false);
   const [nudge, setNudge] = useState(false);
-  const [pickCount, setPickCount] = useState(0);
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   const yesProbability = question.yes_price ?? 0.5;
   const yesLabel = question.yes_label;
   const noLabel = question.no_label;
   const isOpen = question.status === 'open';
-
-  // Guardrail counters (§2.8) — local, per device, approximate across devices (fine).
-  useEffect(() => {
-    setPickCount(readCount(GUARDRAIL_KEYS.picks));
-  }, []);
 
   // SW7-T2: strip `?arm` from the URL after mount so a refresh or a re-share of this URL doesn't
   // re-arm (the nudge/hints have already been forced this mount). History-only — no navigation.
@@ -188,10 +174,9 @@ export function SwipeBallot({
 
   const recordThrow = useCallback(() => {
     if (typeof window === 'undefined') return;
+    // Records the first-throw flag the idle-nudge guard reads (§2.8). The old per-device pick
+    // counter that faded the hint arrows is gone — the single instruction line never fades now.
     window.localStorage.setItem(GUARDRAIL_KEYS.thrown, '1');
-    const next = readCount(GUARDRAIL_KEYS.picks) + 1;
-    window.localStorage.setItem(GUARDRAIL_KEYS.picks, String(next));
-    setPickCount(next);
   }, []);
 
   /** Fire the pick (or, on the first pick, pause for the age gate). Shared by swipe + wells + keys;
@@ -508,23 +493,6 @@ export function SwipeBallot({
           />
         </div>
 
-        {/* Hint arrows inside the stage bottom — fade out once the hand has learned (D-SW7); a
-            pre-armed deep link (SW2-T4) keeps them for the first-time visitor. */}
-        {arm || !hintsHidden(pickCount) ? (
-          <div
-            aria-hidden="true"
-            data-testid="ballot-hints"
-            className="text-muted mt-2 flex justify-between font-mono text-[11px] tracking-widest"
-            style={{ opacity: arm ? 1 : railsOpacity(pickCount) }}
-          >
-            <span className="text-side-b">
-              {ballotCopy.againstArrow} {noLabel}
-            </span>
-            <span className="text-side-a">
-              {yesLabel} {ballotCopy.forArrow}
-            </span>
-          </div>
-        ) : null}
       </div>
 
       {/* Tap wells — always present, never faded (a11y is permanent, D-SW7). */}
@@ -533,13 +501,13 @@ export function SwipeBallot({
         {wells[1]}
       </div>
 
-      {/* SW2-T4: desktop keyboard affordance — the arrow keys pick from the wells. Shown only on
-          fine-pointer (mouse/keyboard) devices; on touch it's noise. Decorative (the wells are
-          the real controls), so aria-hidden. */}
+      {/* The single yes/no/skip instruction line — the one guide kept after removing the side
+          rails and the duplicate under-card hint. Visible on every viewport (mobile + desktop);
+          decorative (the wells are the real controls), so aria-hidden. */}
       <p
         aria-hidden="true"
         data-testid="ballot-key-hint"
-        className="text-muted mt-1 hidden text-center font-mono text-[10px] tracking-wide [@media(pointer:fine)]:block"
+        className="text-muted mt-1 block text-center font-mono text-[10px] tracking-wide"
       >
         {ballotCopy.againstArrow} {noLabel} · {yesLabel} {ballotCopy.forArrow}
         {/* WS18-T3: stack cards also advertise the up-swipe / ↑ / S skip (a11y parity). */}

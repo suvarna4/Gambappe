@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useReducer, useState } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { StackFeed, StackQuestion } from '@receipts/core';
 import { Stamp } from '@receipts/ui';
@@ -66,6 +66,20 @@ export function DeckQueue({
   // Shows the "comes back before lock" reassurance while a skipped headliner is off-stage but
   // still circulating in the deck (D-J2 AC: headliner skip resurfaces before lock).
   const [headlinerSkipped, setHeadlinerSkipped] = useState(false);
+
+  // Re-deal when a NEW feed arrives post-hydration (the home topic filter refetched the stack).
+  // The reducer only inits once, so a fresh feed needs an explicit `reset`. Skip the first run so
+  // the SSR feed (already seeded above) isn't re-dealt — that would also break INV-10's first paint.
+  const cardIdsKey = useMemo(() => cards.map((c) => c.id).join(','), [cards]);
+  const firstFeed = useRef(true);
+  useEffect(() => {
+    if (firstFeed.current) {
+      firstFeed.current = false;
+      return;
+    }
+    dispatch({ type: 'reset', ids: cardIdsKey ? cardIdsKey.split(',') : [] });
+    setHeadlinerSkipped(false);
+  }, [cardIdsKey]);
 
   const currentId = currentCardId(state);
   const current = currentId ? (cardsById.get(currentId) ?? null) : null;

@@ -4,9 +4,9 @@
  */
 import type { Metadata } from 'next';
 import { isFlagEnabled, nowMs, PRODUCT_NAME } from '@receipts/core';
-import { DeckQueue } from '@/components/DeckQueue';
 import { QuestionStateView } from '@/components/QuestionStateView';
 import { DeckStageBridge } from '@/components/shell/DeckStageBridge';
+import { StackDeck } from '@/components/StackDeck';
 import { ViewerStrip } from '@/components/ViewerStrip';
 import { copy } from '@/lib/copy';
 import { getTodayQuestionPublic } from '@/lib/question-view';
@@ -56,12 +56,7 @@ export default async function HomePage({
     return (
       <main className="mx-auto max-w-xl space-y-6 px-6 py-10">
         <h1 className="text-2xl font-bold">{PRODUCT_NAME}</h1>
-        <DeckQueue
-          feed={feed}
-          serverOffsetMs={serverOffsetMs}
-          arm={arm}
-          duoQueue={duoQueue}
-        />
+        <StackDeck feed={feed} serverOffsetMs={serverOffsetMs} arm={arm} duoQueue={duoQueue} />
       </main>
     );
   }

@@ -36,22 +36,16 @@ const base: QuestionPublic = {
 };
 
 describe('DeckStage', () => {
-  it('renders the against rail left of the for rail (D-SW9 axis) and pins dir=ltr', () => {
+  it('slots the viewer island into the card position, pins dir=ltr, and no longer renders the side rails', () => {
     const html = renderToStaticMarkup(
       <DeckStage question={base} viewerSlot={<div data-testid="slot" />} />,
     );
-    const againstIdx = html.indexOf('data-testid="rail-against"');
-    const forIdx = html.indexOf('data-testid="rail-for"');
-    expect(againstIdx).toBeGreaterThanOrEqual(0);
-    expect(forIdx).toBeGreaterThan(againstIdx);
-    expect(html).toContain('dir="ltr"');
+    expect(html).toContain('data-testid="deck-stage"');
     expect(html).toContain('data-testid="slot"');
-  });
-
-  it('labels the rails with the venue side words', () => {
-    const html = renderToStaticMarkup(<DeckStage question={base} viewerSlot={null} />);
-    expect(html).toContain('HOLDS');
-    expect(html).toContain('CUTS');
+    expect(html).toContain('dir="ltr"');
+    // The persistent per-edge "← No"/"Yes →" rails were removed as redundant clutter.
+    expect(html).not.toContain('data-testid="rail-against"');
+    expect(html).not.toContain('data-testid="rail-for"');
   });
 });
 

@@ -11,25 +11,25 @@ interface SidePriceProps {
 }
 
 /**
- * One side's printed price chip. Side identity is carried by the colored border + dot (UI
- * elements, AA at 3:1) while the label and cents render in `ink` on paper (AA at 4.5:1) —
- * so the chip is unmistakably side-colored without relying on side hues for text contrast,
- * which #3B82F6 / #F97316 on paper would fail. `data-side` anchors the axis-order tests.
+ * One side's printed price — a DISPLAY chip, not a control (the tap wells below the card are the
+ * only pick buttons). Deliberately flat: no border box, so it never reads as a second, tappable
+ * set of yes/no buttons alongside the wells. Side identity is carried by the colored dot (a UI
+ * element, AA at 3:1); the label + cents stay in `ink` on paper (AA at 4.5:1) because the side
+ * hues #3B82F6 / #F97316 fail AA as text on paper. `data-side` anchors the axis-order tests.
  */
 function SidePrice({ side, label, yesProbability }: SidePriceProps) {
   const cents = impliedCents(side, yesProbability);
-  const accent = side === 'yes' ? 'border-side-a' : 'border-side-b';
   const dot = side === 'yes' ? 'bg-side-a' : 'bg-side-b';
   return (
-    <div
-      data-side={side}
-      className={`${accent} text-ink flex flex-1 flex-col rounded-md border-2 px-2.5 py-1.5`}
-    >
+    <div data-side={side} className="text-ink flex flex-1 flex-col gap-0.5">
       <span className="flex items-center gap-1.5 font-mono text-[10px] font-semibold tracking-wider uppercase">
         <span aria-hidden="true" className={`${dot} h-1.5 w-1.5 rounded-full`} />
         {label}
       </span>
-      <span className="font-mono text-lg font-semibold" aria-label={`${label}: ${cents}% implied`}>
+      <span
+        className="text-ink/90 font-mono text-base font-semibold"
+        aria-label={`${label}: ${cents}% implied`}
+      >
         @ {cents}¢
       </span>
     </div>
