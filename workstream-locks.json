@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-22T02:03:07.626Z",
+  "updated_at": "2026-07-22T02:03:09.177Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2214,19 +2214,6 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": "Spec: docs/auth-login-fix-plan.md §2 WS25-T1. Fixes the broken 'Continue with Google' button (client_id=undefined when AUTH_GOOGLE_ID/SECRET are unset) by gating it in apps/web/lib/auth-providers.ts and apps/web/auth.ts's buildProviders(), mirroring the X/Twitter gate already there.",
-      "status": "available",
-      "owner": null,
-      "branch": null,
-      "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-22T01:47:58.163Z"
-    },
-    "WS25-T2": {
-      "title": "Duplicate the Resend email transport into apps/web/lib/email-transport.ts",
-      "phase": "A0",
-      "depends_on": [],
-      "mock_start_ok": false,
-      "note": "Spec: docs/auth-login-fix-plan.md §2 WS25-T2. Ports apps/worker/src/lib/email-transport.ts (EmailTransport/ResendEmailTransport/LoggingEmailTransport/defaultEmailTransport) into apps/web/lib/, swapping the logger import for apps/web/lib/logger.ts. Deliberately a duplication, not a packages/core extraction (see plan's Revision note for why) -- apps/worker's copy's logic and tests are untouched, but its header comment is fixed where WS25-T3 makes it factually stale (references to magic-link-mailbox.ts and 'auth email flow untouched'), and both files get a one-line comment cross-referencing their sibling so the duplication is discoverable in the code, not only in this plan doc.",
       "status": "available",
       "owner": null,
       "branch": null,
