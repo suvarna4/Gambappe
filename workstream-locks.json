@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-22T06:26:05.213Z",
+  "updated_at": "2026-07-22T08:16:04.289Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2321,6 +2321,19 @@
       "pr": "https://github.com/Gambappe/Gambappe/pull/147",
       "claimed_at": "2026-07-22T05:42:06.018Z",
       "updated_at": "2026-07-22T06:26:05.195Z"
+    },
+    "WS15-T12": {
+      "title": "Push-triggered auto-deploy + production environment secrets",
+      "phase": "P0",
+      "depends_on": [],
+      "mock_start_ok": false,
+      "note": "Owner request 2026-07-22: switch auto-deploy from */15 cron to push-on-main; declare environment: production on the deploy job so GitHub Environment secrets (VERCEL_TOKEN, FLY_API_TOKEN, STAGING_DATABASE_URL) resolve — owner stored them in the production environment, not repo secrets.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-22T08:16:04.277Z"
     }
   }
 }
