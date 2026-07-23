@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T04:35:04.945Z",
+  "updated_at": "2026-07-23T04:40:37.338Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2431,13 +2431,13 @@
         "WS26-T3"
       ],
       "mock_start_ok": false,
-      "note": "worker. Review fix #1: bonus questions are created already-open (nemesis-assign.ts — no question:open ever fires for them), so an open-triggered job silently skips half the matchup. Sweep every few minutes over open daily+bonus questions in active CPU pairings lacking a CPU pick; sweep cadence is also what enables Clock's late picks. Stamp yesPriceAtEntry/priceStampedAt replicating the WEB pick route's price ladder (review #11 — that ladder lives web-side; extract shared helper or replicate carefully — task is bigger than it looks). Place via placePickTx source='cpu'. Pre-lock, real price, no outcome lookahead; idempotent via pick unique constraint.",
-      "status": "in_review",
+      "note": "Merged PR #157: cpu:pick 5-min cron sweep (daily+bonus coverage, stampPrice cache->DB ladder, source='cpu', three-deep pre-lock enforcement). Phase X0 complete. Prod activation: FLAG_CPU_NEMESIS=true on Fly+Vercel, roster seeded in Neon.",
+      "status": "done",
       "owner": "claude-code-web-session-54bb90dd",
       "branch": "claude/ws26-t5-cpu-pick-sweep",
       "pr": "157",
       "claimed_at": "2026-07-23T04:29:38.500Z",
-      "updated_at": "2026-07-23T04:35:04.945Z"
+      "updated_at": "2026-07-23T04:40:37.331Z"
     },
     "WS26-T6": {
       "title": "CPU badge in UI: opponent_is_cpu + persona label, e2e-enforced",
