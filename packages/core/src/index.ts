@@ -11,6 +11,7 @@ export * from './flags.js';
 export * from './clock.js';
 export * from './handles.js';
 export * from './duplicate-accounts.js';
+export * from './cpu.js';
 export * from './pricing.js';
 export * from './percentile.js';
 export * from './et-date.js';
