@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T03:54:41.262Z",
+  "updated_at": "2026-07-23T03:54:42.883Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2518,6 +2518,22 @@
       "pr": null,
       "claimed_at": null,
       "updated_at": "2026-07-23T03:54:41.261Z"
+    },
+    "WS26-T9": {
+      "title": "Outcome-driven persona refinement (believability tuning)",
+      "phase": "X2",
+      "depends_on": [
+        "WS26-T2",
+        "WS26-T5"
+      ],
+      "mock_start_ok": false,
+      "note": "worker+engine. After grading, nudge persona params (bandit/Elo-style) toward target win-rate; dampen improbable streaks toward believable variance. NOTE with T12 drift: Glicko already calibrates the CPU's rating from results — refinement must target pick-style believability/win-rate, not fight the rating system (avoid double-correction).",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-23T03:54:42.883Z"
     }
   }
 }
