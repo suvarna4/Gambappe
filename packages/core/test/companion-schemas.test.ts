@@ -44,9 +44,9 @@ describe('draftCalloutBodySchema', () => {
     const id = '018f6f2a-0000-7000-8000-000000000001';
     expect(draftCalloutBodySchema.safeParse({ target_profile_id: id }).success).toBe(true);
     expect(draftCalloutBodySchema.safeParse({}).success).toBe(false);
-    expect(
-      draftCalloutBodySchema.safeParse({ target_profile_id: id, extra: 1 }).success,
-    ).toBe(false);
+    expect(draftCalloutBodySchema.safeParse({ target_profile_id: id, extra: 1 }).success).toBe(
+      false,
+    );
   });
 });
 
@@ -67,9 +67,7 @@ describe('seasonRecapContentSchema', () => {
     expect(seasonRecapContentSchema.safeParse({ title: '', paragraphs: ['p1'] }).success).toBe(
       false,
     );
-    expect(seasonRecapContentSchema.safeParse({ title: 't', paragraphs: [] }).success).toBe(
-      false,
-    );
+    expect(seasonRecapContentSchema.safeParse({ title: 't', paragraphs: [] }).success).toBe(false);
     expect(
       seasonRecapContentSchema.safeParse({ title: 't', paragraphs: ['a', 'b', 'c', 'd', 'e'] })
         .success,
