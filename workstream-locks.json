@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T04:18:59.863Z",
+  "updated_at": "2026-07-23T04:25:14.191Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2383,13 +2383,13 @@
         "WS26-T1"
       ],
       "mock_start_ok": false,
-      "note": "db. listActiveCpuPairingsWithOpenQuestion, getCpuPersona, seed helper minting roster (bot_score=1.0, kind='cpu', persona handles like Chalkbot). AC per review #9: test factory alone is NOT enough — staging/prod need the roster actually seeded; add a deploy-checklist/seed-script step.",
-      "status": "in_review",
+      "note": "Merged PR #154: cpu_persona column, cpu.ts repos (getCpuPersona, listActiveCpuPairingsWithOpenQuestion sweep worklist), idempotent seedCpuRoster wired into db:seed, buildCpuProfile factory. 4 integration tests green vs real pg16.",
+      "status": "done",
       "owner": null,
       "branch": "claude/ws26-t3-cpu-repos",
       "pr": "154",
       "claimed_at": null,
-      "updated_at": "2026-07-23T04:18:58.071Z"
+      "updated_at": "2026-07-23T04:25:14.189Z"
     },
     "WS26-T7": {
       "title": "Metrics guardrail: exclude CPUs from DAU/retention, analytics events, participation",
