@@ -7,10 +7,12 @@
  *  - A rerun makes no new generator calls (idempotent via the pre-existing-artifact check AND
  *    `insertArtifactIdempotent`'s own `ON CONFLICT`).
  *  - Per-profile stats are pinned: win/loss/draw bucketing, the longest consecutive-WIN streak
- *    (a draw breaks the run), and chronological verdict lines.
+ *    (a draw breaks the run), chronological verdict lines, and a non-`completed` pairing (e.g. the
+ *    current active week) never leaking into any of it.
  *  - `calloutsSent`/`calloutsWon` use the season's ET-day window — a callout the day BEFORE
- *    `startsOn` is excluded, one on `endsOn` itself (the season's last day) is INCLUDED (pinning
- *    the exact off-by-one the spec warns a naive `created_at <= ends_on` cast would introduce).
+ *    `startsOn` is excluded, while ones landing on `startsOn` and on `endsOn` (the season's FIRST
+ *    and LAST days) are both INCLUDED (pinning both edges of the exact off-by-one the spec warns
+ *    a naive `created_at <= ends_on` cast would introduce).
  *  - An explicitly-given seasonId is recapped with no `endsOn` check (even a still-running
  *    season); an omitted seasonId resolves the latest ENDED nemesis season, never a running one.
  *
