@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T03:54:44.625Z",
+  "updated_at": "2026-07-23T04:01:21.660Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2354,12 +2354,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": "[contract-change] core+db. FLAG_CPU_NEMESIS default off (canonical name — RFC's FLAG_NEMESIS_CPU is superseded). pg-enum migrations widening profile_kind (ghost|claimed -> +cpu) and pick_source (web|share_card|spectator_page -> +cpu). Spec: scratchpad RFC xtrace-agent-proposals.md §1 + WS26 review pass 2026-07-22. bot_score>=BOT_EXCLUDE_THRESHOLD already excludes CPUs from matcher/crowd/leaderboards; kind='cpu' makes downstream filters one-predicate.",
-      "status": "available",
-      "owner": null,
+      "status": "claimed",
+      "owner": "claude-code-web-session-54bb90dd",
       "branch": null,
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-23T03:54:19.761Z"
+      "claimed_at": "2026-07-23T04:01:21.657Z",
+      "updated_at": "2026-07-23T04:01:21.657Z"
     },
     "WS26-T2": {
       "title": "Pure persona pick policy decideCpuPick (price+time ONLY, no crowd input)",
