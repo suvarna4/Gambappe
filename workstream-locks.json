@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T18:33:24.618Z",
+  "updated_at": "2026-07-23T18:34:07.231Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2633,12 +2633,12 @@
       ],
       "mock_start_ok": false,
       "note": "Extends the package XH-T2 scaffolds. Full spec: docs/xtrace-hackathon-tasks.md XH-T3.",
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-session-xtrace-companion",
+      "branch": "feat/xh-t3-companion-generation",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-23T17:29:01.828Z"
+      "claimed_at": "2026-07-23T18:34:07.230Z",
+      "updated_at": "2026-07-23T18:34:07.230Z"
     },
     "XH-T4": {
       "title": "DB: companion_artifacts + companion_ingest_log + repository",
