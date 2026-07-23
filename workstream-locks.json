@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T03:54:27.253Z",
+  "updated_at": "2026-07-23T03:54:28.986Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2405,6 +2405,22 @@
       "pr": null,
       "claimed_at": null,
       "updated_at": "2026-07-23T03:54:27.253Z"
+    },
+    "WS26-T4": {
+      "title": "CPU-fill leftovers in nemesis:assign via forced pairing",
+      "phase": "X0",
+      "depends_on": [
+        "WS26-T1",
+        "WS26-T3"
+      ],
+      "mock_start_ok": false,
+      "note": "worker, behind flag. After matchNemeses, force-pair each leftoverProfileId with a rating-fitting CPU via insertNemesisPairingRow. ACs (review #3,#6): sendNemesisAssignedNotifications must SKIP CPU-side recipients (would enqueue email/push to a userless profile); CPU-filled humans must NOT get matchmaking_priority=true (they are matched now, not carried forward); CPU never enters the human pool; exactly one CPU per unmatched human.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-23T03:54:28.986Z"
     }
   }
 }
