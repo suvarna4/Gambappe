@@ -48,6 +48,7 @@ import { ratingsWeeklyHandler } from './jobs/ratings-weekly.js';
 import { settleDigestHandler } from './jobs/settle-digest.js';
 import { settlementPollHandler } from './jobs/settlement-poll.js';
 import { streakFreezeGrantHandler } from './jobs/streak-freeze-grant.js';
+import { cpuPickHandler } from './jobs/cpu-pick.js';
 import { streakSweepHandler } from './jobs/streak-sweep.js';
 import { venuePriceTickHandler } from './jobs/venue-price-tick.js';
 import { venueSyncCatalogHandler } from './jobs/venue-sync-catalog.js';
@@ -83,6 +84,14 @@ export const JOB_REGISTRY: readonly JobDefinition[] = [
     owner: 'WS1-T5',
     cron: '*/5 * * * *', // every 5 min
     handler: settlementPollHandler,
+  },
+  {
+    name: 'cpu:pick',
+    owner: 'WS26-T5',
+    // Sweep, not event-triggered — bonus questions are created already-open and never fire
+    // question:open; 5-min cadence comfortably lands Clock's pick inside its 15-min window.
+    cron: '*/5 * * * *',
+    handler: cpuPickHandler,
   },
   {
     name: 'grade:followup',

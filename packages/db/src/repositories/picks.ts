@@ -4,6 +4,7 @@
  */
 import { and, count, eq, or, sql } from 'drizzle-orm';
 import { BOT_EXCLUDE_THRESHOLD } from '@receipts/core';
+import type { PickSource } from '@receipts/core';
 import type { Db } from '../client.js';
 import { picks, questions } from '../schema/index.js';
 
@@ -54,7 +55,7 @@ export interface PlacePickInput {
   yesPriceAtEntry: number;
   priceStampedAt: Date;
   pickedAt: Date;
-  source: 'web' | 'share_card' | 'spectator_page';
+  source: PickSource;
   confidence?: number | null;
 }
 
@@ -186,7 +187,10 @@ export interface GradedPickScore {
  * Graded (win/loss) picks on a question, excluding `bot_score >= BOT_EXCLUDE_THRESHOLD`
  * profiles (§8.6 percentile denominator — excluded profiles never appear in others').
  */
-export async function getGradedPickScoresForQuestion(db: Db, questionId: string): Promise<GradedPickScore[]> {
+export async function getGradedPickScoresForQuestion(
+  db: Db,
+  questionId: string,
+): Promise<GradedPickScore[]> {
   const rows = await db.execute(sql`
     SELECT p.profile_id, p.edge
     FROM picks p
@@ -204,7 +208,10 @@ export async function getGradedPickScoresForQuestion(db: Db, questionId: string)
  * anyone else's denominator). Only ever used to compute a single bot-excluded profile's own
  * percentile on demand — never for the shared cached denominator every other viewer reads.
  */
-export async function getAllGradedPickScoresForQuestion(db: Db, questionId: string): Promise<GradedPickScore[]> {
+export async function getAllGradedPickScoresForQuestion(
+  db: Db,
+  questionId: string,
+): Promise<GradedPickScore[]> {
   const rows = await db.execute(sql`
     SELECT p.profile_id, p.edge
     FROM picks p
@@ -229,7 +236,10 @@ export interface GradedPickForReveal {
 
 /** Win/loss picks on a question — `reveal:fire`'s participant list (§6.6/§6.7): who to apply
  * the streak gap-rule increment to, and who's eligible for the "called it" badge check. */
-export async function getGradedPicksForQuestion(db: Db, questionId: string): Promise<GradedPickForReveal[]> {
+export async function getGradedPicksForQuestion(
+  db: Db,
+  questionId: string,
+): Promise<GradedPickForReveal[]> {
   const rows = await db
     .select({
       profileId: picks.profileId,
@@ -239,7 +249,9 @@ export async function getGradedPicksForQuestion(db: Db, questionId: string): Pro
       yesPriceAtEntry: picks.yesPriceAtEntry,
     })
     .from(picks)
-    .where(and(eq(picks.questionId, questionId), or(eq(picks.result, 'win'), eq(picks.result, 'loss'))));
+    .where(
+      and(eq(picks.questionId, questionId), or(eq(picks.result, 'win'), eq(picks.result, 'loss'))),
+    );
   return rows.map((r) => ({
     profileId: r.profileId,
     result: r.result as 'win' | 'loss',

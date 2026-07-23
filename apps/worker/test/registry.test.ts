@@ -13,12 +13,15 @@
 import { describe, expect, it } from 'vitest';
 import { JOB_NAMES, JOB_REGISTRY, SCHEDULE_TIMEZONE } from '../src/registry.js';
 
-/** The §7.6 job table, plus `bot:score` (WS11-T2), `notify:pre-lock-reminder` (WS9-T4), and
- * `settle:digest` (WS19-T1); minus `reveal:fire` (cut by WS19-T1/D-J3). */
+/** The §7.6 job table, plus `bot:score` (WS11-T2), `notify:pre-lock-reminder` (WS9-T4),
+ * `settle:digest` (WS19-T1), and `cpu:pick` (WS26-T5, docs/plans/cpu-nemesis-wbs.md — the CPU
+ * rivals' pick sweep, cron because bonus questions never fire question:open); minus
+ * `reveal:fire` (cut by WS19-T1/D-J3). */
 const SPEC_JOBS = [
   'venue:sync-catalog',
   'venue:price-tick',
   'settlement:poll',
+  'cpu:pick',
   'grade:followup',
   'question:open',
   'question:lock',
