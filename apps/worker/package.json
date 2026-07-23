@@ -13,6 +13,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
+    "@receipts/companion": "workspace:*",
     "@receipts/core": "workspace:*",
     "@receipts/db": "workspace:*",
     "@receipts/engine": "workspace:*",

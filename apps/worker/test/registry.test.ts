@@ -14,8 +14,10 @@ import { describe, expect, it } from 'vitest';
 import { JOB_NAMES, JOB_REGISTRY, SCHEDULE_TIMEZONE } from '../src/registry.js';
 
 /** The §7.6 job table, plus `bot:score` (WS11-T2), `notify:pre-lock-reminder` (WS9-T4),
- * `settle:digest` (WS19-T1), and `cpu:pick` (WS26-T5, docs/plans/cpu-nemesis-wbs.md — the CPU
- * rivals' pick sweep, cron because bonus questions never fire question:open); minus
+ * `settle:digest` (WS19-T1), `cpu:pick` (WS26-T5, docs/plans/cpu-nemesis-wbs.md — the CPU
+ * rivals' pick sweep, cron because bonus questions never fire question:open), and
+ * `companion:ingest` (XH-T5, docs/xtrace-hackathon-tasks.md — rivalry memory ingestion, owner
+ * pattern `XH-T5` rather than `WS<n>-T<n>`, see the owner-regex widening below); minus
  * `reveal:fire` (cut by WS19-T1/D-J3). */
 const SPEC_JOBS = [
   'venue:sync-catalog',
@@ -40,6 +42,7 @@ const SPEC_JOBS = [
   'notify:dispatch',
   'bot:score',
   'analytics:rollup',
+  'companion:ingest',
   'maintenance:prune',
 ] as const;
 
@@ -53,9 +56,11 @@ describe('job registry (§7.6)', () => {
   });
 
   it('every job has a handler function and an owner task id', () => {
+    // Widened for XH-T5/XH-T8 (docs/xtrace-hackathon-tasks.md): those owners are exactly
+    // `XH-T5`/`XH-T8` — no digits before `-T` — so `/^(WS|XH)\d+-T\d+$/` would still reject them.
     for (const job of JOB_REGISTRY) {
       expect(typeof job.handler, job.name).toBe('function');
-      expect(job.owner).toMatch(/^WS\d+-T\d+$/);
+      expect(job.owner).toMatch(/^(WS\d+|XH)-T\d+$/);
     }
   });
 
@@ -91,5 +96,6 @@ describe('job registry (§7.6)', () => {
     expect(byName['maintenance:prune']).toBe('30 4 * * *');
     expect(byName['notify:pre-lock-reminder']).toBe('*/5 * * * *');
     expect(byName['settle:digest']).toBe('0 21 * * *');
+    expect(byName['companion:ingest']).toBe('0 4 * * *');
   });
 });
