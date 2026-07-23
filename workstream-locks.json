@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T03:10:28.425Z",
+  "updated_at": "2026-07-23T03:54:19.782Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2347,6 +2347,19 @@
       "pr": "https://github.com/Gambappe/Gambappe/pull/150",
       "claimed_at": "2026-07-23T02:54:18.927Z",
       "updated_at": "2026-07-23T03:10:28.425Z"
+    },
+    "WS26-T1": {
+      "title": "CPU Nemesis contracts: FLAG_CPU_NEMESIS, profile_kind+='cpu', pick_source+='cpu'",
+      "phase": "X0",
+      "depends_on": [],
+      "mock_start_ok": false,
+      "note": "[contract-change] core+db. FLAG_CPU_NEMESIS default off (canonical name — RFC's FLAG_NEMESIS_CPU is superseded). pg-enum migrations widening profile_kind (ghost|claimed -> +cpu) and pick_source (web|share_card|spectator_page -> +cpu). Spec: scratchpad RFC xtrace-agent-proposals.md §1 + WS26 review pass 2026-07-22. bot_score>=BOT_EXCLUDE_THRESHOLD already excludes CPUs from matcher/crowd/leaderboards; kind='cpu' makes downstream filters one-predicate.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-23T03:54:19.761Z"
     }
   }
 }
