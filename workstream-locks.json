@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-22T09:10:13.988Z",
+  "updated_at": "2026-07-23T02:54:14.024Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2334,6 +2334,19 @@
       "pr": "149",
       "claimed_at": "2026-07-22T08:16:06.037Z",
       "updated_at": "2026-07-22T09:10:13.975Z"
+    },
+    "WS25-T7": {
+      "title": "Fix server-action crash on AuthError re-throw (raw signIn path)",
+      "phase": "A0",
+      "depends_on": [],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-23T02:54:14.023Z"
     }
   }
 }
