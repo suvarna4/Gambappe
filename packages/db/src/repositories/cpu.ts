@@ -86,6 +86,47 @@ export async function listActiveCpuPairingsWithOpenQuestion(db: Db): Promise<Cpu
   return targets;
 }
 
+export interface AvailableCpuRow {
+  profileId: string;
+  persona: CpuPersona;
+  handle: string;
+}
+
+/**
+ * CPU rivals free to be force-paired this week (WS26-T4): active `kind='cpu'` profiles with a
+ * known persona and no pairing yet for `(seasonId, weekStart)` — the pairing table's partial
+ * uniques allow at most one per week per profile, so this list is what's actually insertable.
+ * Deterministic order (persona roster order via handle) so the fill is reproducible.
+ */
+export async function listAvailableCpusForWeek(
+  db: Db,
+  seasonId: string,
+  weekStart: string,
+): Promise<AvailableCpuRow[]> {
+  const rows = await db.execute(sql`
+    SELECT p.id AS profile_id, p.cpu_persona AS persona, p.handle AS handle
+    FROM profiles p
+    WHERE p.kind = 'cpu' AND p.status = 'active' AND p.cpu_persona IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM nemesis_pairings np
+        WHERE np.season_id = ${seasonId}::uuid AND np.week_start = ${weekStart}::date
+          AND p.id IN (np.profile_a_id, np.profile_b_id)
+      )
+    ORDER BY p.handle ASC
+  `);
+  const out: AvailableCpuRow[] = [];
+  for (const row of rows.rows) {
+    const persona = row['persona'] as string;
+    if (!isCpuPersona(persona)) continue;
+    out.push({
+      profileId: row['profile_id'] as string,
+      persona,
+      handle: row['handle'] as string,
+    });
+  }
+  return out;
+}
+
 /** The standing roster: one profile per persona. Handles are visibly bot-flavored (T6 adds
  * the explicit badge on top — the handle alone is not the disclosure mechanism). */
 export const CPU_ROSTER: ReadonlyArray<{ persona: CpuPersona; handle: string }> = [

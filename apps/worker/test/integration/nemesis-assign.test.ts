@@ -44,11 +44,13 @@ import {
   type ProfileRow,
 } from '@receipts/db';
 import { buildMarket, buildPick, buildProfile, buildQuestion } from '@receipts/db/testing';
+import { seedCpuRoster } from '@receipts/db';
 import { NEMESIS_MIN_PICKS, NEMESIS_SEASON_WEEKS } from '@receipts/core';
 import { nemesisAssignHandler, runNemesisAssign } from '../../src/jobs/nemesis-assign.js';
 import type { JobContext } from '../../src/context.js';
 
-const dbUrl = process.env.TEST_DATABASE_URL ?? 'postgres://receipts:receipts@localhost:5432/receipts_test';
+const dbUrl =
+  process.env.TEST_DATABASE_URL ?? 'postgres://receipts:receipts@localhost:5432/receipts_test';
 
 const WEEK_START = '2026-07-20'; // a Monday
 const AT = new Date('2026-07-20T13:00:00Z'); // Mon 09:00 ET (EDT, UTC-4)
@@ -65,7 +67,16 @@ beforeAll(async () => {
   await db.execute(sql`DROP SCHEMA IF EXISTS drizzle CASCADE`);
   await db.execute(sql`DROP SCHEMA IF EXISTS pgboss CASCADE`);
   await migrate(db, {
-    migrationsFolder: join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..', 'packages', 'db', 'drizzle'),
+    migrationsFolder: join(
+      dirname(fileURLToPath(import.meta.url)),
+      '..',
+      '..',
+      '..',
+      '..',
+      'packages',
+      'db',
+      'drizzle',
+    ),
   });
 
   boss = new PgBoss({ connectionString: dbUrl, schema: 'pgboss' });
@@ -85,7 +96,9 @@ beforeEach(async () => {
     sql`TRUNCATE TABLE nemesis_pairings, pairing_questions, rematch_requests, seasons, blocks, notifications,
         fingerprints, ratings, picks, questions, markets, profiles CASCADE`,
   );
-  await db.execute(sql`DELETE FROM pgboss.job WHERE name IN ('question:open','question:lock','reveal:fire')`);
+  await db.execute(
+    sql`DELETE FROM pgboss.job WHERE name IN ('question:open','question:lock','reveal:fire')`,
+  );
 });
 
 // --- Fixtures --------------------------------------------------------------------------------
@@ -134,7 +147,13 @@ interface EligibleFixtureOpts {
 async function makeEligibleProfile(opts: EligibleFixtureOpts): Promise<ProfileRow> {
   const row = buildProfile({ kind: 'claimed', status: 'active', ...opts.profileOverrides });
   const [inserted] = await db.insert(profiles).values(row).returning();
-  await db.insert(ratings).values({ profileId: inserted!.id, glickoRating: opts.rating ?? 1500, glickoRd: opts.rd ?? 200 });
+  await db
+    .insert(ratings)
+    .values({
+      profileId: inserted!.id,
+      glickoRating: opts.rating ?? 1500,
+      glickoRd: opts.rd ?? 200,
+    });
   await db.insert(fingerprints).values({
     profileId: inserted!.id,
     chalk: opts.chalk ?? 0,
@@ -156,7 +175,9 @@ async function pairingsInvolving(profileId: string) {
   return db
     .select()
     .from(nemesisPairings)
-    .where(sql`${nemesisPairings.profileAId} = ${profileId} OR ${nemesisPairings.profileBId} = ${profileId}`);
+    .where(
+      sql`${nemesisPairings.profileAId} = ${profileId} OR ${nemesisPairings.profileBId} = ${profileId}`,
+    );
 }
 
 // --- Main AC: 50+ profiles ---------------------------------------------------------------------
@@ -181,8 +202,14 @@ describe('nemesis:assign — pool + matching AC (§19.3 WS5-T1)', () => {
     }
 
     // Ineligible profiles that must NEVER appear in a pairing:
-    const tooFewPicks = await makeEligibleProfile({ gradedQuestionIds, gradedPickCount: NEMESIS_MIN_PICKS - 1 });
-    const botFlagged = await makeEligibleProfile({ profileOverrides: { botScore: 0.9 }, gradedQuestionIds });
+    const tooFewPicks = await makeEligibleProfile({
+      gradedQuestionIds,
+      gradedPickCount: NEMESIS_MIN_PICKS - 1,
+    });
+    const botFlagged = await makeEligibleProfile({
+      profileOverrides: { botScore: 0.9 },
+      gradedQuestionIds,
+    });
     const nemesisPaused = await makeEligibleProfile({
       profileOverrides: { settings: { nemesis_paused: true } },
       gradedQuestionIds,
@@ -191,13 +218,18 @@ describe('nemesis:assign — pool + matching AC (§19.3 WS5-T1)', () => {
       profileOverrides: { status: 'paused_matchmaking' },
       gradedQuestionIds,
     });
-    const suspended = await makeEligibleProfile({ profileOverrides: { status: 'suspended' }, gradedQuestionIds });
+    const suspended = await makeEligibleProfile({
+      profileOverrides: { status: 'suspended' },
+      gradedQuestionIds,
+    });
     const ghost = buildProfile({ kind: 'ghost', status: 'active' });
     await db.insert(profiles).values(ghost);
 
     // A blocked pair, both otherwise eligible members of the 51 — must never be paired together.
     const [blockerA, blockedB] = [eligible[0]!, eligible[1]!];
-    await db.insert(blocks).values({ blockerProfileId: blockerA.id, blockedProfileId: blockedB.id });
+    await db
+      .insert(blocks)
+      .values({ blockerProfileId: blockerA.id, blockedProfileId: blockedB.id });
 
     const report = await runJob();
 
@@ -232,7 +264,14 @@ describe('nemesis:assign — pool + matching AC (§19.3 WS5-T1)', () => {
     expect(blockedTogether).toBe(false);
 
     // Ineligible profiles never appear.
-    const ineligibleIds = [tooFewPicks.id, botFlagged.id, nemesisPaused.id, pausedMatchmaking.id, suspended.id, ghost.id as string];
+    const ineligibleIds = [
+      tooFewPicks.id,
+      botFlagged.id,
+      nemesisPaused.id,
+      pausedMatchmaking.id,
+      suspended.id,
+      ghost.id as string,
+    ];
     for (const id of ineligibleIds) {
       expect(seen.has(id)).toBe(false);
     }
@@ -243,21 +282,33 @@ describe('nemesis:assign — pool + matching AC (§19.3 WS5-T1)', () => {
     expect(matchedEligible).toHaveLength(50);
     expect(leftoverEligible).toHaveLength(1);
 
-    const [leftoverRow] = await db.select().from(profiles).where(sql`${profiles.id} = ${leftoverEligible[0]!.id}`);
+    const [leftoverRow] = await db
+      .select()
+      .from(profiles)
+      .where(sql`${profiles.id} = ${leftoverEligible[0]!.id}`);
     expect(leftoverRow!.matchmakingPriority).toBe(true);
 
-    const [matchedRow] = await db.select().from(profiles).where(sql`${profiles.id} = ${matchedEligible[0]!.id}`);
+    const [matchedRow] = await db
+      .select()
+      .from(profiles)
+      .where(sql`${profiles.id} = ${matchedEligible[0]!.id}`);
     expect(matchedRow!.matchmakingPriority).toBe(false);
 
     // A season was auto-created covering this week (§8.4 step 0).
-    const [seasonRow] = await db.select().from(seasons).where(sql`${seasons.id} = ${allPairings[0]!.seasonId}`);
+    const [seasonRow] = await db
+      .select()
+      .from(seasons)
+      .where(sql`${seasons.id} = ${allPairings[0]!.seasonId}`);
     expect(seasonRow!.startsOn).toBe(WEEK_START);
     const expectedEnds = new Date(`${WEEK_START}T00:00:00Z`);
     expectedEnds.setUTCDate(expectedEnds.getUTCDate() + NEMESIS_SEASON_WEEKS * 7 - 1);
     expect(seasonRow!.endsOn).toBe(expectedEnds.toISOString().slice(0, 10));
 
     // Outbox notifications: both channels, both sides, for every pairing.
-    const notifRows = await db.select().from(notifications).where(sql`${notifications.kind} = 'nemesis_assigned'`);
+    const notifRows = await db
+      .select()
+      .from(notifications)
+      .where(sql`${notifications.kind} = 'nemesis_assigned'`);
     expect(notifRows).toHaveLength(25 * 2 * 2); // 25 pairings × 2 profiles × 2 channels
     for (const row of notifRows) {
       expect(row.status).toBe('queued');
@@ -268,13 +319,23 @@ describe('nemesis:assign — pool + matching AC (§19.3 WS5-T1)', () => {
 
   it('does not repeat a pairing already made earlier this season', async () => {
     const gradedQuestionIds = await makeGradedDummyQuestions(NEMESIS_MIN_PICKS);
-    const a = await makeEligibleProfile({ chalk: 0.1, categoryShares: { sports: 1 }, gradedQuestionIds });
-    const b = await makeEligibleProfile({ chalk: 0.1, categoryShares: { sports: 1 }, gradedQuestionIds });
+    const a = await makeEligibleProfile({
+      chalk: 0.1,
+      categoryShares: { sports: 1 },
+      gradedQuestionIds,
+    });
+    const b = await makeEligibleProfile({
+      chalk: 0.1,
+      categoryShares: { sports: 1 },
+      gradedQuestionIds,
+    });
 
     const first = await runJob();
     expect(first.pairingsCreated).toBe(1);
     const [firstPairing] = await db.select().from(nemesisPairings);
-    expect([firstPairing!.profileAId, firstPairing!.profileBId].sort()).toEqual([a.id, b.id].sort());
+    expect([firstPairing!.profileAId, firstPairing!.profileBId].sort()).toEqual(
+      [a.id, b.id].sort(),
+    );
 
     // Second run, same week: both profiles already hold an `active` pairing for this week, so the
     // WS20-T3 (D-J5) double-assignment guard in `listNemesisEligiblePool` now excludes them from
@@ -322,8 +383,18 @@ describe('nemesis:assign — season + rematch (§8.4 step 0)', () => {
     const gradedQuestionIds = await makeGradedDummyQuestions(NEMESIS_MIN_PICKS);
     // Deliberately style-incompatible + far-apart ratings so organic matching would NEVER pair
     // these two on its own — only the forced rematch path can produce this pairing.
-    const a = await makeEligibleProfile({ chalk: 0.9, categoryShares: { sports: 1 }, rating: 1500, gradedQuestionIds });
-    const b = await makeEligibleProfile({ chalk: -0.9, categoryShares: { science: 1 }, rating: 2200, gradedQuestionIds });
+    const a = await makeEligibleProfile({
+      chalk: 0.9,
+      categoryShares: { sports: 1 },
+      rating: 1500,
+      gradedQuestionIds,
+    });
+    const b = await makeEligibleProfile({
+      chalk: -0.9,
+      categoryShares: { science: 1 },
+      rating: 2200,
+      gradedQuestionIds,
+    });
 
     const existingSeasonId = uuidv7();
     const endsOn = new Date(`${WEEK_START}T00:00:00Z`);
@@ -353,7 +424,10 @@ describe('nemesis:assign — season + rematch (§8.4 step 0)', () => {
     expect(pairs[0]!.isRematch).toBe(true);
     expect([pairs[0]!.profileAId, pairs[0]!.profileBId].sort()).toEqual([a.id, b.id].sort());
 
-    const [reqRow] = await db.select().from(rematchRequests).where(sql`${rematchRequests.id} = ${requestId}`);
+    const [reqRow] = await db
+      .select()
+      .from(rematchRequests)
+      .where(sql`${rematchRequests.id} = ${requestId}`);
     expect(reqRow!.status).toBe('expired');
   });
 
@@ -364,13 +438,32 @@ describe('nemesis:assign — season + rematch (§8.4 step 0)', () => {
     const existingSeasonId = uuidv7();
     const endsOn = new Date(`${WEEK_START}T00:00:00Z`);
     endsOn.setUTCDate(endsOn.getUTCDate() + NEMESIS_SEASON_WEEKS * 7 - 1);
-    await db.insert(seasons).values({ id: existingSeasonId, kind: 'nemesis', startsOn: WEEK_START, endsOn: endsOn.toISOString().slice(0, 10), name: 'S' });
+    await db
+      .insert(seasons)
+      .values({
+        id: existingSeasonId,
+        kind: 'nemesis',
+        startsOn: WEEK_START,
+        endsOn: endsOn.toISOString().slice(0, 10),
+        name: 'S',
+      });
 
     const requestId = uuidv7();
-    await db.insert(rematchRequests).values({ id: requestId, requesterProfileId: a.id, targetProfileId: b.id, seasonId: existingSeasonId, status: 'open' });
+    await db
+      .insert(rematchRequests)
+      .values({
+        id: requestId,
+        requesterProfileId: a.id,
+        targetProfileId: b.id,
+        seasonId: existingSeasonId,
+        status: 'open',
+      });
 
     await runJob();
-    const [reqRow] = await db.select().from(rematchRequests).where(sql`${rematchRequests.id} = ${requestId}`);
+    const [reqRow] = await db
+      .select()
+      .from(rematchRequests)
+      .where(sql`${rematchRequests.id} = ${requestId}`);
     expect(reqRow!.status).toBe('expired');
   });
 
@@ -383,10 +476,26 @@ describe('nemesis:assign — season + rematch (§8.4 step 0)', () => {
     const existingSeasonId = uuidv7();
     const endsOn = new Date(`${WEEK_START}T00:00:00Z`);
     endsOn.setUTCDate(endsOn.getUTCDate() + NEMESIS_SEASON_WEEKS * 7 - 1);
-    await db.insert(seasons).values({ id: existingSeasonId, kind: 'nemesis', startsOn: WEEK_START, endsOn: endsOn.toISOString().slice(0, 10), name: 'S' });
+    await db
+      .insert(seasons)
+      .values({
+        id: existingSeasonId,
+        kind: 'nemesis',
+        startsOn: WEEK_START,
+        endsOn: endsOn.toISOString().slice(0, 10),
+        name: 'S',
+      });
 
     const requestId = uuidv7();
-    await db.insert(rematchRequests).values({ id: requestId, requesterProfileId: a.id, targetProfileId: b.id, seasonId: existingSeasonId, status: 'accepted' });
+    await db
+      .insert(rematchRequests)
+      .values({
+        id: requestId,
+        requesterProfileId: a.id,
+        targetProfileId: b.id,
+        seasonId: existingSeasonId,
+        status: 'accepted',
+      });
 
     const report = await runJob();
     expect(report.forcedPairingsCreated).toBe(0);
@@ -414,10 +523,16 @@ describe('nemesis:assign — bonus question selection (§8.8.1)', () => {
 
     const pairs = await pairingsInvolving(a.id);
     expect(pairs).toHaveLength(1);
-    const links = await db.select().from(pairingQuestions).where(sql`${pairingQuestions.pairingId} = ${pairs[0]!.id}`);
+    const links = await db
+      .select()
+      .from(pairingQuestions)
+      .where(sql`${pairingQuestions.pairingId} = ${pairs[0]!.id}`);
     expect(links).toHaveLength(1);
 
-    const [bonusQuestion] = await db.select().from(questions).where(sql`${questions.id} = ${links[0]!.questionId}`);
+    const [bonusQuestion] = await db
+      .select()
+      .from(questions)
+      .where(sql`${questions.id} = ${links[0]!.questionId}`);
     expect(bonusQuestion!.kind).toBe('nemesis_bonus');
     expect(bonusQuestion!.marketId).toBe(bonusMarket.id);
     expect(bonusQuestion!.status).toBe('open');
@@ -435,7 +550,12 @@ describe('nemesis:assign — bonus question selection (§8.8.1)', () => {
       makeEligibleProfile({ categoryShares: { sports: 1 }, rating: 1900, gradedQuestionIds }),
     ]);
     // Two rating bands far enough apart that (a,b) and (c,d) pair off, not cross-band.
-    const bonusMarket = buildMarket({ category: 'sports', status: 'open', nemesisEligible: true, closeTime: new Date('2026-07-24T18:00:00Z') });
+    const bonusMarket = buildMarket({
+      category: 'sports',
+      status: 'open',
+      nemesisEligible: true,
+      closeTime: new Date('2026-07-24T18:00:00Z'),
+    });
     await db.insert(markets).values(bonusMarket);
 
     await runJob();
@@ -447,7 +567,10 @@ describe('nemesis:assign — bonus question selection (§8.8.1)', () => {
     const distinctQuestionIds = new Set(allLinks.map((l) => l.questionId));
     expect(distinctQuestionIds.size).toBe(1); // ...but both link to the SAME reused question row.
 
-    const bonusQuestions = await db.select().from(questions).where(sql`${questions.kind} = 'nemesis_bonus'`);
+    const bonusQuestions = await db
+      .select()
+      .from(questions)
+      .where(sql`${questions.kind} = 'nemesis_bonus'`);
     expect(bonusQuestions).toHaveLength(1);
     void a;
     void b;
@@ -479,7 +602,12 @@ describe('nemesis:assign — flag gating', () => {
       await makeEligibleProfile({ gradedQuestionIds });
       await makeEligibleProfile({ gradedQuestionIds });
 
-      const ctx: JobContext = { db, pool, boss, redis: undefined as unknown as JobContext['redis'] };
+      const ctx: JobContext = {
+        db,
+        pool,
+        boss,
+        redis: undefined as unknown as JobContext['redis'],
+      };
       await nemesisAssignHandler(ctx, undefined);
 
       const allPairings = await db.select().from(nemesisPairings);
@@ -487,5 +615,70 @@ describe('nemesis:assign — flag gating', () => {
     } finally {
       process.env.FLAG_NEMESIS = 'true';
     }
+  });
+});
+
+// --- WS26-T4: CPU-fill for leftovers (docs/plans/cpu-nemesis-wbs.md) ---------------------------
+
+describe('nemesis:assign — CPU-fill (WS26-T4, flag cpu_nemesis)', () => {
+  it('force-pairs a leftover human with a CPU: badgeable pairing, human-only notification, no priority carry', async () => {
+    process.env.FLAG_CPU_NEMESIS = 'true';
+    try {
+      const gradedQuestionIds = await makeGradedDummyQuestions(NEMESIS_MIN_PICKS);
+      const solo = await makeEligibleProfile({ gradedQuestionIds }); // pool of 1 → leftover
+      const roster = await seedCpuRoster(db, AT);
+      const cpuIds = new Set(Object.values(roster));
+
+      const report = await runJob();
+
+      expect(report.poolSize).toBe(1);
+      expect(report.pairingsCreated).toBe(0); // human matcher had nobody to pair
+      expect(report.cpuPairingsCreated).toBe(1);
+      expect(report.leftovers).toBe(0); // the fill resolved the leftover
+
+      const involving = await pairingsInvolving(solo.id);
+      expect(involving).toHaveLength(1);
+      const pairing = involving[0]!;
+      const opponentId = pairing.profileAId === solo.id ? pairing.profileBId : pairing.profileAId;
+      expect(cpuIds.has(opponentId)).toBe(true);
+      expect(pairing.status).toBe('active');
+      expect(pairing.profileAId < pairing.profileBId).toBe(true); // canonical order (§5.5)
+      expect(pairing.isRematch).toBe(false);
+
+      // Review correction 3: the CPU side gets NO notification rows; the human gets the
+      // normal email+push "Meet your nemesis" beat.
+      const allNotifications = await db.select().from(notifications);
+      expect(allNotifications.some((n) => n.profileId === opponentId)).toBe(false);
+      const humanBeats = allNotifications.filter(
+        (n) => n.profileId === solo.id && n.kind === 'nemesis_assigned',
+      );
+      expect(humanBeats.map((n) => n.channel).sort()).toEqual(['email', 'push']);
+
+      // Review correction 4: CPU-filled ⇒ matched now ⇒ no next-week priority.
+      const [soloAfter] = await db
+        .select()
+        .from(profiles)
+        .where(sql`id = ${solo.id}`);
+      expect(soloAfter!.matchmakingPriority).toBe(false);
+    } finally {
+      delete process.env.FLAG_CPU_NEMESIS;
+    }
+  });
+
+  it('does nothing with the flag off: leftover keeps priority, no CPU pairing exists', async () => {
+    const gradedQuestionIds = await makeGradedDummyQuestions(NEMESIS_MIN_PICKS);
+    const solo = await makeEligibleProfile({ gradedQuestionIds });
+    await seedCpuRoster(db, AT);
+
+    const report = await runJob();
+
+    expect(report.cpuPairingsCreated).toBe(0);
+    expect(report.leftovers).toBe(1);
+    expect(await pairingsInvolving(solo.id)).toHaveLength(0);
+    const [soloAfter] = await db
+      .select()
+      .from(profiles)
+      .where(sql`id = ${solo.id}`);
+    expect(soloAfter!.matchmakingPriority).toBe(true);
   });
 });
