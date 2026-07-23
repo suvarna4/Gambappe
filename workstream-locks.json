@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T03:54:42.883Z",
+  "updated_at": "2026-07-23T03:54:44.625Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2534,6 +2534,21 @@
       "pr": null,
       "claimed_at": null,
       "updated_at": "2026-07-23T03:54:42.883Z"
+    },
+    "WS26-T10": {
+      "title": "xTrace wiring: personas as cloud-stored procedural skills",
+      "phase": "X2",
+      "depends_on": [
+        "WS26-T9"
+      ],
+      "mock_start_ok": false,
+      "note": "ops. npm i xtrace; capture each persona as a stored skill, save/load memory from cloud, persona import/export (shareable rivals). The procedural-memory payoff: tuning is memory not code, no redeploys.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-23T03:54:44.625Z"
     }
   }
 }
