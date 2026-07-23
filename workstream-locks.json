@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T19:29:31.564Z",
+  "updated_at": "2026-07-23T19:40:27.193Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2648,12 +2648,12 @@
       ],
       "mock_start_ok": false,
       "note": "New migration + packages/db/src/repositories/companion.ts. Full spec: docs/xtrace-hackathon-tasks.md XH-T4.",
-      "status": "in_review",
+      "status": "done",
       "owner": "claude-session-xtrace-companion",
       "branch": "feat/xh-t4-companion-db",
       "pr": "171",
       "claimed_at": "2026-07-23T19:11:10.935Z",
-      "updated_at": "2026-07-23T19:29:31.563Z"
+      "updated_at": "2026-07-23T19:40:27.191Z"
     },
     "XH-T5": {
       "title": "Worker: rivalry memory ingestion job",
