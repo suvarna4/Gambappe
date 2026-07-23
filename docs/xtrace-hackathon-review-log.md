@@ -74,6 +74,72 @@ reviewers for a clean round):
 
 ## Round history
 
+### Round 3 (final panel) — PENDING, 8 findings, 0 lenses failed
+
+Raw findings JSON preserved verbatim below (protocol v2.1 step 3 — committed
+before any fix is applied):
+
+```json
+[
+ {
+  "task_id": "XH-T6",
+  "claim": "Do NOT fold `getNemesisHistoryPage` the way the grudge book does \u2014 that fold reads one page capped at `PAGINATION_MAX_LIMIT`, silently truncating \"lifetime\" for long histories.",
+  "problem": "Repo reality: the grudge book's actual call in `apps/web/app/rivals/page.tsx` is `getNemesisHistoryPage(db, profile.id, { limit: NEMESIS_HISTORY_DEFAULT_LIMIT })` (line ~127), and `NEMESIS_HISTORY_DEFAULT_LIMIT = 20` (`apps/web/lib/nemesis/service.ts:182`) \u2014 not `PAGINATION_MAX_LIMIT` (50, `packages/core/src/config.ts:302`). The grudge-book fold is capped at 20, not 50. The guidance itself (don't reimplement this fold; use the untruncated `lifetimeRecordBetween`/`completedPairingIdsBetween` aggregates instead) is still correct, but the cited cap is factually wrong, which could mislead an implementer cross-checking the reasoning against the code (e.g. when writing a test comment or explaining the trap in a PR).",
+  "severity": "minor",
+  "suggested_fix": "Change the cited constant to `NEMESIS_HISTORY_DEFAULT_LIMIT` (20), e.g.: \"that fold reads one page capped at `NEMESIS_HISTORY_DEFAULT_LIMIT` (20), silently truncating \\\"lifetime\\\" for long histories.\""
+ },
+ {
+  "task_id": "XH-T1",
+  "claim": "`.env.example` \u2014 under `# --- Feature flags ---` add `FLAG_COMPANION`, `FLAG_CALLOUT_DRAFT`, `FLAG_SEASON_WRAPPED`.",
+  "problem": "The actual section header in `.env.example` (line 68) is `# --- Feature flags (\u00a74.6): FLAG_<NAME>=true to enable; defaults in packages/core/src/flags.ts ---`, not the bare `# --- Feature flags ---` quoted in the task. It's the only feature-flags section so an implementer will still find it, but the literal string given doesn't exist in the file.",
+  "severity": "minor",
+  "suggested_fix": "Quote the actual header: \"under the `# --- Feature flags (\u00a74.6) ---` section\" (or just say \"under the existing Feature flags section\") instead of the exact-but-wrong string."
+ },
+ {
+  "task_id": "XH-T3",
+  "claim": "Use structured outputs: ... `z.object({ lines: z.array(z.string()).min(1).max(COMPANION_BANTER_MAX_LINES) })` for banter, the same shape with `.max(COMPANION_DRAFT_MAX)` for callout drafts",
+  "problem": "T1's `getBanterResponseSchema` and `draftCalloutResponseSchema` (packages/core/src/schemas/companion.ts) require each line/draft string to be `.min(1).max(280)`, but the `zodOutputFormat` schemas T3 feeds to `client.messages.parse` for banter and callout drafts only bound array length, not per-string length (only the recap path reuses core's `seasonRecapContentSchema` verbatim, which does carry the 120/600-char field caps). A junior implementing exactly what's written will let Claude return a line/draft longer than 280 chars; nothing in T2/T3's post-processing (`filterLines` only strips money-words/empties, doesn't truncate or reject by length) catches this before the artifact is stored. T6's client island then parses the stored `lines` against `getBanterResponseSchema` (280-char cap) and \u2014 per its own render-nothing rule for parse failure \u2014 silently blanks the panel; T7's button similarly parses `draftCalloutResponseSchema` against drafts that were never validated at generation time. There's no acceptance-criteria test anywhere in T3/T6/T7 that would catch a >280-char line, since the happy-path tests use short fixture strings.",
+  "severity": "major",
+  "suggested_fix": "In XH-T3, either (a) import and reuse T1's `getBanterResponseSchema`'s inner line schema / `draftCalloutResponseSchema`'s inner schema shape directly (i.e. `z.object({ lines: z.array(z.string().min(1).max(280)).min(1).max(COMPANION_BANTER_MAX_LINES) })`) so generation-time and client-parse-time bounds are the same object, or (b) explicitly add a truncate-to-280-chars step in post-processing alongside `filterLines`, and state that in the Spec bullet list so it isn't left to guesswork."
+ },
+ {
+  "task_id": "XH-T6",
+  "claim": "extract the island's fetch \u2192 envelope-unwrap \u2192 parse step into a plain exported function (or just use `request()` from `lib/pick-client.ts`) and unit-test THAT with a stubbed `global.fetch` ... assert `{ data: { banter: null } }`, 500, and parse failure all yield the render-nothing value.",
+  "problem": "`request()` (apps/web/lib/pick-client.ts:66-110) does not return a sentinel on failure \u2014 it *throws* `ApiClientError` for a non-2xx status, a JSON-parse failure, a network error, and a schema-validation failure (only the `{ data: { banter: null } }` case returns a value, since that's a successful 200 whose payload happens to be `null`). The doc's own framing \u2014 'assert ... 500, and parse failure all yield the render-nothing value' \u2014 describes return-value semantics that `request()` does not have for those two cases; used as literally suggested ('just use request()'), the island's effect would need to catch a thrown `ApiClientError` and map it to `null`, but the doc never states that a try/catch wrapper is required, so a junior following 'just use request()' will write code that throws on 500/parse-failure instead of rendering nothing, and their unit test (which expects a returned render-nothing value) will fail against an uncaught rejection instead.",
+  "severity": "major",
+  "suggested_fix": "Add an explicit line: 'wrap the `request()` call in try/catch inside the extracted function \u2014 any thrown `ApiClientError` (network, non-2xx, parse failure) maps to the same render-nothing return value as a successful `{banter: null}` response' and adjust the acceptance criteria to test the wrapper function, not `request()` directly, since `request()` alone cannot satisfy the 'yields render-nothing' assertions for the 500 and parse-failure cases."
+ },
+ {
+  "task_id": "XH-T3",
+  "claim": "Post-processing: run `filterLines` on every string field; for recaps a filtered-out paragraph drops that paragraph, and a result with zero surviving paragraphs (or a filtered title) \u2192 `null`.",
+  "problem": "`filterLines` (packages/companion/src/filter.ts) is typed as `(lines: string[]) => string[]` \u2014 an array-in, array-out function. Applying it to a single scalar field like the recap `title` isn't shown: does the junior call `filterLines([title])[0]`, check `.length === 0` to detect a dropped title, or write a separate scalar helper? The doc says 'run filterLines on every string field' as if the function directly accepts a scalar, which it doesn't per its own declared signature.",
+  "severity": "minor",
+  "suggested_fix": "Add one line clarifying the scalar case, e.g. 'for scalar fields (recap title) call `filterLines([value])`; an empty result means the field was filtered out and (per the rule above) the whole recap becomes null.'"
+ },
+ {
+  "task_id": "XH-T5",
+  "claim": "Batch cap per run: 200 sources... So also circuit-break on outage: abort the run after 5 consecutive ingest() failures... or once the run exceeds a 5-minute wall-clock deadline from at... record the abort in the report (aborted: true).",
+  "problem": "This circuit breaker is the mechanism that specifically prevents the failure mode the spec itself calls out: an xTrace outage burning ~10s per retried call \u00d7 up to 400 calls (200 sources \u00d7 2) = up to an hour of sequential failures, blowing past pg-boss's job expiration and triggering concurrent re-delivery of the same job (a real at-least-once hazard, worsening load during an incident). Despite being the load-bearing safety mechanism for exactly the race/pile-up scenario this review is meant to catch, none of the listed acceptance criteria exercise it: the integration test only covers the happy path (2 ingests, idempotent re-run) and 'fake client returning false \u2192 nothing marked'. There is no test asserting the run actually stops after 5 consecutive failures, stops at the 5-minute deadline, or sets aborted:true on the report. A wrong comparison operator (>= vs >), a counter that fails to reset after an intervening success, or a deadline check applied at the wrong granularity (e.g. only checked between pairings, not between the per-side ingest calls within one pairing) would all pass every currently-specified test while leaving the job able to run for the full hour it was designed to avoid.",
+  "severity": "major",
+  "suggested_fix": "Add to XH-T5's acceptance criteria: an integration test with a fake XtraceClient that always returns false, asserting the run stops after exactly 5 ingest() calls (not 5 pairings/sources) and the report has aborted:true; and a test using TEST_CLOCK/a controllable `at` plus a fake client with artificial per-call delay (or a fake clock check) asserting the run aborts once elapsed time from `at` exceeds 5 minutes, before exhausting the full candidate batch. Also assert unprocessed sources are not marked ingested so the next run naturally retries them."
+ },
+ {
+  "task_id": "XH-T1",
+  "severity": "major",
+  "claim": "`export const getRecapResponseSchema = z.object({ recap: seasonRecapContentSchema.extend({ generated_at: zTimestamp }).nullable() });` \u2014 listed under the rule \"define ONLY what a task consumes ... every export below has a named consumer in T3/T6/T7/T8\"",
+  "problem": "No task ever imports or parses `getRecapResponseSchema`. XH-T8's `/you` panel is explicitly server-rendered straight from the DB row returned by `latestRecapForProfile` (\"No client island needed ... render server-side\") \u2014 there is no GET recap API route anywhere in T6-T9, so nothing ever produces a `{ recap: ... }` envelope that this schema would validate. Contrast with `getBanterResponseSchema`, which T6's route and client island both explicitly parse. This contradicts the doc's own stated invariant for this section and would leave a junior engineer either building an unneeded/unspecified recap API route to give the schema a consumer, or shipping a dead export with no test rationale beyond \"parses valid/invalid payloads\" in isolation.",
+  "suggested_fix": "Either delete `getRecapResponseSchema` from XH-T1 (keep only `seasonRecapContentSchema`, which `SeasonRecapContent` and T3/T8 do need), or, if a future/parallel GET recap route is intended, add it explicitly to T8's file list and route spec so the schema has a real consumer."
+ },
+ {
+  "task_id": "XH-T4 / XH-T7",
+  "severity": "major",
+  "claim": "T4 pins `companion_artifacts.content jsonb` as `{ lines?: string[], recap?: {title, paragraphs}, model: string, promptVersion: number }`, and T7 step 9 says only \"Store artifact, return `draftCalloutResponseSchema` shape\" without naming which content field holds the generated drafts.",
+  "problem": "The pinned content shape has a slot for banter (`lines`) and for recap (`recap`), but none named for callout drafts. T7 doesn't own any `packages/db` files (T4 does), so T7 can't add a `drafts?` field to the pinned shape itself, yet it must store an array of up to `COMPANION_DRAFT_MAX` draft strings somewhere in `content`. A junior implementing T7 has no pinned field to write to \u2014 they'd either reuse `lines` (undocumented, and semantically confusable with banter lines when debugging/inspecting rows) or invent a `drafts` field that contradicts T4's already-shipped pinned shape, which is exactly the kind of literal/shape drift the rest of the doc goes out of its way to prevent (cf. the cache-key-builder rule one section later).",
+  "suggested_fix": "In T4's content shape, add an explicit `drafts?: string[]` field (or clarify that callout drafts are stored under the existing `lines` field), and have T7 step 9 explicitly say `content: { lines: drafts, model, promptVersion }` (or `{ drafts, model, promptVersion }`, matching whichever T4 picks) so both tasks agree on the exact key."
+ }
+]
+```
+
 ### Round 2 (resumed run) — 8 applied, 0 rejected — split fixer
 
 12 raw findings from 4 reviewers deduped to 8 unique. The in-run fixer
