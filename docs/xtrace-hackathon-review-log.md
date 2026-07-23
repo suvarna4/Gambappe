@@ -1,9 +1,9 @@
 # xTrace hackathon tasks — review log & process
 
 Status: NOT strictly converged; loop running (operator-approved
-run-until-clean, 2026-07-23). 74 fixes total across four full panel
-rounds (30 + 22 + 8 + 8), a main-session pass (3), and round 4 (3).
-Finding counts are decaying (30 → 22 → 8 → 8 → 3); the loop continues
+run-until-clean, 2026-07-23). 76 fixes total across five full panel
+rounds (30 + 22 + 8 + 8 + 3 + 2) and a main-session pass (3).
+Finding counts are decaying (30 → 22 → 8 → 8 → 3 → 2); the loop continues
 until a panel round returns zero findings.
 
 This file is the durable state of the adversarial review process for
@@ -65,7 +65,16 @@ reviewers for a clean round):
 
 ## Round history
 
-### Round 5 — PENDING, 2 findings, 0 lenses failed
+### Round 5 — 2 applied, 0 rejected
+
+All 4 lenses ran (2 empty). Applied: [major] PII scrub on ingested post
+bodies — T2 gains `redact.ts` (`scrubPii`: email-like + phone-like →
+`[redacted]`, deliberately crude), T5 applies it to every post body before
+ingest, and a seeded-email/phone AC replaces the synthetic-only assertion
+that could never prove the scrub exists (ground rule 6 was otherwise
+unenforced on the one free-form-text path leaving the app); [minor]
+critical-path prose de-ambiguated — T5 is a demo prerequisite, not a code
+dependency of T6. Raw findings below (PENDING-committed pre-application):
 
 ```json
 [

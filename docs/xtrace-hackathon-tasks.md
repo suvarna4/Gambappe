@@ -90,7 +90,11 @@ Postgres (deterministic stats) ──┤
 | XH-T8 | Season wrapped: batch job + `/you` panel | XH-T2, XH-T3, XH-T4, XH-T6 |
 | XH-T9 | Demo seed script + runbook | XH-T5..T8 |
 
-Demo-critical path: T1 → T2 → T3 (T4 in parallel after T1) → T5 → T6.
+Demo-critical path: T1 → T2 → T3 (T4 in parallel after T1) → T6. T5 is
+NOT a code dependency of T6 (the banter route's memory search is fail-open
+and works with zero ingested memories) — but the demo needs T5 to have run
+at least once beforehand so banter shows grounded memory, hence T5 sits on
+the demo path though not in T6's dependency row.
 T7 is independently shippable once T2, T3, and T4 have merged; T8
 additionally needs T6 (it reuses `companionCopy.disclaimer`). T9 requires
 all of T5–T8 — the runbook walks all three surfaces.
@@ -268,6 +272,19 @@ I/O. No other file in the repo may call the xTrace HTTP API directly.
   //    (export the constant from client.ts) when XTRACE_API_BASE is unset — no
   //    other task defines a code-level default, so it lives here.
   ```
+- `packages/companion/src/redact.ts` — `scrubPii(text: string): string`:
+  replaces email-like substrings (`\S+@\S+\.\S+`-grade pattern) and
+  phone-like substrings (7+ digit runs allowing separators
+  `[-.() ]`) with `[redacted]`. Consumed by XH-T5 on every post body
+  before ingest — ground rule 6 forbids emails leaving the app, post
+  bodies are free-form user text, and the repo's moderation model (§14) is
+  reactive removal, not a pre-send filter, so the scrub is the only thing
+  standing between a user typing their email into a trash-talk thread and
+  that email landing in a third-party store. Keep it deliberately crude
+  (over-redaction of rivalry banter is harmless; under-redaction is not).
+  Unit tests: an email, a `(555) 123-4567`-style phone, and a digits-only
+  phone are each replaced; ordinary text with short numbers ("won 3-1
+  again", "up 12 points") passes through unchanged.
 - `packages/companion/src/index.ts` — barrel export.
 
 **Spec:**
@@ -626,8 +643,12 @@ so retrieval has something to find. Runs entirely off the request path.
   contain user-typed hints; acceptable: both rivals already see the thread,
   so group-sharing adds zero new visibility). One ingest per post:
   `userId` = author profileId, `convId = pairingConvId(...)`,
-  `groupIds = [pairingGroupId(...)]`, message = the post body with an
-  attribution prefix (`"{handle} said in the rivalry thread: …"`).
+  `groupIds = [pairingGroupId(...)]`, message =
+  `scrubPii(postBody)` (T2's redactor — MANDATORY: post bodies are the
+  only free-form user text this feature ships off-app, and ground rule 6
+  forbids emails/PII leaving; the verdict summaries are template-built
+  from handles/scores and need no scrub) with an attribution prefix
+  (`"{handle} said in the rivalry thread: …"`).
   Mark ingested on success.
 - Batch cap per run: `MAX_SOURCES_PER_RUN = 200` (constant local to the
   job file) — a SINGLE SHARED budget across both source types, not a
@@ -652,9 +673,13 @@ so retrieval has something to find. Runs entirely off the request path.
   pattern: real PG, `process.env.FLAG_COMPANION = 'true'`, fake
   `XtraceClient` capturing calls): seed via factories a concluded pairing
   with verdict + 2 posts → run → assert 2 verdict ingests (one per side,
-  correct group/conv ids, no forbidden fields in payload text — assert
-  no `@`/email-like strings) + 2 post ingests + log rows; run again →
+  correct group/conv ids) + 2 post ingests + log rows; run again →
   zero new ingest calls (idempotency).
+- PII scrub: seed a post whose body contains a literal email address and a
+  phone number → the captured ingest payload contains NEITHER verbatim
+  (both `[redacted]`) while the rest of the post text survives. (A
+  synthetic-posts-only test cannot prove the scrub exists — this seeded
+  case is the one that can.)
 - Fake client returning false → nothing marked; next run retries.
 - Shared budget: seed 150 uningested verdict sources + 150 uningested post
   sources, run once → total sources attempted ≤ 200, verdicts selected
