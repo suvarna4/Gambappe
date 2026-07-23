@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T04:40:37.338Z",
+  "updated_at": "2026-07-23T04:43:14.453Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2463,12 +2463,12 @@
       ],
       "mock_start_ok": false,
       "note": "engine/worker. OWNER DECISION: CPU ratings DRIFT with results — ratings:weekly applies Glicko-2 to the CPU side exactly as to humans (no skip logic; this is the existing default, so the task is to make it EXPLICIT and pin it with tests). Human ratings also move from CPU matchups (picks are real). Document consequence: roster ratings spread toward each persona's natural level over time; T8 band-fit must select against CURRENT (live) CPU ratings at assign time. Lands before T8.",
-      "status": "available",
-      "owner": null,
+      "status": "claimed",
+      "owner": "claude-code-web-session-54bb90dd",
       "branch": null,
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-23T03:54:36.049Z"
+      "claimed_at": "2026-07-23T04:43:14.453Z",
+      "updated_at": "2026-07-23T04:43:14.453Z"
     },
     "WS26-T8": {
       "title": "Persona roster + rating-band-fit CPU selection",
