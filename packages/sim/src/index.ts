@@ -184,3 +184,5 @@ export function baselinePolicies(): PickPolicy[] {
 export function runBaselines(rows: readonly SimMarketRow[]): SimReport[] {
   return baselinePolicies().map((policy) => runSimulation(rows, policy).report);
 }
+
+export * from './football-data.js';
