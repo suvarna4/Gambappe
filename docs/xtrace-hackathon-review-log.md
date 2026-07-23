@@ -1,19 +1,13 @@
 # xTrace hackathon tasks — review log & process
 
-Status: CONVERGED 2026-07-23. 60 fixes across three full agent-panel
-rounds (30 + 22 + 8), then a final full-doc review pass performed by the
-main session (3 minor fixes: stale status line, one literal-3 → constant,
-T4's repository-location hedge resolved to the verified
-`packages/db/src/repositories/` layout). Deviation note: the closing pass
-was a main-session review, not a fourth 4-agent panel — the operator
-declined further agent rounds after repeated quota exhaustion; every
-load-bearing symbol introduced by rounds 2–3 fixes was re-verified against
-the repo during the pass (`enforceGetBackstop`, `etDateString`,
-`addDaysToDateString`, `scoreNemesisWeek`, `getFullPairingSharedQuestionPicks`,
-`updatePairingConclusion`, `NEMESIS_HISTORY_DEFAULT_LIMIT`, `DAY`,
-`request()`, `assertSameOrigin`, `nemesis-components.test.tsx`,
-`packages/db/src/repositories/`). Any future edit to the task doc reopens
-the process below.
+Status: NOT strictly converged (2026-07-23). 71 fixes total: three full
+panel rounds (30 + 22 + 8), a main-session pass (3), and a fourth full
+panel round (8 — including 4 majors the main-session pass missed; see
+Round 3 below, which retired the earlier premature CONVERGED claim).
+Strict convergence requires one more panel round returning zero findings
+— run it via the Process below when the operator approves. The doc is
+materially sound; the open question is only whether a fresh panel finds
+anything in the round-3 fixes themselves.
 
 This file is the durable state of the adversarial review process for
 `docs/xtrace-hackathon-tasks.md`. It exists so the process can be resumed by
@@ -74,10 +68,31 @@ reviewers for a clean round):
 
 ## Round history
 
-### Round 3 (final panel) — PENDING, 8 findings, 0 lenses failed
+### Round 3 (final panel) — 8 applied, 0 rejected
 
-Raw findings JSON preserved verbatim below (protocol v2.1 step 3 — committed
-before any fix is applied):
+All 4 Sonnet lenses completed (0 failures); 8 findings, all verified valid
+and applied by the main session. This round vindicated the strict close:
+it caught 4 majors the main-session pass had missed — (1) T3's
+generation-time zod schemas lacked the per-string 280-char bounds T1's
+response schemas enforce, so an over-long stored line would silently blank
+the surface at parse time (fixed: identical inner bounds, with the
+SDK's client-side-validation behavior documented); (2) T6's island spec
+suggested bare `request()`, which THROWS on 500/parse failure rather than
+returning the render-nothing value — a try/catch wrapper is now required
+and the tests target the wrapper; (3) T5's outage circuit breaker — the
+load-bearing safety mechanism — had zero acceptance criteria (added:
+exactly-5-consecutive-calls abort, counter reset on success, TEST_CLOCK-
+driven deadline abort between individual calls); (4) T4's pinned
+`content` jsonb had no slot for callout drafts, leaving T7 with no key to
+write (added `drafts?: string[]`; T7 step 9 pins it). Plus one more
+major — T1's `getRecapResponseSchema` had no consumer anywhere (deleted,
+with a NOTE explaining the absence) — and 3 minors (wrong cap constant
+cited for the grudge-book fold: `NEMESIS_HISTORY_DEFAULT_LIMIT` 20, not
+`PAGINATION_MAX_LIMIT` 50; `.env.example` header quoted inexactly;
+`filterLines` scalar-title usage clarified).
+
+Raw findings JSON preserved verbatim below (committed pre-application at
+e50282c per protocol v2.1 step 3):
 
 ```json
 [

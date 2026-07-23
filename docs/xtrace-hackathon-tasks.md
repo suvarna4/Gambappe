@@ -105,7 +105,9 @@ tasks consume, defined once in `packages/core`.
 **Files:**
 - `packages/core/src/flags.ts` — add to `FLAG_DEFAULTS` (all `false`):
   `companion`, `callout_draft`, `season_wrapped`.
-- `.env.example` — under `# --- Feature flags ---` add `FLAG_COMPANION`,
+- `.env.example` — under the existing `# --- Feature flags (§4.6) ---`
+  section (that header carries a trailing note; match it by prefix) add
+  `FLAG_COMPANION`,
   `FLAG_CALLOUT_DRAFT`, `FLAG_SEASON_WRAPPED`. Add a new
   `# --- Companion (xTrace + Claude) ---` group: `XTRACE_API_BASE`
   (default `https://api.production.xtrace.ai`), `XTRACE_API_KEY`,
@@ -162,11 +164,12 @@ tasks consume, defined once in `packages/core`.
     title: z.string().min(1).max(120),
     paragraphs: z.array(z.string().min(1).max(600)).min(1).max(4),
   });
-  export const getRecapResponseSchema = z.object({
-    recap: seasonRecapContentSchema.extend({ generated_at: zTimestamp }).nullable(),
-  });
   export type SeasonRecapContent = z.infer<typeof seasonRecapContentSchema>;
-  //  ^ exported from the core root — T3's `seasonRecap` return type imports it
+  //  ^ exported from the core root — T3's `seasonRecap` return type imports it.
+  //  NOTE deliberately absent: no `getRecapResponseSchema` — T8's /you panel is
+  //  server-rendered straight from the DB row (no GET recap route exists in any
+  //  task), so a response schema would violate this file's every-export-has-a-
+  //  named-consumer rule. Add one only if a recap API route is ever added.
   ```
 
 **Spec notes:**
@@ -378,13 +381,21 @@ functions with structured outputs, the money-word filter, and a hard
   every caller here is fail-open anyway.
 - Use structured outputs: `client.messages.parse` with
   `output_config: { format: zodOutputFormat(schema) }` where schema is
-  `z.object({ lines: z.array(z.string()).min(1).max(COMPANION_BANTER_MAX_LINES) })`
+  `z.object({ lines: z.array(z.string().min(1).max(280)).min(1).max(COMPANION_BANTER_MAX_LINES) })`
   for banter, the same shape with `.max(COMPANION_DRAFT_MAX)` for callout
   drafts (both constants from core config, matching T1's response schemas —
   no literal 3s; the two caps are separate constants on purpose, so tuning
   banter length can never make the generator emit more drafts than
   `draftCalloutResponseSchema` accepts), and core's
-  `seasonRecapContentSchema` shape for recaps.
+  `seasonRecapContentSchema` shape for recaps. The per-string
+  `.min(1).max(280)` bounds are REQUIRED and must equal T1's response
+  schemas' inner bounds: the artifact is stored raw and later parsed by
+  T6's island / T7's button against those response schemas, so a
+  generation-time string the response schema rejects would silently blank
+  the surface. (The TS SDK strips unsupported string-length constraints
+  from the wire schema and validates them client-side — a violation makes
+  `parsed_output` null, which the fail-open contract already maps to a
+  degraded `null`, never a stored-invalid artifact.)
   Do NOT set `temperature`/`top_p` (rejected on this model). Do not
   configure `thinking` (defaults are correct).
 - `max_tokens: COMPANION_MAX_OUTPUT_TOKENS`.
@@ -399,7 +410,10 @@ functions with structured outputs, the money-word filter, and a hard
   Log one warn line (no prompt contents in logs). Never throw.
 - Post-processing: run `filterLines` on every string field; for recaps a
   filtered-out paragraph drops that paragraph, and a result with zero
-  surviving paragraphs (or a filtered title) → `null`.
+  surviving paragraphs (or a filtered title) → `null`. `filterLines` is
+  array-in/array-out — for the scalar recap `title`, call
+  `filterLines([title])`: an empty result means the title was filtered,
+  and per the rule above the whole recap becomes `null`.
 - `memory` arrays are truncated defensively before prompting: max
   `COMPANION_SEARCH_LIMIT` items, each hard-truncated to 500 chars.
 
@@ -437,7 +451,10 @@ ingestion idempotency, plus typed repository helpers and test factories.
     `cacheKey text not null` + unique index, `profileId uuid not null →profiles`,
     `pairingId uuid null →nemesis_pairings`, `seasonId uuid null →seasons`,
     `content jsonb not null` (shape:
-    `{ lines?: string[], recap?: {title, paragraphs}, model: string, promptVersion: number }`),
+    `{ lines?: string[], drafts?: string[], recap?: {title, paragraphs}, model: string, promptVersion: number }`
+    — one optional slot per artifact kind: `lines` for banter, `drafts`
+    for callout drafts, `recap` for recaps; T7 has no `packages/db`
+    ownership, so its storage key is pinned HERE),
     `createdAt timestamptz not null default now`.
     Index on `(profileId, kind, createdAt)`.
   - `companion_ingest_log`: `sourceKind text not null` (values:
@@ -621,6 +638,17 @@ so retrieval has something to find. Runs entirely off the request path.
   no `@`/email-like strings) + 2 post ingests + log rows; run again →
   zero new ingest calls (idempotency).
 - Fake client returning false → nothing marked; next run retries.
+- Circuit breaker (the load-bearing safety mechanism — it must be tested,
+  not just specified): with an always-failing fake client and >5 pending
+  sources, the run stops after exactly 5 consecutive `ingest()` CALLS
+  (calls, not sources — the count spans the two per-side calls within one
+  pairing) and the report has `aborted: true`; an intervening success
+  resets the consecutive counter (seed a fake that fails 4×, succeeds,
+  then fails 4× → no abort). Deadline: drive `at` + `setTestClock`/
+  `advanceTestClock` (§17.2) past the 5-minute deadline mid-run and assert
+  the run aborts with `aborted: true` even though fewer than 5 consecutive
+  failures occurred — the deadline check must run between individual
+  ingest calls, not only between pairings.
 - Flag off → handler returns without touching the DB (unit test).
 - `pnpm verify` green.
 
@@ -702,8 +730,8 @@ generated at most once per profile per ET day.
        `winner_profile_id`; T7 consumes the same helper — do not
        reimplement it). (Do NOT fold `getNemesisHistoryPage` the way the
        grudge book does — that fold reads one page capped at
-       `PAGINATION_MAX_LIMIT`, silently truncating "lifetime" for long
-       histories.)
+       `NEMESIS_HISTORY_DEFAULT_LIMIT` (20, `apps/web/lib/nemesis/service.ts`),
+       silently truncating "lifetime" for long histories.)
      - Current week scores DERIVED from picks, never read from the
        pairing row: `scoreA`/`scoreB` are written only at conclusion by
        `updatePairingConclusion`, so the active pairing's row always
@@ -762,7 +790,13 @@ standard §9.1 success envelope `{ data: ... }` — unwrap before parsing:
 `envelope.data` before `schema.parse` (precedent: `CalloutButton.tsx`
 reads `body.data?.share_url`). Parsing the raw body with the schema
 always fails and — because failure renders nothing — would be a silently
-dead panel. `banter: null`, non-200, parse failure, or fetch error →
+dead panel. CRITICAL if using `request()`: it THROWS `ApiClientError` on
+non-2xx, JSON-parse failure, schema-validation failure, and network error
+— it does not return a sentinel — so the extracted function MUST wrap the
+call in try/catch and map any throw to the same render-nothing value as a
+successful `{ banter: null }` response; bare `request()` cannot satisfy
+the render-nothing behavior on its own. `banter: null`, non-200, parse
+failure, or fetch error →
 render nothing (`return null`). Show heading, lines, and the disclaimer.
 No polling, no retries.
 
@@ -779,8 +813,11 @@ No polling, no retries.
   @testing-library dependency and the web vitest config pins
   `environment: 'node'`; mount-effect behavior is e2e-only per the
   `nemesis-components.test.tsx` convention): extract the island's
-  fetch → envelope-unwrap → parse step into a plain exported function (or
-  just use `request()` from `lib/pick-client.ts`) and unit-test THAT with
+  fetch → envelope-unwrap → parse step into a plain exported function
+  (internally a try/catch around `request()` from `lib/pick-client.ts`,
+  per the island spec — the tests target this WRAPPER, not bare
+  `request()`, since only the wrapper returns the render-nothing value on
+  throw) and unit-test THAT with
   a stubbed `global.fetch` (the `vi.stubGlobal` style of
   `share-client.test.ts`) — the fetch stub MUST return the enveloped shape
   `{ data: { banter: { lines, generated_at } } }` so the unwrap is
@@ -877,7 +914,11 @@ in-app callout contract (stamps-only, no message field) is untouched.
    passive banter panel,
    the user explicitly clicked — silent nothing is worse than an honest
    error toast.
-9. Store artifact, return `draftCalloutResponseSchema` shape.
+9. Store the artifact with `content: { drafts, model, promptVersion }` —
+   the `drafts` key is T4's pinned slot for this kind (NOT `lines`, which
+   is banter's; a mismatched key would make the step-6 cache hit read
+   `undefined` and silently regenerate forever) — and return the
+   `draftCalloutResponseSchema` shape.
 
 **Button spec:** click → POST → on success unwrap the §9.1 envelope —
 drafts live at `json.data.drafts` (parse with `draftCalloutResponseSchema`
