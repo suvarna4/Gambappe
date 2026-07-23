@@ -24,6 +24,7 @@ import {
   seasons,
   type Db,
 } from '@receipts/db';
+import { seedCpuRoster } from '@receipts/db';
 import {
   buildDuo,
   buildDuoMatch,
@@ -49,7 +50,13 @@ beforeAll(async () => {
   await migrate(db, {
     migrationsFolder: join(
       dirname(fileURLToPath(import.meta.url)),
-      '..', '..', '..', '..', 'packages', 'db', 'drizzle',
+      '..',
+      '..',
+      '..',
+      '..',
+      'packages',
+      'db',
+      'drizzle',
     ),
   });
 });
@@ -59,7 +66,10 @@ afterAll(async () => {
 });
 
 async function getRating(profileId: string) {
-  const [row] = await db.select().from(ratings).where(sql`${ratings.profileId} = ${profileId}`);
+  const [row] = await db
+    .select()
+    .from(ratings)
+    .where(sql`${ratings.profileId} = ${profileId}`);
   return row!;
 }
 
@@ -74,8 +84,12 @@ describe('ratings:weekly — nemesis pairing rating application (§8.3)', () => 
   // re-derive Glicko-2 math. Tolerances mirror WS4-T2's own (±0.01 rating/RD, ±1e-5 vol).
   const startA = { rating: 1500, rd: 200, vol: 0.06 };
   const startB = { rating: 1400, rd: 30, vol: 0.06 };
-  const expectedA = updateGlicko2(startA, [{ opponentRating: startB.rating, opponentRd: startB.rd, score: 1 }]);
-  const expectedB = updateGlicko2(startB, [{ opponentRating: startA.rating, opponentRd: startA.rd, score: 0 }]);
+  const expectedA = updateGlicko2(startA, [
+    { opponentRating: startB.rating, opponentRd: startB.rd, score: 1 },
+  ]);
+  const expectedB = updateGlicko2(startB, [
+    { opponentRating: startA.rating, opponentRd: startA.rd, score: 0 },
+  ]);
 
   it('sets up season + profiles + seeded ratings + a completed pairing', async () => {
     const season = buildSeason();
@@ -89,8 +103,18 @@ describe('ratings:weekly — nemesis pairing rating application (§8.3)', () => 
     await db.insert(profiles).values([profileA, profileB]);
 
     await db.insert(ratings).values([
-      { profileId: profileAId, glickoRating: startA.rating, glickoRd: startA.rd, glickoVol: startA.vol },
-      { profileId: profileBId, glickoRating: startB.rating, glickoRd: startB.rd, glickoVol: startB.vol },
+      {
+        profileId: profileAId,
+        glickoRating: startA.rating,
+        glickoRd: startA.rd,
+        glickoVol: startA.vol,
+      },
+      {
+        profileId: profileBId,
+        glickoRating: startB.rating,
+        glickoRd: startB.rd,
+        glickoVol: startB.vol,
+      },
     ]);
 
     const pairing = buildNemesisPairing(seasonId, profileAId, profileBId, {
@@ -121,9 +145,15 @@ describe('ratings:weekly — nemesis pairing rating application (§8.3)', () => 
   });
 
   it('stamps rating_applied_at and writes the pre-application rating_before snapshot (§6.5 deep-regrade support)', async () => {
-    const [pairing] = await db.select().from(nemesisPairings).where(sql`${nemesisPairings.id} = ${pairingId}`);
+    const [pairing] = await db
+      .select()
+      .from(nemesisPairings)
+      .where(sql`${nemesisPairings.id} = ${pairingId}`);
     expect(pairing!.ratingAppliedAt).not.toBeNull();
-    const verdict = pairing!.verdict as { narrative_line: string; rating_before: { a: typeof startA; b: typeof startB } };
+    const verdict = pairing!.verdict as {
+      narrative_line: string;
+      rating_before: { a: typeof startA; b: typeof startB };
+    };
     expect(verdict.narrative_line).toBe('A wins the week'); // existing verdict content preserved, not overwritten
     expect(verdict.rating_before.a).toEqual(startA);
     expect(verdict.rating_before.b).toEqual(startB);
@@ -156,15 +186,24 @@ describe('ratings:weekly — first-ever nemesis game (no pre-existing ratings ro
     // Deliberately NO `ratings` rows inserted — this is the realistic first-nemesis-game path
     // (WS5-T1's assignment job doesn't pre-seed `ratings`; `getOrDefaultRating` lazily creates
     // one at the spec defaults, §5.4).
-    const pairing = buildNemesisPairing(season.id as string, profileA.id as string, profileB.id as string, {
-      status: 'completed',
-      winnerProfileId: profileA.id as string,
-    });
+    const pairing = buildNemesisPairing(
+      season.id as string,
+      profileA.id as string,
+      profileB.id as string,
+      {
+        status: 'completed',
+        winnerProfileId: profileA.id as string,
+      },
+    );
     await db.insert(nemesisPairings).values(pairing);
 
     const defaults = { rating: 1500, rd: 350, vol: 0.06 };
-    const expectedA = updateGlicko2(defaults, [{ opponentRating: defaults.rating, opponentRd: defaults.rd, score: 1 }]);
-    const expectedB = updateGlicko2(defaults, [{ opponentRating: defaults.rating, opponentRd: defaults.rd, score: 0 }]);
+    const expectedA = updateGlicko2(defaults, [
+      { opponentRating: defaults.rating, opponentRd: defaults.rd, score: 1 },
+    ]);
+    const expectedB = updateGlicko2(defaults, [
+      { opponentRating: defaults.rating, opponentRd: defaults.rd, score: 0 },
+    ]);
 
     const report = await runRatingsWeekly(db, pool, NOW);
     expect(report.pairingsApplied).toBe(1);
@@ -175,6 +214,56 @@ describe('ratings:weekly — first-ever nemesis game (no pre-existing ratings ro
     expect(Math.abs(ratingB.glickoRating - expectedB.rating)).toBeLessThanOrEqual(0.01);
     expect(ratingA.gamesCount).toBe(1);
     expect(ratingB.gamesCount).toBe(1);
+  });
+});
+
+describe('ratings:weekly — CPU pairings DRIFT (WS26-T12 pin, owner decision 2026-07-22)', () => {
+  it('rates both sides of a completed human-vs-CPU pairing symmetrically — no CPU exemption', async () => {
+    const season = buildSeason();
+    await db.insert(seasons).values(season);
+    const human = buildProfile();
+    await db.insert(profiles).values(human);
+    const humanStart = { rating: 1600, rd: 120, vol: 0.06 };
+    await db.insert(ratings).values({
+      profileId: human.id,
+      glickoRating: humanStart.rating,
+      glickoRd: humanStart.rd,
+      glickoVol: humanStart.vol,
+    });
+    const roster = await seedCpuRoster(db, NOW);
+    const cpuId = roster.fade; // no ratings row seeded — lazily created at Glicko defaults
+
+    const pairing = buildNemesisPairing(season.id as string, human.id, cpuId, {
+      status: 'completed',
+      winnerProfileId: human.id,
+      verdict: { narrative_line: 'human takes the bot down' },
+    });
+    await db.insert(nemesisPairings).values(pairing);
+
+    // Pinned via the same pure function, CPU starting from the lazy defaults (1500/350/0.06).
+    const cpuStart = { rating: 1500, rd: 350, vol: 0.06 };
+    const expectedHuman = updateGlicko2(humanStart, [
+      { opponentRating: cpuStart.rating, opponentRd: cpuStart.rd, score: 1 },
+    ]);
+    const expectedCpu = updateGlicko2(cpuStart, [
+      { opponentRating: humanStart.rating, opponentRd: humanStart.rd, score: 0 },
+    ]);
+
+    await runRatingsWeekly(db, pool, NOW);
+
+    const humanAfter = await getRating(human.id);
+    expect(humanAfter.glickoRating).toBeCloseTo(expectedHuman.rating, 2);
+    expect(humanAfter.glickoRating).toBeGreaterThan(humanStart.rating); // beat the bot: real gain
+
+    const cpuAfter = await getRating(cpuId); // row exists now — lazily created + updated
+    expect(cpuAfter.glickoRating).toBeCloseTo(expectedCpu.rating, 2);
+    expect(cpuAfter.glickoRating).toBeLessThan(cpuStart.rating); // the CPU's rating DRIFTS down
+
+    const [pairingAfter] = await db
+      .select()
+      .from(nemesisPairings)
+      .where(sql`${nemesisPairings.id} = ${pairing.id}`);
+    expect(pairingAfter!.ratingAppliedAt).not.toBeNull();
   });
 });
 
@@ -260,20 +349,25 @@ describe('ratings:weekly — duo match rating application (§8.3 "duo team ratin
     });
     await db.insert(duoMatches).values(match);
 
-    const expectedA = updateGlicko2(
-      { rating: 1500, rd: 200, vol: 0.06 },
-      [{ opponentRating: 1400, opponentRd: 30, score: 1 }],
-    );
+    const expectedA = updateGlicko2({ rating: 1500, rd: 200, vol: 0.06 }, [
+      { opponentRating: 1400, opponentRd: 30, score: 1 },
+    ]);
 
     const report = await runRatingsWeekly(db, pool, NOW);
     expect(report.duoMatchesApplied).toBe(1);
 
-    const [rowA] = await db.select().from(duos).where(sql`${duos.id} = ${duoA.id}`);
+    const [rowA] = await db
+      .select()
+      .from(duos)
+      .where(sql`${duos.id} = ${duoA.id}`);
     expect(Math.abs(rowA!.glickoRating - expectedA.rating)).toBeLessThanOrEqual(0.01);
     expect(Math.abs(rowA!.glickoRd - expectedA.rd)).toBeLessThanOrEqual(0.01);
     expect(rowA!.matchesPlayed).toBe(1);
 
-    const [matchRow] = await db.select().from(duoMatches).where(sql`${duoMatches.id} = ${match.id}`);
+    const [matchRow] = await db
+      .select()
+      .from(duoMatches)
+      .where(sql`${duoMatches.id} = ${match.id}`);
     expect(matchRow!.ratingAppliedAt).not.toBeNull();
     expect(matchRow!.ratingSnapshot).toMatchObject({
       a: { rating: 1500, rd: 200, vol: 0.06 },
@@ -312,7 +406,10 @@ describe('ratings:weekly — deleted participant is skipped entirely (§8.3)', (
     expect(survivorRating.glickoRating).toBe(1600); // untouched — "no rating change for the survivor"
     expect(survivorRating.gamesCount).toBe(0);
 
-    const [pairingRow] = await db.select().from(nemesisPairings).where(sql`${nemesisPairings.id} = ${pairing.id}`);
+    const [pairingRow] = await db
+      .select()
+      .from(nemesisPairings)
+      .where(sql`${nemesisPairings.id} = ${pairing.id}`);
     expect(pairingRow!.ratingAppliedAt).not.toBeNull(); // consumed so the batch never retries it
   });
 });

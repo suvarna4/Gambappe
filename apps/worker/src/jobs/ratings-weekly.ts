@@ -16,6 +16,15 @@
  * `incrementGamesCount` from `@receipts/db` (owned by WS11-T3's `moderation.ts`, built for its
  * own mid-week block early-conclusion path) rather than duplicating that logic — same table,
  * same pure Glicko function, one code path.
+ *
+ * WS26-T12 (docs/plans/cpu-nemesis-wbs.md, owner decision 2026-07-22): CPU pairings get NO
+ * exemption here — DELIBERATELY. CPU ratings DRIFT: the CPU side is rated exactly like a
+ * human (lazily created at the Glicko defaults on first application), so each persona finds
+ * its natural rating level, and the human's real rating moves from beating/losing to a CPU
+ * (the picks were real, placed at real prices). Consequences owned elsewhere: T8's band-fit
+ * must read LIVE CPU ratings at assign time, and T9's persona refinement targets pick-style
+ * believability — never rating correction, which would fight this calibration. Do not add a
+ * `kind='cpu'` skip here without revisiting that decision log entry.
  */
 import type pg from 'pg';
 import { now } from '@receipts/core';
@@ -81,7 +90,12 @@ export interface RatingsWeeklyReport {
   duosInflated: number;
 }
 
-async function applyPairings(db: Db, pool: pg.Pool, at: Date, report: RatingsWeeklyReport): Promise<void> {
+async function applyPairings(
+  db: Db,
+  pool: pg.Pool,
+  at: Date,
+  report: RatingsWeeklyReport,
+): Promise<void> {
   const pairings = await listUnappliedCompletedPairings(db);
   for (const pairing of pairings) {
     const client = await pool.connect();
@@ -107,7 +121,11 @@ async function applyPairings(db: Db, pool: pg.Pool, at: Date, report: RatingsWee
 
       const ratingA = await getOrDefaultRating(tx, pairing.profileAId);
       const ratingB = await getOrDefaultRating(tx, pairing.profileBId);
-      const [scoreForA, scoreForB] = gameScores(pairing.winnerProfileId, pairing.profileAId, pairing.profileBId);
+      const [scoreForA, scoreForB] = gameScores(
+        pairing.winnerProfileId,
+        pairing.profileAId,
+        pairing.profileBId,
+      );
 
       const newA = updateGlicko2(
         { rating: ratingA.glickoRating, rd: ratingA.glickoRd, vol: ratingA.glickoVol },
@@ -146,7 +164,12 @@ async function applyPairings(db: Db, pool: pg.Pool, at: Date, report: RatingsWee
   }
 }
 
-async function applyDuoMatches(db: Db, pool: pg.Pool, at: Date, report: RatingsWeeklyReport): Promise<void> {
+async function applyDuoMatches(
+  db: Db,
+  pool: pg.Pool,
+  at: Date,
+  report: RatingsWeeklyReport,
+): Promise<void> {
   const matches = await listUnappliedCompletedDuoMatches(db);
   for (const match of matches) {
     const client = await pool.connect();
@@ -211,7 +234,13 @@ async function applyDuoMatches(db: Db, pool: pg.Pool, at: Date, report: RatingsW
   }
 }
 
-async function inflateIdleProfiles(db: Db, pool: pg.Pool, at: Date, threshold: Date, report: RatingsWeeklyReport): Promise<void> {
+async function inflateIdleProfiles(
+  db: Db,
+  pool: pg.Pool,
+  at: Date,
+  threshold: Date,
+  report: RatingsWeeklyReport,
+): Promise<void> {
   const idleProfileIds = await listRatedProfileIdsForInflation(db, threshold);
   for (const profileId of idleProfileIds) {
     const client = await pool.connect();
@@ -236,7 +265,13 @@ async function inflateIdleProfiles(db: Db, pool: pg.Pool, at: Date, threshold: D
   }
 }
 
-async function inflateIdleDuos(db: Db, pool: pg.Pool, at: Date, threshold: Date, report: RatingsWeeklyReport): Promise<void> {
+async function inflateIdleDuos(
+  db: Db,
+  pool: pg.Pool,
+  at: Date,
+  threshold: Date,
+  report: RatingsWeeklyReport,
+): Promise<void> {
   const idleDuoIds = await listActiveDuoIdsForInflation(db, threshold);
   for (const duoId of idleDuoIds) {
     const client = await pool.connect();
@@ -261,7 +296,11 @@ async function inflateIdleDuos(db: Db, pool: pg.Pool, at: Date, threshold: Date,
   }
 }
 
-export async function runRatingsWeekly(db: Db, pool: pg.Pool, at: Date = now()): Promise<RatingsWeeklyReport> {
+export async function runRatingsWeekly(
+  db: Db,
+  pool: pg.Pool,
+  at: Date = now(),
+): Promise<RatingsWeeklyReport> {
   const report: RatingsWeeklyReport = {
     pairingsApplied: 0,
     pairingsSkippedDeletedParticipant: 0,
