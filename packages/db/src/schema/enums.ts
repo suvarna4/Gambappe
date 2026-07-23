@@ -4,6 +4,7 @@
  */
 import { pgEnum } from 'drizzle-orm/pg-core';
 import {
+  COMPANION_ARTIFACT_KIND,
   DUO_MATCH_STATUS,
   DUO_STATUS,
   MARKET_CATEGORY,
@@ -58,3 +59,6 @@ export const notificationStatusEnum = pgEnum('notification_status', [...NOTIFICA
 export const userRoleEnum = pgEnum('user_role', [...USER_ROLE]);
 export const seasonKindEnum = pgEnum('season_kind', [...SEASON_KIND]);
 export const notificationChannelEnum = pgEnum('notification_channel', [...NOTIFICATION_CHANNEL]);
+export const companionArtifactKindEnum = pgEnum('companion_artifact_kind', [
+  ...COMPANION_ARTIFACT_KIND,
+]);

@@ -37,4 +37,5 @@ export * from './repositories/push-subscriptions.js';
 export * from './repositories/threads.js';
 export * from './repositories/topics.js';
 export * from './repositories/callouts.js';
+export * from './repositories/companion.js';
 export * from './streak-replay.js';

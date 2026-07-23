@@ -10,6 +10,7 @@ import type { Db } from '../client.js';
 import { markets, picks, profiles, questions } from '../schema/index.js';
 import type {
   callouts,
+  companionArtifacts,
   duoMatches,
   duos,
   fingerprints,
@@ -35,6 +36,7 @@ export type DuoRow = typeof duos.$inferInsert;
 export type DuoMatchRow = typeof duoMatches.$inferInsert;
 export type TopicFollowRow = typeof topicFollows.$inferInsert;
 export type CalloutRow = typeof callouts.$inferInsert;
+export type CompanionArtifactRow = typeof companionArtifacts.$inferInsert;
 
 let seq = 0;
 function nextSeq(): number {
@@ -406,6 +408,25 @@ export function buildCallout(
     pairingId: null,
     createdAt: T0,
     updatedAt: T0,
+    ...overrides,
+  };
+}
+
+/** A `companion_artifacts` row (XH-T4). Defaults to a banter artifact with no pairing/season. */
+export function buildCompanionArtifact(
+  profileId: string,
+  overrides: Partial<CompanionArtifactRow> = {},
+): CompanionArtifactRow {
+  const n = nextSeq();
+  return {
+    id: uuidv7(),
+    kind: 'banter',
+    cacheKey: `test-cache-key-${n}`,
+    profileId,
+    pairingId: null,
+    seasonId: null,
+    content: { lines: ['test banter line'], model: 'test', promptVersion: 1 },
+    createdAt: T0,
     ...overrides,
   };
 }

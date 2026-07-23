@@ -71,6 +71,13 @@
       "when": 1784780232821,
       "tag": "20260723041712_ws26_t3_cpu_persona_column",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784834096921,
+      "tag": "20260723191456_xh_t4_companion_storage",
+      "breakpoints": true
     }
   ]
 }

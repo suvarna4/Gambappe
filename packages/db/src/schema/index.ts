@@ -5,3 +5,4 @@ export * from './engine.js';
 export * from './modes.js';
 export * from './social.js';
 export * from './ops.js';
+export * from './companion.js';
