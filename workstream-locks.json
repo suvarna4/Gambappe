@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T20:52:11.064Z",
+  "updated_at": "2026-07-23T20:52:27.576Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2698,12 +2698,12 @@
       ],
       "mock_start_ok": false,
       "note": "Includes extracting shareCalloutLink out of CalloutButton.tsx into apps/web/lib/callout-share.ts. Full spec: docs/xtrace-hackathon-tasks.md XH-T7.",
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-session-xtrace-companion",
+      "branch": "feat/xh-t7-callout-draft",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-23T17:29:01.828Z"
+      "claimed_at": "2026-07-23T20:52:27.576Z",
+      "updated_at": "2026-07-23T20:52:27.576Z"
     },
     "XH-T8": {
       "title": "Season wrapped: batch job + /you panel",
