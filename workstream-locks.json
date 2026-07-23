@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T18:17:33.575Z",
+  "updated_at": "2026-07-23T18:30:08.277Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2617,12 +2617,12 @@
       ],
       "mock_start_ok": false,
       "note": "New package. Full spec: docs/xtrace-hackathon-tasks.md XH-T2.",
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-session-xtrace-companion",
       "branch": "feat/xh-t2-xtrace-client",
-      "pr": null,
+      "pr": "168",
       "claimed_at": "2026-07-23T18:17:33.575Z",
-      "updated_at": "2026-07-23T18:17:33.575Z"
+      "updated_at": "2026-07-23T18:30:08.277Z"
     },
     "XH-T3": {
       "title": "@receipts/companion: generation service",
