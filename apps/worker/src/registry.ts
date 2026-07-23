@@ -33,6 +33,7 @@ import type { JobHandler } from './heartbeat.js';
 import { analyticsRollupHandler } from './jobs/analytics-rollup.js';
 import { botScoreHandler } from './jobs/bot-score.js';
 import { companionIngestHandler } from './jobs/companion-ingest.js';
+import { companionSeasonRecapHandler } from './jobs/companion-season-recap.js';
 import { duoMatchmakerHandler } from './jobs/duo-matchmaker.js';
 import { duoWindowRollHandler } from './jobs/duo-window-roll.js';
 import { fingerprintNightlyHandler } from './jobs/fingerprint-nightly.js';
@@ -206,6 +207,13 @@ export const JOB_REGISTRY: readonly JobDefinition[] = [
     owner: 'XH-T5',
     cron: '0 4 * * *', // daily 04:00 ET — after Sunday 22:00 nemesis:conclude and the Monday cycle
     handler: companionIngestHandler,
+  },
+  {
+    name: 'companion:season-recap',
+    owner: 'XH-T8',
+    // Enqueued manually / by ops (run-season-recap.mjs) — a nemesis season runs 12 weeks, no
+    // useful cron cadence yet.
+    handler: companionSeasonRecapHandler,
   },
   {
     name: 'maintenance:prune',

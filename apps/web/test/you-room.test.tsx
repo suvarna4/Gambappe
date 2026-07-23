@@ -4,10 +4,15 @@
  * the e2e suite). Pins the AC-visible bits: the claimed room links out to `/p/{slug}` + `/settings`
  * and shows the reused stat grid; the ghost room shows forming placeholders, the reserved
  * `you-save-row-slot`, and the `TopicFollowChips` — and never a gold ask (D-J8).
+ *
+ * XH-T8 (docs/xtrace-hackathon-tasks.md) adds the `recap` prop (optional, defaults to `null` —
+ * every test above this comment passes no `recap` at all, pinning the "flag off or no artifact"
+ * half of that task's AC for free); the tests below pin the "artifact exists + flag on" half.
  */
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MARKET_CATEGORY } from '@receipts/core';
+import { companionCopy, youCopy } from '@/lib/copy';
 import { YouRoomClaimed, YouRoomGhost } from '@/components/profile/YouRoom';
 
 describe('YouRoomClaimed', () => {
@@ -50,6 +55,26 @@ describe('YouRoomClaimed', () => {
   it('omits the graveyard shelf when there is nothing to shelve', () => {
     const html = renderToStaticMarkup(<YouRoomClaimed {...base} graveyard={null} />);
     expect(html).not.toContain('data-testid="graveyard-shelf"');
+  });
+
+  it('omits the season-recap section when there is no recap (flag off or no artifact yet)', () => {
+    const html = renderToStaticMarkup(<YouRoomClaimed {...base} />);
+    expect(html).not.toContain('data-testid="you-season-recap"');
+    expect(html).not.toContain(youCopy.recapHeading);
+  });
+
+  it('renders the season-recap section — heading, title, paragraphs, and the companion disclaimer — when a recap artifact exists (XH-T8)', () => {
+    const recap = {
+      title: 'ACE#1234 season recap',
+      paragraphs: ['First paragraph of the recap.', 'Second paragraph of the recap.'],
+    };
+    const html = renderToStaticMarkup(<YouRoomClaimed {...base} recap={recap} />);
+    expect(html).toContain('data-testid="you-season-recap"');
+    expect(html).toContain(youCopy.recapHeading);
+    expect(html).toContain('ACE#1234 season recap');
+    expect(html).toContain('First paragraph of the recap.');
+    expect(html).toContain('Second paragraph of the recap.');
+    expect(html).toContain(companionCopy.disclaimer);
   });
 });
 

@@ -6,7 +6,7 @@ import { SaveRow } from '@/components/save/SaveRow';
 import { ProfileHeaderStats } from './ProfileHeaderStats';
 import { ProfileStatGrid } from './ProfileStatGrid';
 import { ProfileTopicBars } from './ProfileTopicBars';
-import { youCopy } from '@/lib/copy';
+import { companionCopy, youCopy } from '@/lib/copy';
 
 const LINK_CLASS = 'text-sm underline underline-offset-2';
 
@@ -28,6 +28,10 @@ export interface YouRoomClaimedProps {
   categoryShares: Partial<Record<MarketCategory, number>> | null;
   /** `{ rip, called_it_count }` graveyard block, or `null` when there's nothing to shelve. */
   graveyard: { rip: number[]; called_it_count: number } | null;
+  /** XH-T8 (docs/xtrace-hackathon-tasks.md) · the latest `companion:season-recap` artifact for
+   * this profile, or `null` when the `season_wrapped` flag is off or none exists yet. Optional/
+   * defaulted so every pre-existing caller (and test) is unaffected. */
+  recap?: { title: string; paragraphs: string[] } | null;
 }
 
 /**
@@ -50,6 +54,7 @@ export function YouRoomClaimed({
   badges,
   categoryShares,
   graveyard,
+  recap = null,
 }: YouRoomClaimedProps) {
   return (
     <main className="mx-auto max-w-2xl space-y-8 px-4 py-10" data-testid="you-claimed">
@@ -64,6 +69,19 @@ export function YouRoomClaimed({
           freezeNote
         />
       </header>
+
+      {recap && (
+        <section data-testid="you-season-recap" className="space-y-2">
+          <h2 className="text-lg font-bold">{youCopy.recapHeading}</h2>
+          <h3 className="font-semibold">{recap.title}</h3>
+          {recap.paragraphs.map((paragraph, i) => (
+            <p key={i} className="text-sm">
+              {paragraph}
+            </p>
+          ))}
+          <p className="text-muted text-xs">{companionCopy.disclaimer}</p>
+        </section>
+      )}
 
       <ProfileStatGrid
         currentStreak={currentStreak}

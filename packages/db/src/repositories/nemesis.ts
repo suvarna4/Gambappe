@@ -10,7 +10,7 @@
  * verbatim rather than replaced, since `apps/worker/src/jobs/nemesis-lastday.ts` already depends
  * on its exact shape via the `@receipts/db` barrel.
  */
-import { and, asc, desc, eq, gte, inArray, lte, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, lt, lte, or, sql } from 'drizzle-orm';
 import { addDaysToDateString, NEMESIS_SEASON_WEEKS, type MarketCategory } from '@receipts/core';
 import { uuidv7 } from 'uuidv7';
 import type { Db } from '../client.js';
@@ -44,6 +44,28 @@ export async function getNemesisSeasonCoveringDate(db: Db, dateStr: string): Pro
     .from(seasons)
     .where(and(eq(seasons.kind, 'nemesis'), lte(seasons.startsOn, dateStr), gte(seasons.endsOn, dateStr)))
     .orderBy(asc(seasons.startsOn))
+    .limit(1);
+  return row ?? null;
+}
+
+/** A season by id, any kind — the generic lookup neither `getNemesisSeasonCoveringDate` (date
+ * range) nor `getOrCreateNemesisSeasonCovering` provide. XH-T8's season-recap job uses this for
+ * an EXPLICITLY given seasonId, with deliberately no `endsOn` check: a named season may still be
+ * running (the demo runbook's seeded season is), and that's a valid recap target. */
+export async function getSeasonById(db: Db, seasonId: string): Promise<SeasonRow | null> {
+  const [row] = await db.select().from(seasons).where(eq(seasons.id, seasonId)).limit(1);
+  return row ?? null;
+}
+
+/** The most recently-ended `nemesis` season (`ends_on < todayEtDate`), by `ends_on` DESC — XH-T8's
+ * season-recap job default when no seasonId is given. Null when no nemesis season has ended yet
+ * (a fresh install, or the very first season still running). */
+export async function latestEndedNemesisSeason(db: Db, todayEtDate: string): Promise<SeasonRow | null> {
+  const [row] = await db
+    .select()
+    .from(seasons)
+    .where(and(eq(seasons.kind, 'nemesis'), lt(seasons.endsOn, todayEtDate)))
+    .orderBy(desc(seasons.endsOn))
     .limit(1);
   return row ?? null;
 }

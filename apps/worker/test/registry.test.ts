@@ -15,10 +15,11 @@ import { JOB_NAMES, JOB_REGISTRY, SCHEDULE_TIMEZONE } from '../src/registry.js';
 
 /** The §7.6 job table, plus `bot:score` (WS11-T2), `notify:pre-lock-reminder` (WS9-T4),
  * `settle:digest` (WS19-T1), `cpu:pick` (WS26-T5, docs/plans/cpu-nemesis-wbs.md — the CPU
- * rivals' pick sweep, cron because bonus questions never fire question:open), and
+ * rivals' pick sweep, cron because bonus questions never fire question:open),
  * `companion:ingest` (XH-T5, docs/xtrace-hackathon-tasks.md — rivalry memory ingestion, owner
- * pattern `XH-T5` rather than `WS<n>-T<n>`, see the owner-regex widening below); minus
- * `reveal:fire` (cut by WS19-T1/D-J3). */
+ * pattern `XH-T5` rather than `WS<n>-T<n>`, see the owner-regex widening below), and
+ * `companion:season-recap` (XH-T8, same doc — queue-only like `companion:ingest`, no cron
+ * cadence yet since a nemesis season runs 12 weeks); minus `reveal:fire` (cut by WS19-T1/D-J3). */
 const SPEC_JOBS = [
   'venue:sync-catalog',
   'venue:price-tick',
@@ -43,11 +44,18 @@ const SPEC_JOBS = [
   'bot:score',
   'analytics:rollup',
   'companion:ingest',
+  'companion:season-recap',
   'maintenance:prune',
 ] as const;
 
 /** Jobs the spec schedules on cron (vs queue-only enqueued jobs). */
-const QUEUE_ONLY = ['grade:followup', 'question:open', 'question:lock', 'wallet:ingest'];
+const QUEUE_ONLY = [
+  'grade:followup',
+  'question:open',
+  'question:lock',
+  'wallet:ingest',
+  'companion:season-recap',
+];
 
 describe('job registry (§7.6)', () => {
   it('covers every spec job, no extras, no duplicates', () => {

@@ -731,6 +731,8 @@ export const youCopy = {
   publicProfileLink: 'View public profile',
   /** Link to account settings. */
   settingsLink: 'Settings',
+  /** XH-T8 (docs/xtrace-hackathon-tasks.md) · the season-wrapped recap section heading. */
+  recapHeading: 'Season wrapped',
 } as const;
 
 /**

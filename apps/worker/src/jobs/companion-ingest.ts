@@ -35,6 +35,7 @@ import {
 import type { JobContext } from '../context.js';
 import type { JobHandler } from '../heartbeat.js';
 import { logger } from '../logger.js';
+import { ownNarrationLine } from '../lib/verdict-narration.js';
 
 /** Shared cap across both source types per run — keeps a backlog from making the job
  * long-running (docs/xtrace-hackathon-tasks.md XH-T5). */
@@ -58,18 +59,6 @@ export interface CompanionIngestReport {
 interface RunState {
   consecutiveFailures: number;
   aborted: boolean;
-}
-
-/** Shape of the `nemesis_pairings.verdict` jsonb this job reads (written by `nemesis:conclude`,
- * `packages/db/src/repositories/moderation.js`'s `NemesisPairingRow.verdict` stays untyped —
- * every other field this job needs is a real typed column). */
-interface VerdictNarration {
-  narration?: Record<string, { line: string; emphasis: string | null } | undefined>;
-}
-
-function ownNarrationLine(verdict: unknown, profileId: string): string | null {
-  const parsed = verdict as VerdictNarration | null;
-  return parsed?.narration?.[profileId]?.line ?? null;
 }
 
 /** Checks the wall-clock deadline AND folds in an already-tripped circuit breaker, so every

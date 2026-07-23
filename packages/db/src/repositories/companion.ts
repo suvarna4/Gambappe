@@ -6,13 +6,19 @@
  * `listCandidatePairingPostsForIngest`) rather than querying `nemesis_pairings`/`posts`
  * directly from the job file, keeping every worker job's DB access behind a repository
  * function (no job in this repo queries a schema table directly). XH-T6 added
- * `mostRecentCompletedPairingBetween` (the banter route's `lastVerdictLine` source).
+ * `mostRecentCompletedPairingBetween` (the banter route's `lastVerdictLine` source). XH-T8 added
+ * the three season-recap queries below (`listClaimedProfileIdsInSeason`,
+ * `listCompletedSeasonPairingsForProfile`, `listSentCalloutsWithPairingOutcome`) — the
+ * season-scoped counterparts of T5's ingestion queries, same reasoning: the `companion:season-
+ * recap` job's DB access stays behind this repository rather than querying
+ * `nemesis_pairings`/`callouts`/`profiles` directly.
  */
-import { and, desc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
 import { uuidv7 } from 'uuidv7';
 import type { CompanionArtifactKind } from '@receipts/core';
 import type { Db } from '../client.js';
 import {
+  callouts,
   companionArtifacts,
   companionIngestLog,
   nemesisPairings,
@@ -278,4 +284,85 @@ export async function listCandidatePairingPostsForIngest(
       ),
     )
     .orderBy(posts.createdAt);
+}
+
+/** Distinct CLAIMED profile ids appearing in the season's `nemesis_pairings`, either side —
+ * XH-T8's eligible-profile pool for `companion:season-recap` (one recap per claimed profile per
+ * season; ghost/cpu profiles are never eligible). */
+export async function listClaimedProfileIdsInSeason(db: Db, seasonId: string): Promise<string[]> {
+  const rows = await db.execute(sql`
+    SELECT p.id
+    FROM profiles p
+    WHERE p.kind = 'claimed'
+      AND EXISTS (
+        SELECT 1 FROM nemesis_pairings np
+        WHERE np.season_id = ${seasonId}
+          AND (np.profile_a_id = p.id OR np.profile_b_id = p.id)
+      )
+  `);
+  return rows.rows.map((r) => r['id'] as string);
+}
+
+export interface SeasonPairingForStats {
+  weekStart: string;
+  winnerProfileId: string | null;
+  verdict: unknown;
+}
+
+/** `profileId`'s `completed` pairings within `seasonId`, oldest first — XH-T8's per-profile stats
+ * source. The job folds this ordered list once for wins/losses/draws, the longest consecutive-win
+ * streak, AND the chronological verdict lines — all three are pinned to this exact order/filter,
+ * so no other reading of "the season's pairings" is correct for the recap. */
+export async function listCompletedSeasonPairingsForProfile(
+  db: Db,
+  seasonId: string,
+  profileId: string,
+): Promise<SeasonPairingForStats[]> {
+  return db
+    .select({
+      weekStart: nemesisPairings.weekStart,
+      winnerProfileId: nemesisPairings.winnerProfileId,
+      verdict: nemesisPairings.verdict,
+    })
+    .from(nemesisPairings)
+    .where(
+      and(
+        eq(nemesisPairings.seasonId, seasonId),
+        eq(nemesisPairings.status, 'completed'),
+        or(eq(nemesisPairings.profileAId, profileId), eq(nemesisPairings.profileBId, profileId)),
+      ),
+    )
+    .orderBy(asc(nemesisPairings.weekStart));
+}
+
+export interface SentCalloutForStats {
+  createdAt: Date;
+  /** The resulting pairing's status, or null when the callout has no pairing yet (never
+   * accepted). */
+  pairingStatus: string | null;
+  pairingWinnerProfileId: string | null;
+}
+
+/**
+ * Every callout `profileId` has ever SENT (challenged), with its resulting pairing's outcome
+ * joined in the same round trip — XH-T8's `calloutsSent`/`calloutsWon` source. Deliberately
+ * unfiltered by date here: `callouts` carries no `seasonId`, so the caller filters to the
+ * season's ET-day window in application code via `etDateString` string comparison, NOT a SQL
+ * `created_at <= ends_on` cast — `created_at` is timestamptz while `ends_on` is a DATE column, so
+ * that cast lands on midnight UTC-offset-blind at the START of `ends_on` and silently excludes the
+ * season's entire final day (docs/xtrace-hackathon-tasks.md XH-T8 spec note).
+ */
+export async function listSentCalloutsWithPairingOutcome(
+  db: Db,
+  profileId: string,
+): Promise<SentCalloutForStats[]> {
+  return db
+    .select({
+      createdAt: callouts.createdAt,
+      pairingStatus: nemesisPairings.status,
+      pairingWinnerProfileId: nemesisPairings.winnerProfileId,
+    })
+    .from(callouts)
+    .leftJoin(nemesisPairings, eq(callouts.pairingId, nemesisPairings.id))
+    .where(eq(callouts.challengerProfileId, profileId));
 }
