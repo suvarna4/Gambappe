@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T07:37:19.734Z",
+  "updated_at": "2026-07-23T07:41:08.054Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2528,12 +2528,12 @@
       ],
       "mock_start_ok": false,
       "note": "REVISED (sim-first, owner-approved): the memory-update rule — EW calibration counts per (category x price-band x time-band) + bounded steps on per-persona policy params + believability damping (target win-rate band, streak damping) — shared VERBATIM between packages/sim training and the production post-grade refinement path. Memory shape: {version, cutoff, calibration, params} defined in engine. Deps now effectively T14.",
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-code-web-session-54bb90dd",
-      "branch": null,
-      "pr": null,
+      "branch": "claude/ws26-t9-cpu-memory",
+      "pr": "165",
       "claimed_at": "2026-07-23T07:37:19.733Z",
-      "updated_at": "2026-07-23T07:37:19.733Z"
+      "updated_at": "2026-07-23T07:41:08.053Z"
     },
     "WS26-T10": {
       "title": "xTrace wiring: personas as cloud-stored procedural skills",
