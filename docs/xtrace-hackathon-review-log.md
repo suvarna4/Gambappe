@@ -1,6 +1,6 @@
 # xTrace hackathon tasks — review log & process
 
-Status: draft in progress, no review round run yet.
+Status: draft v1 complete, review loop not yet run.
 
 This file is the durable state of the adversarial review process for
 `docs/xtrace-hackathon-tasks.md`. It exists so the process can be resumed by
