@@ -1,0 +1,1 @@
+ALTER TABLE "profiles" ADD COLUMN "cpu_persona" text;

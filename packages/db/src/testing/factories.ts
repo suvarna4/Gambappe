@@ -5,6 +5,7 @@
  */
 import { uuidv7 } from 'uuidv7';
 import { slugifyHandle } from '@receipts/core';
+import type { CpuPersona } from '@receipts/core';
 import type { Db } from '../client.js';
 import { markets, picks, profiles, questions } from '../schema/index.js';
 import type {
@@ -78,6 +79,25 @@ export function buildProfile(overrides: Partial<ProfileRow> = {}): ProfileRow {
   };
 }
 
+/** WS26: a CPU rival profile — `kind='cpu'`, `bot_score=1.0`, persona set, no ghost secret. */
+export function buildCpuProfile(
+  persona: CpuPersona,
+  overrides: Partial<ProfileRow> = {},
+): ProfileRow {
+  const n = nextSeq();
+  const handle = overrides.handle ?? `Testbot #C${String(9000 + n)}`;
+  return buildProfile({
+    kind: 'cpu',
+    handle,
+    slug: slugifyHandle(handle),
+    botScore: 1.0,
+    cpuPersona: persona,
+    ghostSecretHash: null,
+    handleIsGenerated: false,
+    ...overrides,
+  });
+}
+
 export function buildMarket(overrides: Partial<MarketRow> = {}): MarketRow {
   const n = nextSeq();
   return {
@@ -96,10 +116,7 @@ export function buildMarket(overrides: Partial<MarketRow> = {}): MarketRow {
   };
 }
 
-export function buildQuestion(
-  marketId: string,
-  overrides: Partial<QuestionRow> = {},
-): QuestionRow {
+export function buildQuestion(marketId: string, overrides: Partial<QuestionRow> = {}): QuestionRow {
   const n = nextSeq();
   const questionDate =
     overrides.questionDate !== undefined ? overrides.questionDate : nextQuestionDate();
@@ -236,7 +253,10 @@ export function buildPlacementAnswer(
 /** `fingerprints` row (§8.1, WS4-T1/T7). Neutral defaults (0 style axes, empty category shares)
  * so a fixture only needs to override what a test actually cares about (WS5-T1's nemesis-pool
  * style-vector/category-overlap fixtures). */
-export function buildFingerprint(profileId: string, overrides: Partial<FingerprintRow> = {}): FingerprintRow {
+export function buildFingerprint(
+  profileId: string,
+  overrides: Partial<FingerprintRow> = {},
+): FingerprintRow {
   return {
     profileId,
     resolvedPickCount: 0,
@@ -313,7 +333,11 @@ export function buildNemesisPairing(
 }
 
 /** A `duos` row (§5.5). Defaults to `status='active'` with default Glicko values. */
-export function buildDuo(profileAId: string, profileBId: string, overrides: Partial<DuoRow> = {}): DuoRow {
+export function buildDuo(
+  profileAId: string,
+  profileBId: string,
+  overrides: Partial<DuoRow> = {},
+): DuoRow {
   return {
     id: uuidv7(),
     profileAId,
