@@ -1,0 +1,32 @@
+{
+  "name": "@receipts/companion",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "xTrace memory client + Claude generation service for the rivalry companion, callout-draft assist, and season-wrapped recap (docs/xtrace-hackathon-tasks.md XH-T2/T3).",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.114.0",
+    "@receipts/core": "workspace:*",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@receipts/config": "workspace:*",
+    "@types/node": "^22.20.1",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  }
+}
