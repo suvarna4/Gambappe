@@ -5,7 +5,12 @@
  */
 import { describe, expect, it } from 'vitest';
 import { CPU_PERSONAS, LONGSHOT_THRESHOLD, isCpuPersona } from '@receipts/core';
-import { CPU_CLOCK_PICK_WINDOW_MS, decideCpuPick, type CpuPickInputs } from '../src/cpu-persona.js';
+import {
+  CPU_CLOCK_PICK_WINDOW_MS,
+  decideCpuPick,
+  selectCpuByRatingBand,
+  type CpuPickInputs,
+} from '../src/cpu-persona.js';
 
 function inputs(overrides: Partial<CpuPickInputs> & Pick<CpuPickInputs, 'persona'>): CpuPickInputs {
   return { category: 'politics', yesPrice: 0.62, timeToLockMs: 6 * 60 * 60_000, ...overrides };
@@ -118,5 +123,37 @@ describe('roster', () => {
       const b = decideCpuPick(inputs({ persona, yesPrice: 0.37, timeToLockMs: 90_000 }));
       expect(a).toEqual(b);
     }
+  });
+});
+
+describe('selectCpuByRatingBand (WS26-T8)', () => {
+  const cpus = [
+    { profileId: 'low', rating: 1300 },
+    { profileId: 'mid', rating: 1520 },
+    { profileId: 'high', rating: 1900 },
+  ];
+
+  it('picks the closest CPU and reports in-band', () => {
+    expect(selectCpuByRatingBand(cpus, 1500, 150)).toEqual({
+      cpu: { profileId: 'mid', rating: 1520 },
+      inBand: true,
+    });
+  });
+
+  it('still fills when nobody is in band, flagged out-of-band (a rival beats no rival)', () => {
+    const far = [{ profileId: 'high', rating: 1900 }];
+    expect(selectCpuByRatingBand(far, 1400, 150)).toEqual({
+      cpu: { profileId: 'high', rating: 1900 },
+      inBand: false,
+    });
+  });
+
+  it('returns null for an empty roster and breaks ties on input order', () => {
+    expect(selectCpuByRatingBand([], 1500, 150)).toBeNull();
+    const tied = [
+      { profileId: 'first', rating: 1450 },
+      { profileId: 'second', rating: 1550 },
+    ];
+    expect(selectCpuByRatingBand(tied, 1500, 150)!.cpu.profileId).toBe('first');
   });
 });

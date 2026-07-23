@@ -27,6 +27,7 @@
 import { uuidv7 } from 'uuidv7';
 import {
   BOT_EXCLUDE_THRESHOLD,
+  NEMESIS_BAND_BASE,
   NEMESIS_MIN_PICKS,
   etDateString,
   isFlagEnabled,
@@ -36,6 +37,7 @@ import {
 import {
   matchNemeses,
   narrate,
+  selectCpuByRatingBand,
   type NemesisForcedPair,
   type NemesisPoolEntry,
 } from '@receipts/engine';
@@ -365,8 +367,19 @@ export async function runNemesisAssign(
     const availableCpus = await listAvailableCpusForWeek(db, season.id, weekStart);
     for (const leftoverId of matchResult.leftoverProfileIds) {
       const human = poolById.get(leftoverId);
-      const cpu = availableCpus.shift(); // T8 replaces first-available with rating-band fit
-      if (!human || !cpu) break;
+      if (!human) continue;
+      // T8: rating-band fit against LIVE CPU ratings (they drift, WS26-T12). Out-of-band
+      // fills still happen (a rival beats no rival) but are logged — the roster-drift signal.
+      const selected = selectCpuByRatingBand(availableCpus, human.rating, NEMESIS_BAND_BASE);
+      if (!selected) break;
+      const cpu = selected.cpu;
+      availableCpus.splice(availableCpus.indexOf(cpu), 1);
+      if (!selected.inBand) {
+        logger.warn(
+          { humanRating: human.rating, cpuRating: cpu.rating, persona: cpu.persona },
+          'nemesis:assign — no CPU within NEMESIS_BAND_BASE, filling with nearest (roster drift)',
+        );
+      }
 
       const pairingId = uuidv7();
       const [profileAId, profileBId] =

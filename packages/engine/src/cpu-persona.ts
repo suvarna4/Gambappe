@@ -73,3 +73,31 @@ export function decideCpuPick(inputs: CpuPickInputs): CpuPickDecision {
     }
   }
 }
+
+/**
+ * WS26-T8 (docs/plans/cpu-nemesis-wbs.md): pick the CPU rival whose CURRENT rating sits
+ * closest to the human's. Ratings DRIFT (WS26-T12), so callers must pass live ratings,
+ * never seed-time constants. The closest candidate is in-band (|Δr| ≤ band, i.e.
+ * NEMESIS_BAND_BASE) whenever ANY candidate is — band-fit is believability, not a hard
+ * gate: a fill's whole purpose is that a rival beats no rival, so an out-of-band nearest
+ * CPU still fills, flagged `inBand: false` for the assign report/logs (the signal that the
+ * roster has drifted away from part of the ladder and needs a variant, per the WBS note).
+ * Deterministic: ties break on the array's existing order (callers pass a stable ordering).
+ */
+export function selectCpuByRatingBand<T extends { rating: number }>(
+  cpus: readonly T[],
+  humanRating: number,
+  band: number,
+): { cpu: T; inBand: boolean } | null {
+  let best: T | null = null;
+  let bestDelta = Number.POSITIVE_INFINITY;
+  for (const cpu of cpus) {
+    const delta = Math.abs(cpu.rating - humanRating);
+    if (delta < bestDelta) {
+      best = cpu;
+      bestDelta = delta;
+    }
+  }
+  if (!best) return null;
+  return { cpu: best, inBand: bestDelta <= band };
+}

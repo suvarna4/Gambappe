@@ -90,6 +90,9 @@ export interface AvailableCpuRow {
   profileId: string;
   persona: CpuPersona;
   handle: string;
+  /** LIVE Glicko rating (WS26-T12: CPU ratings drift) — lazy default 1500 before the first
+   * `ratings:weekly` application creates the row. */
+  rating: number;
 }
 
 /**
@@ -104,8 +107,10 @@ export async function listAvailableCpusForWeek(
   weekStart: string,
 ): Promise<AvailableCpuRow[]> {
   const rows = await db.execute(sql`
-    SELECT p.id AS profile_id, p.cpu_persona AS persona, p.handle AS handle
+    SELECT p.id AS profile_id, p.cpu_persona AS persona, p.handle AS handle,
+           COALESCE(r.glicko_rating, 1500) AS rating
     FROM profiles p
+    LEFT JOIN ratings r ON r.profile_id = p.id
     WHERE p.kind = 'cpu' AND p.status = 'active' AND p.cpu_persona IS NOT NULL
       AND NOT EXISTS (
         SELECT 1 FROM nemesis_pairings np
@@ -122,6 +127,7 @@ export async function listAvailableCpusForWeek(
       profileId: row['profile_id'] as string,
       persona,
       handle: row['handle'] as string,
+      rating: Number(row['rating']),
     });
   }
   return out;

@@ -147,13 +147,11 @@ interface EligibleFixtureOpts {
 async function makeEligibleProfile(opts: EligibleFixtureOpts): Promise<ProfileRow> {
   const row = buildProfile({ kind: 'claimed', status: 'active', ...opts.profileOverrides });
   const [inserted] = await db.insert(profiles).values(row).returning();
-  await db
-    .insert(ratings)
-    .values({
-      profileId: inserted!.id,
-      glickoRating: opts.rating ?? 1500,
-      glickoRd: opts.rd ?? 200,
-    });
+  await db.insert(ratings).values({
+    profileId: inserted!.id,
+    glickoRating: opts.rating ?? 1500,
+    glickoRd: opts.rd ?? 200,
+  });
   await db.insert(fingerprints).values({
     profileId: inserted!.id,
     chalk: opts.chalk ?? 0,
@@ -438,26 +436,22 @@ describe('nemesis:assign — season + rematch (§8.4 step 0)', () => {
     const existingSeasonId = uuidv7();
     const endsOn = new Date(`${WEEK_START}T00:00:00Z`);
     endsOn.setUTCDate(endsOn.getUTCDate() + NEMESIS_SEASON_WEEKS * 7 - 1);
-    await db
-      .insert(seasons)
-      .values({
-        id: existingSeasonId,
-        kind: 'nemesis',
-        startsOn: WEEK_START,
-        endsOn: endsOn.toISOString().slice(0, 10),
-        name: 'S',
-      });
+    await db.insert(seasons).values({
+      id: existingSeasonId,
+      kind: 'nemesis',
+      startsOn: WEEK_START,
+      endsOn: endsOn.toISOString().slice(0, 10),
+      name: 'S',
+    });
 
     const requestId = uuidv7();
-    await db
-      .insert(rematchRequests)
-      .values({
-        id: requestId,
-        requesterProfileId: a.id,
-        targetProfileId: b.id,
-        seasonId: existingSeasonId,
-        status: 'open',
-      });
+    await db.insert(rematchRequests).values({
+      id: requestId,
+      requesterProfileId: a.id,
+      targetProfileId: b.id,
+      seasonId: existingSeasonId,
+      status: 'open',
+    });
 
     await runJob();
     const [reqRow] = await db
@@ -476,26 +470,22 @@ describe('nemesis:assign — season + rematch (§8.4 step 0)', () => {
     const existingSeasonId = uuidv7();
     const endsOn = new Date(`${WEEK_START}T00:00:00Z`);
     endsOn.setUTCDate(endsOn.getUTCDate() + NEMESIS_SEASON_WEEKS * 7 - 1);
-    await db
-      .insert(seasons)
-      .values({
-        id: existingSeasonId,
-        kind: 'nemesis',
-        startsOn: WEEK_START,
-        endsOn: endsOn.toISOString().slice(0, 10),
-        name: 'S',
-      });
+    await db.insert(seasons).values({
+      id: existingSeasonId,
+      kind: 'nemesis',
+      startsOn: WEEK_START,
+      endsOn: endsOn.toISOString().slice(0, 10),
+      name: 'S',
+    });
 
     const requestId = uuidv7();
-    await db
-      .insert(rematchRequests)
-      .values({
-        id: requestId,
-        requesterProfileId: a.id,
-        targetProfileId: b.id,
-        seasonId: existingSeasonId,
-        status: 'accepted',
-      });
+    await db.insert(rematchRequests).values({
+      id: requestId,
+      requesterProfileId: a.id,
+      targetProfileId: b.id,
+      seasonId: existingSeasonId,
+      status: 'accepted',
+    });
 
     const report = await runJob();
     expect(report.forcedPairingsCreated).toBe(0);
@@ -660,6 +650,30 @@ describe('nemesis:assign — CPU-fill (WS26-T4, flag cpu_nemesis)', () => {
         .from(profiles)
         .where(sql`id = ${solo.id}`);
       expect(soloAfter!.matchmakingPriority).toBe(false);
+    } finally {
+      delete process.env.FLAG_CPU_NEMESIS;
+    }
+  });
+
+  it('band-fits: picks the CPU whose LIVE rating is nearest the human, not roster order (T8)', async () => {
+    process.env.FLAG_CPU_NEMESIS = 'true';
+    try {
+      const gradedQuestionIds = await makeGradedDummyQuestions(NEMESIS_MIN_PICKS);
+      const solo = await makeEligibleProfile({ gradedQuestionIds, rating: 1800 });
+      const roster = await seedCpuRoster(db, AT);
+      // Chalkbot sorts first by handle (the pre-T8 pick); rate Tickbot nearest to 1800.
+      await db.insert(ratings).values([
+        { profileId: roster.chalk, glickoRating: 1400, glickoRd: 200 },
+        { profileId: roster.clock, glickoRating: 1780, glickoRd: 200 },
+      ]);
+
+      const report = await runJob();
+      expect(report.cpuPairingsCreated).toBe(1);
+
+      const involving = await pairingsInvolving(solo.id);
+      const pairing = involving[0]!;
+      const opponentId = pairing.profileAId === solo.id ? pairing.profileBId : pairing.profileAId;
+      expect(opponentId).toBe(roster.clock); // 1780 beats 1400 and the unrated (1500) rest
     } finally {
       delete process.env.FLAG_CPU_NEMESIS;
     }
