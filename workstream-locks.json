@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T03:54:34.249Z",
+  "updated_at": "2026-07-23T03:54:36.049Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2454,6 +2454,21 @@
       "pr": null,
       "claimed_at": null,
       "updated_at": "2026-07-23T03:54:34.249Z"
+    },
+    "WS26-T12": {
+      "title": "CPU rating semantics: DRIFT (owner decision 2026-07-22)",
+      "phase": "X1",
+      "depends_on": [
+        "WS26-T4"
+      ],
+      "mock_start_ok": false,
+      "note": "engine/worker. OWNER DECISION: CPU ratings DRIFT with results — ratings:weekly applies Glicko-2 to the CPU side exactly as to humans (no skip logic; this is the existing default, so the task is to make it EXPLICIT and pin it with tests). Human ratings also move from CPU matchups (picks are real). Document consequence: roster ratings spread toward each persona's natural level over time; T8 band-fit must select against CURRENT (live) CPU ratings at assign time. Lands before T8.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-23T03:54:36.049Z"
     }
   }
 }
