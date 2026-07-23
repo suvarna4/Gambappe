@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T07:28:20.100Z",
+  "updated_at": "2026-07-23T07:32:02.265Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2573,12 +2573,12 @@
       ],
       "mock_start_ok": false,
       "note": "Owner decision: FOOTBALL-ONLY v1. Parse football-data.co.uk league CSVs (decades of matches w/ closing odds); de-vig 1X2 odds to a binary home-win yesPrice; each artifact stamps its data cutoff (train cutoff 2026-05-31, pre-World-Cup). Validation slice = late-2025/26 club season for ALL tuning. Fixture-tested parser; real download is a runtime script.",
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-code-web-session-54bb90dd",
-      "branch": null,
-      "pr": null,
+      "branch": "claude/ws26-t15-football-ingest",
+      "pr": "164",
       "claimed_at": "2026-07-23T07:28:20.100Z",
-      "updated_at": "2026-07-23T07:28:20.100Z"
+      "updated_at": "2026-07-23T07:32:02.265Z"
     },
     "WS26-T16": {
       "title": "WC 2026 held-out evaluation: one-shot walk-forward exam",
