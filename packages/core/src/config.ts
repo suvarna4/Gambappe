@@ -372,6 +372,39 @@ export const RETENTION_AUDIT_LOG_MONTHS = 24;
 /** analytics ip_hash/ua_hash nulled after this many days (§5.6). */
 export const RETENTION_IP_UA_HASH_DAYS = 7;
 
+// --- Companion (xTrace + Claude, docs/xtrace-hackathon-tasks.md XH-T1) -----------------------
+
+/** Claude model for all companion generation (XH-T3). Never inline the id at call sites. */
+export const COMPANION_MODEL = 'claude-opus-4-8';
+/** Max output tokens per companion generation call. */
+export const COMPANION_MAX_OUTPUT_TOKENS = 1024;
+/** Per-attempt Claude API timeout (TS SDK timeouts are milliseconds); XH-T3 pins maxRetries: 0. */
+export const COMPANION_LLM_TIMEOUT_MS = 20_000;
+/** Per-attempt xTrace HTTP timeout (XH-T2 client). */
+export const XTRACE_TIMEOUT_MS = 3_000;
+/** xTrace retry count for 429/5xx/network-timeout failures (XH-T2). */
+export const XTRACE_MAX_RETRIES = 2;
+/** Stamped into every companion_artifacts.content; bump when prompts change materially. */
+export const COMPANION_PROMPT_VERSION = 1;
+/** Max banter lines per generation; also caps getBanterResponseSchema (XH-T1/T3/T6). */
+export const COMPANION_BANTER_MAX_LINES = 3;
+/** Max callout drafts per generation — separate from the banter cap so tuning one never
+ * silently breaks the other's response schema (XH-T1/T3/T7). */
+export const COMPANION_DRAFT_MAX = 3;
+/** Memories per xTrace retrieval, after concat/de-dupe (XH-T2/T6/T7/T8). */
+export const COMPANION_SEARCH_LIMIT = 8;
+/** Banter generations per profile per day (XH-T6 rate rule; cache hits are never charged). */
+export const RL_COMPANION_BANTER_PROFILE_D = 30;
+/** Callout-draft generations per profile per day (XH-T7 rate rule; cache hits never charged). */
+export const RL_CALLOUT_DRAFT_PROFILE_D = 10;
+/** INV-8 money words, as a RegExp source (case-insensitive at use sites) — a strict superset
+ * of the `apps/web/test/copy.test.ts` literal: that test lints small human-written pinned
+ * strings where bare tokens suffice, but this constant filters LLM output, which freely
+ * produces morphological variants ("no more betting against you") that `\b`-anchored bare
+ * tokens never match. */
+export const MONEY_WORD_REGEX_SOURCE =
+  '\\bbet(s|ting|ted)?\\b|\\bstak(e|es|ed|ing)\\b|\\bwager(s|ing|ed)?\\b|\\$';
+
 // --- Aggregate view (used by the constants snapshot test, WS0-T2 AC) -------------------------
 
 export const CONFIG = {
@@ -478,4 +511,16 @@ export const CONFIG = {
   RETENTION_ANALYTICS_MONTHS,
   RETENTION_AUDIT_LOG_MONTHS,
   RETENTION_IP_UA_HASH_DAYS,
+  COMPANION_MODEL,
+  COMPANION_MAX_OUTPUT_TOKENS,
+  COMPANION_LLM_TIMEOUT_MS,
+  XTRACE_TIMEOUT_MS,
+  XTRACE_MAX_RETRIES,
+  COMPANION_PROMPT_VERSION,
+  COMPANION_BANTER_MAX_LINES,
+  COMPANION_DRAFT_MAX,
+  COMPANION_SEARCH_LIMIT,
+  RL_COMPANION_BANTER_PROFILE_D,
+  RL_CALLOUT_DRAFT_PROFILE_D,
+  MONEY_WORD_REGEX_SOURCE,
 } as const;

@@ -11,6 +11,7 @@ export * from './pairings.js';
 export * from './stack.js';
 export * from './topics.js';
 export * from './callouts.js';
+export * from './companion.js';
 export * from './duos.js';
 export * from './social.js';
 export * from './wallet.js';

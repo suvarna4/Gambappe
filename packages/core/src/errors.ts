@@ -30,6 +30,9 @@ export const ERROR_CODES = {
   RATE_LIMITED: 429,
   INTERNAL: 500,
   PRICE_UNAVAILABLE: 503,
+  /** XH-T1: degraded companion (xTrace/Claude) generation — distinct from
+   * PRICE_UNAVAILABLE, which is venue-pricing-specific and must not be reused. */
+  COMPANION_UNAVAILABLE: 503,
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_CODES;

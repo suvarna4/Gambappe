@@ -17,6 +17,16 @@ describe('flag defaults', () => {
     expect(FLAG_DEFAULTS.swipe_ballot).toBe(false);
     expect(FLAG_NAMES).toContain('swipe_ballot');
   });
+
+  it('companion flags exist and are off by default (XH-T1)', () => {
+    for (const name of ['companion', 'callout_draft', 'season_wrapped'] as const) {
+      expect(FLAG_DEFAULTS[name]).toBe(false);
+      expect(FLAG_NAMES).toContain(name);
+    }
+    expect(flagEnvVar('companion')).toBe('FLAG_COMPANION');
+    expect(isFlagEnabled('companion', {})).toBe(false);
+    expect(isFlagEnabled('companion', { FLAG_COMPANION: 'true' })).toBe(true);
+  });
 });
 
 describe('isFlagEnabled', () => {
