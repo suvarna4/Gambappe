@@ -81,6 +81,9 @@ describe('flags (§4.6)', () => {
         'topic_markets',
         'callouts',
         'departures_board',
+        // cpu_nemesis added by WS26-T1 (docs/plans/cpu-nemesis-wbs.md) — gates CPU-fill in
+        // nemesis:assign and the cpu:pick sweep.
+        'cpu_nemesis',
       ].sort(),
     );
     for (const name of FLAG_NAMES) expect(FLAG_DEFAULTS[name]).toBe(false);

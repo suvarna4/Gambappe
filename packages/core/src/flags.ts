@@ -54,6 +54,13 @@ export const FLAG_DEFAULTS = {
    * renders as paper receipts. Stays off; the board skin is a flagged stretch pilot only.
    */
   departures_board: false,
+  /**
+   * CPU nemesis rivals (docs/plans/cpu-nemesis-wbs.md, WS26). Off → no CPU-fill in
+   * `nemesis:assign`, no `cpu:pick` sweep; nemesis behaves exactly as today. Env-gated like
+   * `duo_queue` (`FLAG_CPU_NEMESIS=true` per environment); WS26-T7's metrics guardrail must be
+   * live before any metrics-bearing environment enables it.
+   */
+  cpu_nemesis: false,
 } as const;
 
 export type FlagName = keyof typeof FLAG_DEFAULTS;

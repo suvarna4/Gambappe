@@ -3,7 +3,7 @@
  * `packages/db` defines the PG enums from these arrays — one source of truth.
  */
 
-export const PROFILE_KIND = ['ghost', 'claimed'] as const;
+export const PROFILE_KIND = ['ghost', 'claimed', 'cpu'] as const;
 export type ProfileKind = (typeof PROFILE_KIND)[number];
 
 export const PROFILE_STATUS = ['active', 'paused_matchmaking', 'suspended', 'deleted'] as const;
@@ -50,7 +50,7 @@ export type QuestionStatus = (typeof QUESTION_STATUS)[number];
 export const PICK_RESULT = ['pending', 'win', 'loss', 'void'] as const;
 export type PickResult = (typeof PICK_RESULT)[number];
 
-export const PICK_SOURCE = ['web', 'share_card', 'spectator_page'] as const;
+export const PICK_SOURCE = ['web', 'share_card', 'spectator_page', 'cpu'] as const;
 export type PickSource = (typeof PICK_SOURCE)[number];
 
 export const PAIRING_STATUS = ['scheduled', 'active', 'completed', 'cancelled'] as const;
