@@ -1,9 +1,13 @@
 /**
- * Companion (xTrace + Claude) repository (docs/xtrace-hackathon-tasks.md XH-T4): the
+ * Companion (xTrace + Claude) repository (docs/xtrace-hackathon-tasks.md). XH-T4: the
  * generated-artifact cache, xTrace ingestion idempotency, and the shared lifetime-record
  * aggregate T6/T7 both need — one owner so win/draw bucketing can't drift between the two.
+ * XH-T5 added the two ingestion-candidate queries below (`listConcludedPairingsWithVerdict`,
+ * `listCandidatePairingPostsForIngest`) rather than querying `nemesis_pairings`/`posts`
+ * directly from the job file, keeping every worker job's DB access behind a repository
+ * function (no job in this repo queries a schema table directly).
  */
-import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
 import { uuidv7 } from 'uuidv7';
 import type { CompanionArtifactKind } from '@receipts/core';
 import type { Db } from '../client.js';
@@ -11,9 +15,15 @@ import {
   companionArtifacts,
   companionIngestLog,
   nemesisPairings,
+  posts,
+  profiles,
   seasons,
   type CompanionArtifactContent,
 } from '../schema/index.js';
+// `NemesisPairingRow` already lives in moderation.ts (WS11-T3) — imported, not re-declared,
+// to avoid an ambiguous duplicate `export *` of the same name from two repository files
+// (same convention `pairings.ts` follows).
+import type { NemesisPairingRow } from './moderation.js';
 
 export type { CompanionArtifactContent };
 export type CompanionArtifactRow = typeof companionArtifacts.$inferSelect;
@@ -199,4 +209,55 @@ export async function completedPairingIdsBetween(
     .from(nemesisPairings)
     .where(betweenBothOrders(profileId, opponentProfileId));
   return rows.map((r) => r.id);
+}
+
+/** Every pairing that has ever been concluded (`verdict IS NOT NULL`) — XH-T5's ingestion
+ * candidate pool for `companion:ingest`'s "pairing_verdict" source, oldest first (a stable
+ * order so a capped run drains backlog FIFO instead of letting new candidates perpetually cut
+ * the line). The caller filters this against `filterUningested` before ingesting. */
+export async function listConcludedPairingsWithVerdict(db: Db): Promise<NemesisPairingRow[]> {
+  return db
+    .select()
+    .from(nemesisPairings)
+    .where(isNotNull(nemesisPairings.verdict))
+    .orderBy(nemesisPairings.createdAt);
+}
+
+export interface CompanionPostIngestCandidate {
+  id: string;
+  pairingId: string;
+  profileId: string;
+  authorHandle: string;
+  body: string;
+}
+
+/**
+ * Visible pairing-thread posts whose parent pairing is `active` or `completed`, oldest first —
+ * XH-T5's ingestion candidate pool for the "post" source. `PAIRING_STATUS` has no "concluded"
+ * value; posts on `scheduled`/`cancelled` pairings are skipped (both rivals already see the
+ * thread either way, so this is a source-selection choice, not a visibility one). The caller
+ * filters this against `filterUningested` before ingesting.
+ */
+export async function listCandidatePairingPostsForIngest(
+  db: Db,
+): Promise<CompanionPostIngestCandidate[]> {
+  return db
+    .select({
+      id: posts.id,
+      pairingId: posts.contextId,
+      profileId: posts.profileId,
+      authorHandle: profiles.handle,
+      body: posts.body,
+    })
+    .from(posts)
+    .innerJoin(nemesisPairings, eq(posts.contextId, nemesisPairings.id))
+    .innerJoin(profiles, eq(posts.profileId, profiles.id))
+    .where(
+      and(
+        eq(posts.contextKind, 'pairing'),
+        eq(posts.status, 'visible'),
+        inArray(nemesisPairings.status, ['active', 'completed']),
+      ),
+    )
+    .orderBy(posts.createdAt);
 }

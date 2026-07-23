@@ -32,6 +32,7 @@ import { SCHEDULE_TZ } from '@receipts/core';
 import type { JobHandler } from './heartbeat.js';
 import { analyticsRollupHandler } from './jobs/analytics-rollup.js';
 import { botScoreHandler } from './jobs/bot-score.js';
+import { companionIngestHandler } from './jobs/companion-ingest.js';
 import { duoMatchmakerHandler } from './jobs/duo-matchmaker.js';
 import { duoWindowRollHandler } from './jobs/duo-window-roll.js';
 import { fingerprintNightlyHandler } from './jobs/fingerprint-nightly.js';
@@ -199,6 +200,12 @@ export const JOB_REGISTRY: readonly JobDefinition[] = [
     owner: 'WS13-T2',
     cron: '0 4 * * *', // daily 04:00 ET
     handler: analyticsRollupHandler,
+  },
+  {
+    name: 'companion:ingest',
+    owner: 'XH-T5',
+    cron: '0 4 * * *', // daily 04:00 ET — after Sunday 22:00 nemesis:conclude and the Monday cycle
+    handler: companionIngestHandler,
   },
   {
     name: 'maintenance:prune',
