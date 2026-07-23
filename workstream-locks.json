@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T17:29:01.832Z",
+  "updated_at": "2026-07-23T17:43:55.349Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2602,12 +2602,12 @@
       "depends_on": [],
       "mock_start_ok": false,
       "note": "[contract-change] Full spec: docs/xtrace-hackathon-tasks.md XH-T1. Review: docs/xtrace-hackathon-review-log.md (CONVERGED, strict). packages/core edit — follow design-doc §19.4 contract-change PR rules.",
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-session-xtrace-companion",
+      "branch": "feat/xh-t1-companion-contracts",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-23T17:29:01.828Z"
+      "claimed_at": "2026-07-23T17:43:55.346Z",
+      "updated_at": "2026-07-23T17:43:55.346Z"
     },
     "XH-T2": {
       "title": "@receipts/companion: xTrace client",
