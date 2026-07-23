@@ -23,8 +23,10 @@ const LOCKS_BRANCH = 'workstream-locks';
 const LOCKS_FILE = 'workstream-locks.json';
 const MAX_RETRIES = 8;
 const VALID_STATUSES = ['available', 'claimed', 'in_review', 'done'];
-/** §19 WBS ids (WS3-T2) plus later plans' ids (SW1-T2, docs/swipe-ux-plan.md §3). */
-const TASK_ID_RE = /^(?:WS|SW)\d+-T\d+$/;
+/** §19 WBS ids (WS3-T2) plus later plans' ids (SW1-T2, docs/swipe-ux-plan.md §3) plus the
+ * xTrace hackathon plan's ids (XH-T5, docs/xtrace-hackathon-tasks.md — no digits after the
+ * prefix, unlike WS/SW, since it's a single un-numbered workstream). */
+const TASK_ID_RE = /^(?:(?:WS|SW)\d+|XH)-T\d+$/;
 
 class UsageError extends Error {}
 class ConflictError extends Error {}
@@ -344,7 +346,7 @@ function cmdAddTask({ positional, flags }) {
     );
   }
   if (!TASK_ID_RE.test(taskId)) {
-    throw new UsageError(`"${taskId}" doesn't look like a task id (expected e.g. WS15-T1 or SW1-T2).`);
+    throw new UsageError(`"${taskId}" doesn't look like a task id (expected e.g. WS15-T1, SW1-T2, or XH-T5).`);
   }
   const dependsOn = flags.depends
     ? String(flags.depends)
@@ -391,7 +393,7 @@ function mergeSeedTasks(data, seedTasks, now) {
   if (ids.length === 0) throw new UsageError('Seed contains no tasks.');
   for (const id of ids) {
     if (!TASK_ID_RE.test(id)) {
-      throw new UsageError(`Seed task id "${id}" is invalid (expected e.g. WS15-T1 or SW1-T2).`);
+      throw new UsageError(`Seed task id "${id}" is invalid (expected e.g. WS15-T1, SW1-T2, or XH-T5).`);
     }
   }
   const merged = { ...data.tasks };

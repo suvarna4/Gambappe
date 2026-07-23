@@ -136,3 +136,14 @@ test('mock_start_ok is carried through when the seed sets it', () => {
   mergeSeedTasks(data, { 'SW1-T2': { title: 'gesture', depends_on: [], mock_start_ok: true } }, NOW);
   assert.equal(data.tasks['SW1-T2'].mock_start_ok, true);
 });
+
+test('accepts XH- ids (xtrace hackathon plan, no digits after the prefix) but rejects XH5-style ids', () => {
+  const data = registry();
+  const { added } = mergeSeedTasks(
+    data,
+    { 'XH-T1': { title: 'Contracts', depends_on: [] }, 'XH-T2': { title: 'Client', depends_on: ['XH-T1'] } },
+    NOW,
+  );
+  assert.deepEqual(added, ['XH-T1', 'XH-T2']);
+  assert.throws(() => mergeSeedTasks(registry(), { 'XH5-T1': { title: 'x' } }, NOW), UsageError);
+});
