@@ -5,7 +5,8 @@
  * XH-T5 added the two ingestion-candidate queries below (`listConcludedPairingsWithVerdict`,
  * `listCandidatePairingPostsForIngest`) rather than querying `nemesis_pairings`/`posts`
  * directly from the job file, keeping every worker job's DB access behind a repository
- * function (no job in this repo queries a schema table directly).
+ * function (no job in this repo queries a schema table directly). XH-T6 added
+ * `mostRecentCompletedPairingBetween` (the banter route's `lastVerdictLine` source).
  */
 import { and, desc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
 import { uuidv7 } from 'uuidv7';
@@ -209,6 +210,23 @@ export async function completedPairingIdsBetween(
     .from(nemesisPairings)
     .where(betweenBothOrders(profileId, opponentProfileId));
   return rows.map((r) => r.id);
+}
+
+/** The most recently-concluded (`completed`) pairing between the two profiles, by `week_start`
+ * — XH-T6's `lastVerdictLine` source (`verdict.narration[viewerProfileId]?.line`). Null when
+ * the two have never had a completed week together. */
+export async function mostRecentCompletedPairingBetween(
+  db: Db,
+  profileId: string,
+  opponentProfileId: string,
+): Promise<NemesisPairingRow | null> {
+  const [row] = await db
+    .select()
+    .from(nemesisPairings)
+    .where(betweenBothOrders(profileId, opponentProfileId))
+    .orderBy(desc(nemesisPairings.weekStart), desc(nemesisPairings.createdAt))
+    .limit(1);
+  return row ?? null;
 }
 
 /** Every pairing that has ever been concluded (`verdict IS NOT NULL`) — XH-T5's ingestion

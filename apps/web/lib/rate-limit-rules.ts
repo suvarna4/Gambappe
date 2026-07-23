@@ -6,6 +6,7 @@
 import {
   RL_AUTH_EMAIL_H,
   RL_CLAIM_IP_H,
+  RL_COMPANION_BANTER_PROFILE_D,
   RL_EVENTS_IP_H,
   RL_GET_IP_MIN,
   RL_GHOST_MINT_IP_DAY,
@@ -73,6 +74,14 @@ export const RATE_LIMIT_RULES = {
   // is the place to promote these into a first-class §14.1 row if the caps need tuning.
   callout_create: { keyType: 'profile', limit: RL_POST_PROFILE_D, windowSeconds: DAY },
   callout_respond: { keyType: 'profile', limit: RL_POST_PROFILE_MIN, windowSeconds: MINUTE },
+  // Companion banter generation (docs/xtrace-hackathon-tasks.md XH-T6): a MISS-path-only budget
+  // (the banter route's cache check happens before this, so a same-day cache hit never consumes
+  // it — see that route's ordering note on why charging cache hits would 429 the demo centerpiece).
+  companion_banter: {
+    keyType: 'profile',
+    limit: RL_COMPANION_BANTER_PROFILE_D,
+    windowSeconds: DAY,
+  },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type RateLimitAction = keyof typeof RATE_LIMIT_RULES;

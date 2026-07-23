@@ -35,6 +35,9 @@ importers:
       '@auth/drizzle-adapter':
         specifier: ^1.11.2
         version: 1.11.2
+      '@receipts/companion':
+        specifier: workspace:*
+        version: link:../../packages/companion
       '@receipts/core':
         specifier: workspace:*
         version: link:../../packages/core

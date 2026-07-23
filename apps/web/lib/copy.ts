@@ -780,3 +780,16 @@ export const crowdCopy = {
   /** a11y label for the viewer's own highlighted row (hydrated client-side, INV-10). */
   youRowLabel: 'Your row',
 } as const;
+
+/**
+ * XH-T6 (docs/xtrace-hackathon-tasks.md) · the Rivals hub's `CompanionBanter` island — AI-
+ * generated rivalry color grounded in shared pairing memory. The disclaimer exists so the copy
+ * is never mistaken for the deterministic record (RECORD/scoreboard/verdict are the source of
+ * truth; this is flavor text). No money words (no bet/stake/wager/$, INV-8) — `copy.test.ts`
+ * scans this block too.
+ */
+export const companionCopy = {
+  heading: 'Rivalry radio',
+  disclaimer: 'AI-generated color — the record is the record.',
+  loading: 'Tuning in…',
+} as const;

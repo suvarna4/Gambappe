@@ -14,7 +14,12 @@ import { CalloutPanel } from '@/components/callouts/CalloutPanel';
 import { AcceptedCalloutCard } from '@/components/callouts/AcceptedCalloutCard';
 import { IncomingCalloutCard, type IncomingCalloutState } from '@/components/callouts/IncomingCalloutCard';
 import { NemesisHistoryList } from '@/components/nemesis/NemesisHistoryList';
-import { getNemesisHistoryPage, NEMESIS_HISTORY_DEFAULT_LIMIT } from '@/lib/nemesis/service';
+import {
+  getCurrentPairingForProfile,
+  getNemesisHistoryPage,
+  NEMESIS_HISTORY_DEFAULT_LIMIT,
+} from '@/lib/nemesis/service';
+import { CompanionBanter } from '@/components/companion/CompanionBanter';
 import { calloutsCopy } from '@/lib/copy';
 
 /**
@@ -88,6 +93,7 @@ export default async function RivalsPage({ searchParams }: PageProps) {
   const { tab, callout } = await searchParams;
   const duoEnabled = isFlagEnabled('duo_queue');
   const calloutsEnabled = isFlagEnabled('callouts');
+  const companionEnabled = isFlagEnabled('companion');
   const activeTab: RivalsTab = tab === 'duo' ? 'duo' : 'nemesis';
 
   const session = await auth();
@@ -120,16 +126,18 @@ export default async function RivalsPage({ searchParams }: PageProps) {
     // Nemesis tab (claimed): the nemesis-week body + the WS20-T4 call-out surfaces. The grudge book
     // reuses `NemesisHistoryList` in `variant="grudges"` mode (it folds the same history entries
     // into one lifetime aggregate per rival), so only the history page is fetched here.
-    const [candidates, acceptedViews, historyPage] = await Promise.all([
+    const [candidates, acceptedViews, historyPage, activePairing] = await Promise.all([
       calloutsEnabled ? getCalloutCandidates(db, profile.id) : Promise.resolve([]),
       calloutsEnabled ? getAcceptedCalloutViews(db, profile.id) : Promise.resolve([]),
       calloutsEnabled
         ? getNemesisHistoryPage(db, profile.id, { limit: NEMESIS_HISTORY_DEFAULT_LIMIT })
         : Promise.resolve(null),
+      companionEnabled ? getCurrentPairingForProfile(db, profile.id, now()) : Promise.resolve(null),
     ]);
     body = (
       <div className="flex flex-1 flex-col space-y-8" data-testid="rivals-nemesis-panel">
         <NemesisRoom profile={profile} />
+        {activePairing ? <CompanionBanter pairingId={activePairing.id} /> : null}
         {calloutsEnabled ? (
           <>
             <AcceptedCalloutCard views={acceptedViews} />

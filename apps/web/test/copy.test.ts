@@ -4,6 +4,7 @@ import {
   CLAIM_NUDGE_COPY,
   CLAIM_PROMPT_CTA,
   CLAIM_PUBLICNESS_STATEMENT,
+  companionCopy,
   crowdCopy,
   departuresCopy,
   obituaryCopy,
@@ -189,6 +190,19 @@ describe('obituaryCopy survived-fact templates + buildObituaryFacts (SW9-T2)', (
       obituaryCopy.survivedOdds(29),
       ...Object.values(obituaryCopy).filter((v: unknown): v is string => typeof v === 'string'),
     ].join(' ');
+    expect(allCopy).not.toMatch(/\bbet\b|\bstake\b|\bwager\b|\$/i);
+  });
+});
+
+/** XH-T6 (docs/xtrace-hackathon-tasks.md) · the `CompanionBanter` island copy — same INV-8
+ * money-word rule on this task's own block. */
+describe('companion banter copy (XH-T6)', () => {
+  it('conveys "AI-generated color — the record is the record"', () => {
+    expect(companionCopy.disclaimer).toBe('AI-generated color — the record is the record.');
+  });
+
+  it('no copy references money words (§10.6/INV-8 review rule: bet|stake|wager|$)', () => {
+    const allCopy = Object.values(companionCopy).join(' ');
     expect(allCopy).not.toMatch(/\bbet\b|\bstake\b|\bwager\b|\$/i);
   });
 });
