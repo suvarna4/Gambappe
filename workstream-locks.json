@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T21:18:40.973Z",
+  "updated_at": "2026-07-23T21:18:47.836Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2716,12 +2716,12 @@
       ],
       "mock_start_ok": false,
       "note": "Depends on XH-T6 for companionCopy.disclaimer. Full spec: docs/xtrace-hackathon-tasks.md XH-T8.",
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-session-xtrace-companion",
+      "branch": "feat/xh-t8-season-wrapped",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-23T17:29:01.828Z"
+      "claimed_at": "2026-07-23T21:18:47.836Z",
+      "updated_at": "2026-07-23T21:18:47.836Z"
     },
     "XH-T9": {
       "title": "Demo seed script + runbook",
