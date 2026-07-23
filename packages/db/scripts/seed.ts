@@ -12,6 +12,7 @@ import { uuidv7 } from 'uuidv7';
 import { eq, like } from 'drizzle-orm';
 import { NEMESIS_SEASON_WEEKS, SCHEDULE_TZ } from '@receipts/core';
 import { connect } from '../src/client.js';
+import { seedCpuRoster } from '../src/repositories/cpu.js';
 import { placementItems, seasons, users } from '../src/schema/index.js';
 
 const { pool, db } = connect();
@@ -283,7 +284,8 @@ try {
       resolvedOn: '2024-03-10',
     },
     {
-      title: "Did Taylor Swift's 'The Tortured Poets Department' debut at #1 on the Billboard 200 in 2024?",
+      title:
+        "Did Taylor Swift's 'The Tortured Poets Department' debut at #1 on the Billboard 200 in 2024?",
       category: 'culture' as const,
       yesLabel: 'Debuted at #1',
       noLabel: 'Did not debut at #1',
@@ -373,6 +375,11 @@ try {
     );
     console.log(`seeded ${productionPlacementItems.length} production placement items`);
   }
+
+  // WS26-T3: CPU nemesis roster (idempotent by slug). Inert until FLAG_CPU_NEMESIS is on
+  // and the WS26-T4/T5 jobs land — seeding everywhere is safe by construction.
+  const cpuIds = await seedCpuRoster(db, new Date());
+  console.log(`cpu roster present: ${Object.keys(cpuIds).length} personas`);
 
   console.log('seed complete');
 } finally {

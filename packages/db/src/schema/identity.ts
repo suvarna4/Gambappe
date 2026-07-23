@@ -120,6 +120,12 @@ export const profiles = pgTable(
     ageAttestedAt: timestamp('age_attested_at', { withTimezone: true }),
     /** 0–1 (§14.2). */
     botScore: real('bot_score').notNull().default(0),
+    /**
+     * WS26 (docs/plans/cpu-nemesis-wbs.md): pick policy of a `kind='cpu'` rival — validated
+     * against @receipts/core `CPU_PERSONAS`, text (not a pg enum) so the roster can grow
+     * without migrations. Null on every human profile; no other workstream writes this.
+     */
+    cpuPersona: text('cpu_persona'),
     /** Participation streak (DD-3). */
     currentStreak: integer('current_streak').notNull().default(0),
     bestStreak: integer('best_streak').notNull().default(0),
@@ -147,7 +153,9 @@ export const profiles = pgTable(
     uniqueIndex('profiles_handle_lower_uq').on(sql`lower(${t.handle})`),
     uniqueIndex('profiles_slug_uq').on(t.slug),
     index('profiles_kind_status_idx').on(t.kind, t.status),
-    index('profiles_bot_score_idx').on(t.botScore).where(sql`${t.botScore} > 0.5`),
+    index('profiles_bot_score_idx')
+      .on(t.botScore)
+      .where(sql`${t.botScore} > 0.5`),
   ],
 );
 
