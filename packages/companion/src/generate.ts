@@ -57,6 +57,12 @@ const recapOutputSchema = z.object({
   paragraphs: z.array(z.string().min(1).max(600)).min(1).max(4),
 });
 
+// Computed once at module load — the schemas are static, so re-deriving the JSON schema on
+// every generation call would be pure waste.
+const banterFormat = zodOutputFormat(banterOutputSchema);
+const calloutDraftFormat = zodOutputFormat(calloutDraftOutputSchema);
+const recapFormat = zodOutputFormat(recapOutputSchema);
+
 export interface Generator {
   banter(ctx: BanterContext): Promise<string[] | null>;
   calloutDrafts(ctx: CalloutDraftContext): Promise<string[] | null>;
@@ -112,12 +118,7 @@ async function runGenerate<T>(
 export function createGenerator(client: Anthropic): Generator {
   async function banter(ctx: BanterContext): Promise<string[] | null> {
     const prompt = buildBanterPrompt({ ...ctx, memory: truncateMemory(ctx.memory) });
-    const result = await runGenerate(
-      client,
-      prompt.system,
-      prompt.user,
-      zodOutputFormat(banterOutputSchema),
-    );
+    const result = await runGenerate(client, prompt.system, prompt.user, banterFormat);
     if (result === null) return null;
     const filtered = filterLines(result.lines);
     return filtered.length > 0 ? filtered : null;
@@ -125,12 +126,7 @@ export function createGenerator(client: Anthropic): Generator {
 
   async function calloutDrafts(ctx: CalloutDraftContext): Promise<string[] | null> {
     const prompt = buildCalloutDraftPrompt({ ...ctx, memory: truncateMemory(ctx.memory) });
-    const result = await runGenerate(
-      client,
-      prompt.system,
-      prompt.user,
-      zodOutputFormat(calloutDraftOutputSchema),
-    );
+    const result = await runGenerate(client, prompt.system, prompt.user, calloutDraftFormat);
     if (result === null) return null;
     const filtered = filterLines(result.lines);
     return filtered.length > 0 ? filtered : null;
@@ -138,12 +134,7 @@ export function createGenerator(client: Anthropic): Generator {
 
   async function seasonRecap(ctx: RecapContext): Promise<SeasonRecapContent | null> {
     const prompt = buildRecapPrompt({ ...ctx, memory: truncateMemory(ctx.memory) });
-    const result = await runGenerate(
-      client,
-      prompt.system,
-      prompt.user,
-      zodOutputFormat(recapOutputSchema),
-    );
+    const result = await runGenerate(client, prompt.system, prompt.user, recapFormat);
     if (result === null) return null;
 
     const title = filterLines([result.title]);
