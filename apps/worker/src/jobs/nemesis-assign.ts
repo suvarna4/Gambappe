@@ -33,13 +33,19 @@ import {
   isoWeekMonday,
   now,
 } from '@receipts/core';
-import { matchNemeses, narrate, type NemesisForcedPair, type NemesisPoolEntry } from '@receipts/engine';
+import {
+  matchNemeses,
+  narrate,
+  type NemesisForcedPair,
+  type NemesisPoolEntry,
+} from '@receipts/engine';
 import {
   getOrCreateNemesisSeasonCovering,
   insertNemesisPairingRow,
   insertPairingQuestionRows,
   listAcceptedRematchRequests,
   listAllBlockedPairs,
+  listAvailableCpusForWeek,
   listNemesisEligiblePool,
   listOpenRematchRequestIds,
   listPairedProfilePairsForSeason,
@@ -47,6 +53,7 @@ import {
   markRematchRequestsExpired,
   sendNotification,
   setMatchmakingPriority,
+  type AvailableCpuRow,
   type Db,
   type NemesisPoolRow,
 } from '@receipts/db';
@@ -71,6 +78,8 @@ export interface NemesisAssignReport {
   poolSize: number;
   pairingsCreated: number;
   forcedPairingsCreated: number;
+  /** WS26-T4: leftover humans paired with a CPU rival this run (0 with the flag off). */
+  cpuPairingsCreated: number;
   leftovers: number;
   bonusQuestionsCreated: number;
   rematchRequestsExpired: number;
@@ -144,13 +153,94 @@ async function sendNemesisAssignedNotifications(
     [a.profileId, b.profileId, lineForA],
     [b.profileId, a.profileId, lineForB],
   ] as const) {
-    const payload = { line: line.line, emphasis: line.emphasis ?? null, pairing_id: pairingId, opponent_profile_id: opponentId };
-    await sendNotification(db, profileId, 'nemesis_assigned', payload, 'email', `nemesis_assigned:${pairingId}:${profileId}:email`, at);
-    await sendNotification(db, profileId, 'nemesis_assigned', payload, 'push', `nemesis_assigned:${pairingId}:${profileId}:push`, at);
+    const payload = {
+      line: line.line,
+      emphasis: line.emphasis ?? null,
+      pairing_id: pairingId,
+      opponent_profile_id: opponentId,
+    };
+    await sendNotification(
+      db,
+      profileId,
+      'nemesis_assigned',
+      payload,
+      'email',
+      `nemesis_assigned:${pairingId}:${profileId}:email`,
+      at,
+    );
+    await sendNotification(
+      db,
+      profileId,
+      'nemesis_assigned',
+      payload,
+      'push',
+      `nemesis_assigned:${pairingId}:${profileId}:push`,
+      at,
+    );
   }
 }
 
-export async function runNemesisAssign(db: Db, boss: PgBoss, at: Date = now()): Promise<NemesisAssignReport> {
+/**
+ * WS26-T4: persona-flavored style axes for the "Meet your nemesis" narration line when the
+ * opponent is a CPU (a CPU has no fingerprint row to read real axes from — its persona IS
+ * its style, so the clause reads truthfully: Chalkbot plays chalk, Fadebot fades).
+ */
+const CPU_PERSONA_STYLE_AXES = {
+  chalk: { chalk: 0.9, contrarian: 0.1, timing: 0.5 },
+  fade: { chalk: 0.1, contrarian: 0.9, timing: 0.5 },
+  longshot: { chalk: 0.1, contrarian: 0.8, timing: 0.7 },
+  clock: { chalk: 0.5, contrarian: 0.5, timing: 0.95 },
+} as const;
+
+/** WS26-T4 AC (review correction 3): the CPU side gets NO notification — a CPU has no inbox,
+ * and `sendNemesisAssignedNotifications` would enqueue email+push rows addressed to a
+ * userless profile. Only the human's "Meet your nemesis" beat is sent. */
+async function sendCpuNemesisAssignedNotification(
+  db: Db,
+  pairingId: string,
+  human: NemesisPoolRow,
+  cpu: AvailableCpuRow,
+  at: Date,
+): Promise<void> {
+  const line = narrate({
+    beat: 'nemesis_assigned',
+    data: {
+      opponentHandle: cpu.handle,
+      self: human,
+      opponent: CPU_PERSONA_STYLE_AXES[cpu.persona],
+    },
+  });
+  const payload = {
+    line: line.line,
+    emphasis: line.emphasis ?? null,
+    pairing_id: pairingId,
+    opponent_profile_id: cpu.profileId,
+  };
+  await sendNotification(
+    db,
+    human.profileId,
+    'nemesis_assigned',
+    payload,
+    'email',
+    `nemesis_assigned:${pairingId}:${human.profileId}:email`,
+    at,
+  );
+  await sendNotification(
+    db,
+    human.profileId,
+    'nemesis_assigned',
+    payload,
+    'push',
+    `nemesis_assigned:${pairingId}:${human.profileId}:push`,
+    at,
+  );
+}
+
+export async function runNemesisAssign(
+  db: Db,
+  boss: PgBoss,
+  at: Date = now(),
+): Promise<NemesisAssignReport> {
   const weekStart = isoWeekMonday(etDateString(at));
 
   // --- Step 0: season check (§8.4) ---------------------------------------------------------
@@ -159,13 +249,21 @@ export async function runNemesisAssign(db: Db, boss: PgBoss, at: Date = now()): 
     // SPEC-GAP(ws5-t1): "(and notifies admins)" — no admin notification channel/audience exists
     // yet (mirrors WS3-T4's identical SPEC-GAP for reveal-delay admin escalation); logged loudly
     // instead so an ops dashboard/log alert can pick it up until WS10 grows one.
-    logger.warn({ seasonId: season.id, startsOn: season.startsOn, endsOn: season.endsOn }, 'nemesis:assign — auto-created next nemesis season');
+    logger.warn(
+      { seasonId: season.id, startsOn: season.startsOn, endsOn: season.endsOn },
+      'nemesis:assign — auto-created next nemesis season',
+    );
   }
 
   // --- Pool (§8.4 eligible pool) ------------------------------------------------------------
   // `weekStart` excludes anyone already holding a scheduled/active pairing for the week — the
   // WS20-T3 call-out double-assignment guard (D-J5).
-  const poolRows = await listNemesisEligiblePool(db, BOT_EXCLUDE_THRESHOLD, NEMESIS_MIN_PICKS, weekStart);
+  const poolRows = await listNemesisEligiblePool(
+    db,
+    BOT_EXCLUDE_THRESHOLD,
+    NEMESIS_MIN_PICKS,
+    weekStart,
+  );
   const poolById = new Map(poolRows.map((r) => [r.profileId, r]));
   const poolIds = new Set(poolRows.map((r) => r.profileId));
   const poolEntries: NemesisPoolEntry[] = poolRows.map((r) => toPoolEntry(r, at));
@@ -184,7 +282,11 @@ export async function runNemesisAssign(db: Db, boss: PgBoss, at: Date = now()): 
   // week's pool (paired/blocked, or one side absent) simply never form a candidate edge, so
   // passing the full grudge set is safe — the matcher only ever consults it for eligible pairs.
   const grudgePairs = await listStandingGrudgePairs(db);
-  const matchResult = matchNemeses(poolEntries, { blockedPairs, pairedThisSeason, grudgePairs }, { forcedPairs });
+  const matchResult = matchNemeses(
+    poolEntries,
+    { blockedPairs, pairedThisSeason, grudgePairs },
+    { forcedPairs },
+  );
 
   // --- Persist pairings, bonus questions, notifications -------------------------------------
   let bonusQuestionsCreated = 0;
@@ -195,7 +297,10 @@ export async function runNemesisAssign(db: Db, boss: PgBoss, at: Date = now()): 
     if (!rowA || !rowB) {
       // Defensive — every pairing's members came from `poolEntries`/`forcedPairs`, both of
       // which are drawn from `poolById`'s keys. Unreachable in practice; skip rather than crash.
-      logger.error({ pairing }, 'nemesis:assign — pairing references a profile outside the pool, skipping');
+      logger.error(
+        { pairing },
+        'nemesis:assign — pairing references a profile outside the pool, skipping',
+      );
       continue;
     }
 
@@ -225,10 +330,17 @@ export async function runNemesisAssign(db: Db, boss: PgBoss, at: Date = now()): 
       });
     } catch (err) {
       // Best-effort (§8.8: "0-bonus week is valid") — never let bonus selection fail the pairing.
-      logger.warn({ err, pairingId }, 'nemesis:assign — bonus question selection failed, continuing with 0 bonus');
+      logger.warn(
+        { err, pairingId },
+        'nemesis:assign — bonus question selection failed, continuing with 0 bonus',
+      );
     }
     if (bonusQuestions.length > 0) {
-      await insertPairingQuestionRows(db, pairingId, bonusQuestions.map((q) => q.id));
+      await insertPairingQuestionRows(
+        db,
+        pairingId,
+        bonusQuestions.map((q) => q.id),
+      );
       bonusQuestionsCreated += bonusQuestions.length;
       for (const q of bonusQuestions) {
         // Already `open` (authored that way, §8.8.1 "open_at = creation time") — only
@@ -242,11 +354,78 @@ export async function runNemesisAssign(db: Db, boss: PgBoss, at: Date = now()): 
     await sendNemesisAssignedNotifications(db, pairingId, rowA, rowB, at);
   }
 
+  // --- WS26-T4: CPU-fill for leftovers (docs/plans/cpu-nemesis-wbs.md, flag cpu_nemesis) ----
+  // The human matcher stays human-only (matchNemeses never sees a CPU — the pool query's
+  // bot_score floor excludes them); the JOB appends one CPU pairing per still-unmatched
+  // human, roster permitting. One CPU per week per CPU profile is enforced by the pairing
+  // table's partial uniques; listAvailableCpusForWeek only returns insertable CPUs.
+  let cpuPairingsCreated = 0;
+  const cpuFilledHumanIds = new Set<string>();
+  if (isFlagEnabled('cpu_nemesis') && matchResult.leftoverProfileIds.length > 0) {
+    const availableCpus = await listAvailableCpusForWeek(db, season.id, weekStart);
+    for (const leftoverId of matchResult.leftoverProfileIds) {
+      const human = poolById.get(leftoverId);
+      const cpu = availableCpus.shift(); // T8 replaces first-available with rating-band fit
+      if (!human || !cpu) break;
+
+      const pairingId = uuidv7();
+      const [profileAId, profileBId] =
+        human.profileId < cpu.profileId
+          ? [human.profileId, cpu.profileId]
+          : [cpu.profileId, human.profileId];
+      await insertNemesisPairingRow(db, {
+        id: pairingId,
+        seasonId: season.id,
+        weekStart,
+        profileAId,
+        profileBId,
+        status: 'active',
+        isRematch: false,
+        verdict: null,
+      });
+      cpuPairingsCreated += 1;
+      cpuFilledHumanIds.add(human.profileId);
+
+      let bonusQuestions: Awaited<ReturnType<typeof selectNemesisBonusQuestions>> = [];
+      try {
+        // The CPU has no category fingerprint — selection leans on the human's shares alone.
+        bonusQuestions = await selectNemesisBonusQuestions(db, {
+          weekStart,
+          sharesA: human.categoryShares,
+          sharesB: {},
+        });
+      } catch (err) {
+        logger.warn(
+          { err, pairingId },
+          'nemesis:assign — CPU pairing bonus selection failed, continuing with 0 bonus',
+        );
+      }
+      if (bonusQuestions.length > 0) {
+        await insertPairingQuestionRows(
+          db,
+          pairingId,
+          bonusQuestions.map((q) => q.id),
+        );
+        bonusQuestionsCreated += bonusQuestions.length;
+        for (const q of bonusQuestions) {
+          await scheduleQuestionLifecycle(boss, q);
+        }
+      }
+
+      await sendCpuNemesisAssignedNotification(db, pairingId, human, cpu, at);
+    }
+  }
+
   // --- Step 4: leftovers (§8.4) -------------------------------------------------------------
   // Everyone who had a shot this run gets their PRIOR priority cleared first (matched or not) —
-  // then leftovers alone get flagged true for next run's +PRIORITY_BONUS.
+  // then leftovers alone get flagged true for next run's +PRIORITY_BONUS. WS26-T4 AC (review
+  // correction 4): a CPU-filled human is matched NOW, so they must not ALSO carry priority
+  // into next week's queue.
   await setMatchmakingPriority(db, [...poolIds], false);
-  await setMatchmakingPriority(db, matchResult.leftoverProfileIds, true);
+  const unresolvedLeftovers = matchResult.leftoverProfileIds.filter(
+    (id) => !cpuFilledHumanIds.has(id),
+  );
+  await setMatchmakingPriority(db, unresolvedLeftovers, true);
 
   return {
     seasonId: season.id,
@@ -255,7 +434,8 @@ export async function runNemesisAssign(db: Db, boss: PgBoss, at: Date = now()): 
     poolSize: poolEntries.length,
     pairingsCreated: matchResult.pairings.length,
     forcedPairingsCreated,
-    leftovers: matchResult.leftoverProfileIds.length,
+    cpuPairingsCreated,
+    leftovers: unresolvedLeftovers.length,
     bonusQuestionsCreated,
     rematchRequestsExpired: requestIdsToExpire.length,
   };
