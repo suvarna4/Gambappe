@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T03:54:23.545Z",
+  "updated_at": "2026-07-23T03:54:25.465Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2375,6 +2375,21 @@
       "pr": null,
       "claimed_at": null,
       "updated_at": "2026-07-23T03:54:23.544Z"
+    },
+    "WS26-T3": {
+      "title": "CPU repos + roster seeding (test factory AND real-env seed step)",
+      "phase": "X0",
+      "depends_on": [
+        "WS26-T1"
+      ],
+      "mock_start_ok": false,
+      "note": "db. listActiveCpuPairingsWithOpenQuestion, getCpuPersona, seed helper minting roster (bot_score=1.0, kind='cpu', persona handles like Chalkbot). AC per review #9: test factory alone is NOT enough — staging/prod need the roster actually seeded; add a deploy-checklist/seed-script step.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-23T03:54:25.464Z"
     }
   }
 }
