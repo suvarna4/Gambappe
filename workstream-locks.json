@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T04:25:14.191Z",
+  "updated_at": "2026-07-23T04:25:16.200Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2415,12 +2415,12 @@
       ],
       "mock_start_ok": false,
       "note": "worker, behind flag. After matchNemeses, force-pair each leftoverProfileId with a rating-fitting CPU via insertNemesisPairingRow. ACs (review #3,#6): sendNemesisAssignedNotifications must SKIP CPU-side recipients (would enqueue email/push to a userless profile); CPU-filled humans must NOT get matchmaking_priority=true (they are matched now, not carried forward); CPU never enters the human pool; exactly one CPU per unmatched human.",
-      "status": "available",
-      "owner": null,
+      "status": "claimed",
+      "owner": "claude-code-web-session-54bb90dd",
       "branch": null,
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-23T03:54:28.986Z"
+      "claimed_at": "2026-07-23T04:25:16.200Z",
+      "updated_at": "2026-07-23T04:25:16.200Z"
     },
     "WS26-T5": {
       "title": "cpu:pick CRON SWEEP (not event-triggered): pick placement with real price stamping",
