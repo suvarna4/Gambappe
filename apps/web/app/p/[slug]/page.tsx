@@ -29,6 +29,8 @@ import { topPercentDisplay } from '@/components/profile/format';
 import { getDb } from '@/lib/stores';
 import { getProfilePageModel, getProfilePublicView, toPickPublic } from '@/lib/profile-page';
 import type { ProfilePublic } from '@/lib/profile-page';
+import { CpuBadge } from '@/components/nemesis/CpuBadge';
+import { cpuRefFields } from '@/lib/cpu-badge';
 
 export const revalidate = 60; // §10.1: /p/[handle] (here /p/[slug]) — ISR 60s
 
@@ -115,7 +117,12 @@ export default async function ProfilePage({ params, searchParams }: PageProps) {
   return (
     <main className="mx-auto max-w-2xl space-y-8 px-4 py-10">
       <header className="space-y-3">
-        <h1 className="text-2xl font-bold">{profile.handle}</h1>
+        <h1 className="text-2xl font-bold">
+          {profile.handle}
+          {profile.kind === 'cpu' ? (
+            <CpuBadge personaLabel={cpuRefFields(profile).cpu_persona_label} className="ml-2" />
+          ) : null}
+        </h1>
         <ProfileHeaderStats
           currentStreak={profile.currentStreak}
           freezeBank={profile.freezeBank}

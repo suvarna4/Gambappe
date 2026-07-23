@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { nemesisCopy } from '@/lib/copy';
 import { formatShortDate } from '@/lib/format-et';
 import type { PairingSide } from '@/lib/nemesis/types';
+import { CpuBadge } from './CpuBadge';
 
 export interface NemesisAssignmentCardProps {
   opponent: PairingSide;
@@ -142,10 +143,11 @@ export function NemesisAssignmentCard({
         >
           VS
         </div>
-        <div className="flex min-w-0 flex-1 items-center justify-end bg-side-b/15 py-2 pr-5 pl-[38px] text-right">
+        <div className="flex min-w-0 flex-1 flex-col items-end justify-center bg-side-b/15 py-2 pr-5 pl-[38px] text-right">
           <span className="font-display text-side-b min-w-0 text-2xl leading-tight font-bold break-words uppercase">
             {opponent.handle}
           </span>
+          {opponent.is_cpu ? <CpuBadge personaLabel={opponent.cpu_persona_label} /> : null}
         </div>
       </div>
 
@@ -160,9 +162,7 @@ export function NemesisAssignmentCard({
             <span key={i} className="border-muted h-[15px] w-[15px] rounded-full border-2" />
           ))}
           {bonusQuestionCount > 0 ? (
-            <span className="ml-auto">
-              +{bonusQuestionCount} bonus
-            </span>
+            <span className="ml-auto">+{bonusQuestionCount} bonus</span>
           ) : null}
         </div>
       ) : null}
@@ -173,7 +173,10 @@ export function NemesisAssignmentCard({
             {Math.round(opponent.rating.glicko_rating)}
             <span className="text-muted"> rating</span>
             {opponent.rating.accuracy_percentile !== null ? (
-              <span className="text-muted"> · Top {100 - opponent.rating.accuracy_percentile}%</span>
+              <span className="text-muted">
+                {' '}
+                · Top {100 - opponent.rating.accuracy_percentile}%
+              </span>
             ) : null}
           </p>
         ) : null}

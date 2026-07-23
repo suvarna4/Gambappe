@@ -29,10 +29,19 @@ import {
   seasons,
   type Db,
 } from '@receipts/db';
-import { buildMarket, buildNemesisPairing, buildPick, buildProfile, buildQuestion, buildSeason } from '@receipts/db/testing';
+import {
+  buildCpuProfile,
+  buildMarket,
+  buildNemesisPairing,
+  buildPick,
+  buildProfile,
+  buildQuestion,
+  buildSeason,
+} from '@receipts/db/testing';
 import type pg from 'pg';
 
-const DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://receipts:receipts@localhost:5432/receipts';
+const DATABASE_URL =
+  process.env.DATABASE_URL ?? 'postgres://receipts:receipts@localhost:5432/receipts';
 
 let pool: pg.Pool;
 let db: Db;
@@ -58,13 +67,26 @@ interface SeededPairing {
 async function seedActivePairing(): Promise<SeededPairing> {
   const unique = randomUUID();
   const [profileA, profileB] = await Promise.all([
-    db.insert(profiles).values(buildProfile({ kind: 'claimed', status: 'active', handle: `E2E Nemesis A ${unique}` })).returning(),
-    db.insert(profiles).values(buildProfile({ kind: 'claimed', status: 'active', handle: `E2E Nemesis B ${unique}` })).returning(),
+    db
+      .insert(profiles)
+      .values(
+        buildProfile({ kind: 'claimed', status: 'active', handle: `E2E Nemesis A ${unique}` }),
+      )
+      .returning(),
+    db
+      .insert(profiles)
+      .values(
+        buildProfile({ kind: 'claimed', status: 'active', handle: `E2E Nemesis B ${unique}` }),
+      )
+      .returning(),
   ]);
   const [a, b] = [profileA[0]!, profileB[0]!];
   const [aOrdered, bOrdered] = a.id < b.id ? [a, b] : [b, a]; // canonical a < b by uuid (§5.5)
 
-  const [season] = await db.insert(seasons).values(buildSeason({ startsOn: '2026-01-05', endsOn: '2026-12-28' })).returning();
+  const [season] = await db
+    .insert(seasons)
+    .values(buildSeason({ startsOn: '2026-01-05', endsOn: '2026-12-28' }))
+    .returning();
 
   const [pairing] = await db
     .insert(nemesisPairings)
@@ -82,7 +104,10 @@ async function seedActivePairing(): Promise<SeededPairing> {
   const now = Date.now();
 
   // Still open — must render fully masked (§9.3), even though both sides already picked.
-  const [openMarket] = await db.insert(markets).values(buildMarket({ venueMarketId: `KX-E2E-NEM-OPEN-${unique}` })).returning();
+  const [openMarket] = await db
+    .insert(markets)
+    .values(buildMarket({ venueMarketId: `KX-E2E-NEM-OPEN-${unique}` }))
+    .returning();
   const [openQuestion] = await db
     .insert(questions)
     .values(
@@ -95,15 +120,29 @@ async function seedActivePairing(): Promise<SeededPairing> {
       }),
     )
     .returning();
-  await db.insert(picks).values([
-    buildPick(openQuestion!.id as string, aOrdered.id as string, { side: 'yes', result: 'pending' }),
-    buildPick(openQuestion!.id as string, bOrdered.id as string, { side: 'no', result: 'pending' }),
-  ]);
+  await db
+    .insert(picks)
+    .values([
+      buildPick(openQuestion!.id as string, aOrdered.id as string, {
+        side: 'yes',
+        result: 'pending',
+      }),
+      buildPick(openQuestion!.id as string, bOrdered.id as string, {
+        side: 'no',
+        result: 'pending',
+      }),
+    ]);
 
   // Locked + revealed — must render the real side/result for both.
   const [revealedMarket] = await db
     .insert(markets)
-    .values(buildMarket({ venueMarketId: `KX-E2E-NEM-REVEALED-${unique}`, status: 'resolved', outcome: 'yes' }))
+    .values(
+      buildMarket({
+        venueMarketId: `KX-E2E-NEM-REVEALED-${unique}`,
+        status: 'resolved',
+        outcome: 'yes',
+      }),
+    )
     .returning();
   const [revealedQuestion] = await db
     .insert(questions)
@@ -118,10 +157,20 @@ async function seedActivePairing(): Promise<SeededPairing> {
       }),
     )
     .returning();
-  await db.insert(picks).values([
-    buildPick(revealedQuestion!.id as string, aOrdered.id as string, { side: 'yes', result: 'win', edge: 0.4 }),
-    buildPick(revealedQuestion!.id as string, bOrdered.id as string, { side: 'no', result: 'loss', edge: -0.6 }),
-  ]);
+  await db
+    .insert(picks)
+    .values([
+      buildPick(revealedQuestion!.id as string, aOrdered.id as string, {
+        side: 'yes',
+        result: 'win',
+        edge: 0.4,
+      }),
+      buildPick(revealedQuestion!.id as string, bOrdered.id as string, {
+        side: 'no',
+        result: 'loss',
+        edge: -0.6,
+      }),
+    ]);
 
   await db.insert(pairingQuestions).values([
     { pairingId: pairing!.id as string, questionId: openQuestion!.id as string },
@@ -138,7 +187,9 @@ async function seedActivePairing(): Promise<SeededPairing> {
 }
 
 test.describe('/vs/[pairingId] — public nemesis matchup page (§9.2, §9.3, WS5-T4)', () => {
-  test('renders both handles, the running score, and applies §9.3 masking per question', async ({ page }) => {
+  test('renders both handles, the running score, and applies §9.3 masking per question', async ({
+    page,
+  }) => {
     const seeded = await seedActivePairing();
 
     await page.goto(`/vs/${seeded.pairingId}`);
@@ -164,5 +215,43 @@ test.describe('/vs/[pairingId] — public nemesis matchup page (§9.2, §9.3, WS
   test('404s for an unknown pairing id', async ({ page }) => {
     const response = await page.goto(`/vs/${randomUUID()}`);
     expect(response?.status()).toBe(404);
+  });
+
+  // WS26-T6 AC (docs/plans/cpu-nemesis-wbs.md): a CPU opponent ALWAYS shows the disclosure
+  // badge — on the public matchup page AND on the CPU's own profile page. Uses
+  // buildCpuProfile (not the seeded roster) so parallel runs never collide on roster slugs.
+  test('a CPU rival is badged on the matchup page and its profile page', async ({ page }) => {
+    const unique = randomUUID();
+    const [human] = await db
+      .insert(profiles)
+      .values(buildProfile({ kind: 'claimed', status: 'active', handle: `E2E Human ${unique}` }))
+      .returning();
+    const [cpu] = await db
+      .insert(profiles)
+      .values(buildCpuProfile('fade', { handle: `E2E Fadebot #${unique.slice(0, 8)}` }))
+      .returning();
+    const [season] = await db
+      .insert(seasons)
+      .values(buildSeason({ startsOn: '2026-01-05', endsOn: '2026-12-28' }))
+      .returning();
+    const [a, b] = human!.id < cpu!.id ? [human!, cpu!] : [cpu!, human!];
+    const [pairing] = await db
+      .insert(nemesisPairings)
+      .values(
+        buildNemesisPairing(season!.id as string, a.id as string, b.id as string, {
+          weekStart: '2026-07-13',
+          status: 'active',
+        }),
+      )
+      .returning();
+
+    await page.goto(`/vs/${pairing!.id}`);
+    const badge = page.getByTestId('cpu-badge');
+    await expect(badge).toBeVisible();
+    await expect(badge).toContainText('CPU');
+    await expect(badge).toContainText('The Fade'); // persona label rides along
+
+    await page.goto(`/p/${cpu!.slug}`);
+    await expect(page.getByTestId('cpu-badge')).toBeVisible();
   });
 });
