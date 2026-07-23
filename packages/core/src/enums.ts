@@ -120,3 +120,8 @@ export type SeasonKind = (typeof SEASON_KIND)[number];
 /** Notification channel (§5.6 `notifications.channel`). */
 export const NOTIFICATION_CHANNEL = ['email', 'push'] as const;
 export type NotificationChannel = (typeof NOTIFICATION_CHANNEL)[number];
+
+/** Companion artifact kinds (docs/xtrace-hackathon-tasks.md XH-T1/T4; mirrored 1:1 into the
+ * `companion_artifact_kind` pg enum by XH-T4). */
+export const COMPANION_ARTIFACT_KIND = ['banter', 'callout_draft', 'season_recap'] as const;
+export type CompanionArtifactKind = (typeof COMPANION_ARTIFACT_KIND)[number];

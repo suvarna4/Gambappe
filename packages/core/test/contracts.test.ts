@@ -23,8 +23,8 @@ import { createPickBodySchema } from '../src/schemas/picks.js';
 import { normalizedMarketSchema } from '../src/types/market.js';
 
 describe('errors (Appendix C)', () => {
-  it('has all 22 codes with the spec HTTP statuses', () => {
-    expect(Object.keys(ERROR_CODES)).toHaveLength(22);
+  it('has all 23 codes with the spec HTTP statuses', () => {
+    expect(Object.keys(ERROR_CODES)).toHaveLength(23);
     expect(ERROR_CODES.VALIDATION_FAILED).toBe(400);
     expect(ERROR_CODES.REVEAL_NOT_READY).toBe(423);
     expect(ERROR_CODES.PRICE_UNAVAILABLE).toBe(503);
@@ -36,6 +36,9 @@ describe('errors (Appendix C)', () => {
     // WS10-T4 contract-change (§15.4): resolving an already-resolved report is its own 409
     // rather than reusing CLAIM_CONFLICT, which is reserved for WS2's claim-flow race.
     expect(ERROR_CODES.REPORT_ALREADY_RESOLVED).toBe(409);
+    // XH-T1 contract-change (docs/xtrace-hackathon-tasks.md): degraded companion generation
+    // is its own 503 — PRICE_UNAVAILABLE is venue-pricing-specific and must not be reused.
+    expect(ERROR_CODES.COMPANION_UNAVAILABLE).toBe(503);
   });
 
   it('ApiError carries code/status and produces a valid envelope', () => {
@@ -84,6 +87,11 @@ describe('flags (§4.6)', () => {
         // cpu_nemesis added by WS26-T1 (docs/plans/cpu-nemesis-wbs.md) — gates CPU-fill in
         // nemesis:assign and the cpu:pick sweep.
         'cpu_nemesis',
+        // companion/callout_draft/season_wrapped added by XH-T1 (docs/xtrace-hackathon-tasks.md)
+        // — gate the xTrace/Claude rivalry companion, callout-draft assist, and season recap.
+        'companion',
+        'callout_draft',
+        'season_wrapped',
       ].sort(),
     );
     for (const name of FLAG_NAMES) expect(FLAG_DEFAULTS[name]).toBe(false);
