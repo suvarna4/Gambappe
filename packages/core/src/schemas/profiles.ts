@@ -13,6 +13,12 @@ export const profileRefSchema = z.object({
   profile_id: zProfileId,
   handle: z.string(),
   slug: zSlug,
+  /** WS26-T6 (docs/plans/cpu-nemesis-wbs.md): true when this profile is a house CPU rival —
+   * every surface rendering a ref MUST badge it (integrity: users always know it's a bot).
+   * Optional-additive so pre-existing emitters keep parsing; absent ⇒ human. */
+  is_cpu: z.boolean().optional(),
+  /** Persona display label ("The Fade") when `is_cpu`; null/absent otherwise. */
+  cpu_persona_label: z.string().nullish(),
 });
 
 /** Fingerprint style summary as publicly displayed (never raw internals). */
@@ -31,7 +37,10 @@ export const fingerprintSummarySchema = z.object({
  */
 export const walletBadgeSchema = z.object({
   verified: z.boolean(),
-  first_seen: z.string().regex(/^\d{4}-\d{2}$/).nullable(),
+  first_seen: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/)
+    .nullable(),
   position_count: z.number().int().nonnegative().nullable(),
   address: z.string().nullable(),
 });
@@ -41,6 +50,8 @@ export const profilePublicSchema = z.object({
   handle: z.string(),
   slug: zSlug,
   kind: z.enum(PROFILE_KIND),
+  /** WS26-T6: persona display label for `kind='cpu'` profiles; null for humans. */
+  cpu_persona_label: z.string().nullish(),
   created_at: zTimestamp,
   /** Participation streak (DD-3). */
   streak: z.object({

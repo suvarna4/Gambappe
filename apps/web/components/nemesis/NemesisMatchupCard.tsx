@@ -8,6 +8,7 @@ import { NemesisScoreboard } from './NemesisScoreboard';
 import { ReactionStamps } from './ReactionStamps';
 import { ReactionStampsPanel } from './ReactionStampsPanel';
 import { SameSideState, type SameSideSettled } from './SameSideState';
+import { CpuBadge } from './CpuBadge';
 
 export interface NemesisMatchupCardProps {
   pairing: PairingPublic;
@@ -47,7 +48,10 @@ function SideBlock({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-ink font-medium">{isViewer ? 'You' : side.handle}</span>
+      <span className="text-ink font-medium">
+        {isViewer ? 'You' : side.handle}
+        {side.is_cpu ? <CpuBadge personaLabel={side.cpu_persona_label} className="ml-1.5" /> : null}
+      </span>
       {isViewer ? <span className="text-muted text-xs">{side.handle}</span> : null}
       {side.rating ? (
         <span

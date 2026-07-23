@@ -23,7 +23,11 @@
  * rather than inventing new pinned copy outside `copy.ts`/the beat catalog (§10.6).
  */
 import { addDaysToDateString, etDateString, PAGINATION_MAX_LIMIT } from '@receipts/core';
-import { getNemesisHistoryResponseSchema, getPairingResponseSchema, nemesisHistoryEntrySchema } from '@receipts/core';
+import {
+  getNemesisHistoryResponseSchema,
+  getPairingResponseSchema,
+  nemesisHistoryEntrySchema,
+} from '@receipts/core';
 import type { z } from 'zod';
 import {
   areProfilesBlocked,
@@ -44,13 +48,17 @@ import {
 } from '@receipts/db';
 import { isPubliclyResolved } from '@/lib/profile-page';
 import { toScoreboardRow, type SharedQuestionRecord } from './masking';
+import { cpuRefFields } from '@/lib/cpu-badge';
 import type { PairingPublic, PairingSide } from './types';
 
 // --- scoreboard assembly (§9.3 masking) ----------------------------------------------------------
 
 type RawPick = NonNullable<PairingScoreboardQuestionRow['aPick']>;
 
-function maskedPick(pick: RawPick | null, question: { kind: string; status: string }): RawPick | null {
+function maskedPick(
+  pick: RawPick | null,
+  question: { kind: string; status: string },
+): RawPick | null {
   if (!pick) return null;
   if (!isPubliclyResolved(question)) {
     // §6.5 publication rule: a `daily` question's result stays `pending` until revealed/voided,
@@ -115,8 +123,18 @@ export async function buildPairingPublic(
     week_start: pairing.weekStart,
     status: pairing.status,
     is_rematch: pairing.isRematch,
-    a: { profile_id: profileA.id, handle: profileA.handle, slug: profileA.slug },
-    b: { profile_id: profileB.id, handle: profileB.handle, slug: profileB.slug },
+    a: {
+      profile_id: profileA.id,
+      handle: profileA.handle,
+      slug: profileA.slug,
+      ...cpuRefFields(profileA),
+    },
+    b: {
+      profile_id: profileB.id,
+      handle: profileB.handle,
+      slug: profileB.slug,
+      ...cpuRefFields(profileB),
+    },
     score: { a: pairing.scoreA, b: pairing.scoreB },
     winner_profile_id: pairing.winnerProfileId,
     narrative_line: null, // SPEC-GAP(ws5-t4) — see file header.
@@ -126,7 +144,11 @@ export async function buildPairingPublic(
 }
 
 /** `GET /pairings/:id` (none) — public matchup page data. `null` for an unknown id (404). */
-export async function getPairingPublicById(db: Db, pairingId: string, at: Date): Promise<PairingPublic | null> {
+export async function getPairingPublicById(
+  db: Db,
+  pairingId: string,
+  at: Date,
+): Promise<PairingPublic | null> {
   const found = await getPairingWithProfiles(db, pairingId);
   if (!found) return null;
   return buildPairingPublic(db, found.pairing, found.profileA, found.profileB, at);
@@ -166,6 +188,7 @@ export async function getPairingSideRef(db: Db, slug: string): Promise<PairingSi
     profile_id: profile.id,
     handle: profile.handle,
     slug: profile.slug,
+    ...cpuRefFields(profile),
     rating: rating
       ? {
           glicko_rating: rating.glickoRating,
@@ -225,21 +248,33 @@ export interface NemesisHistoryQuery {
 function buildRematchStateByOpponent(
   rows: RematchRequestRow[],
   viewerProfileId: string,
-): Map<string, { id: string; direction: 'outgoing' | 'incoming'; status: RematchRequestRow['status'] }> {
-  const rank = (status: RematchRequestRow['status'], direction: 'outgoing' | 'incoming'): number => {
+): Map<
+  string,
+  { id: string; direction: 'outgoing' | 'incoming'; status: RematchRequestRow['status'] }
+> {
+  const rank = (
+    status: RematchRequestRow['status'],
+    direction: 'outgoing' | 'incoming',
+  ): number => {
     if (status === 'open' && direction === 'incoming') return 3;
     if (status === 'open') return 2;
     return 1;
   };
 
-  const byOpponent = new Map<string, { id: string; direction: 'outgoing' | 'incoming'; status: RematchRequestRow['status'] }>();
+  const byOpponent = new Map<
+    string,
+    { id: string; direction: 'outgoing' | 'incoming'; status: RematchRequestRow['status'] }
+  >();
   for (const row of rows) {
     const isOutgoing = row.requesterProfileId === viewerProfileId;
     const opponentId = isOutgoing ? row.targetProfileId : row.requesterProfileId;
     const direction: 'outgoing' | 'incoming' = isOutgoing ? 'outgoing' : 'incoming';
     const candidate = { id: row.id, direction, status: row.status };
     const current = byOpponent.get(opponentId);
-    if (!current || rank(candidate.status, candidate.direction) > rank(current.status, current.direction)) {
+    if (
+      !current ||
+      rank(candidate.status, candidate.direction) > rank(current.status, current.direction)
+    ) {
       byOpponent.set(opponentId, candidate);
     }
   }
@@ -258,7 +293,9 @@ export async function getNemesisHistoryPage(
   const cursor = decodeHistoryCursor(query.cursor);
   let startIndex = 0;
   if (cursor) {
-    const idx = all.findIndex((r) => r.weekStart === cursor.weekStart && r.pairingId === cursor.pairingId);
+    const idx = all.findIndex(
+      (r) => r.weekStart === cursor.weekStart && r.pairingId === cursor.pairingId,
+    );
     // An unrecognized/stale cursor yields no further results rather than restarting from the
     // top (which would silently re-serve already-seen rows to the caller).
     startIndex = idx === -1 ? all.length : idx + 1;
@@ -287,7 +324,13 @@ export async function getNemesisHistoryPage(
       my_score: r.myScore,
       their_score: r.theirScore,
       outcome:
-        r.status === 'cancelled' ? 'cancelled' : r.winnerProfileId === null ? 'draw' : r.winnerProfileId === profileId ? 'win' : 'loss',
+        r.status === 'cancelled'
+          ? 'cancelled'
+          : r.winnerProfileId === null
+            ? 'draw'
+            : r.winnerProfileId === profileId
+              ? 'win'
+              : 'loss',
       is_rematch: r.isRematch,
       rematch_request: rematchByOpponent.get(r.opponent.profileId) ?? null,
     }),

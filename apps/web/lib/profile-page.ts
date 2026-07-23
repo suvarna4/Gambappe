@@ -47,6 +47,7 @@ import { OBITUARY_MIN_STREAK } from '@receipts/ui';
 // WS12's exhaustive wallet public-display allowlist (§12.4/§12.5) — its own doc comment asks
 // GET /profiles/:slug to call this rather than hand-rolling a second wallet projection.
 import { toWalletBadge, type WalletBadge } from '@/lib/serialize-wallet';
+import { cpuRefFields } from '@/lib/cpu-badge';
 
 export type ProfilePublic = z.infer<typeof profilePublicSchema>;
 export type PickPublic = z.infer<typeof pickPublicSchema>;
@@ -282,6 +283,7 @@ export async function getProfilePublicView(db: Db, slug: string): Promise<Profil
     handle: profile.handle,
     slug: profile.slug,
     kind: profile.kind,
+    cpu_persona_label: cpuRefFields(profile).cpu_persona_label ?? null,
     created_at: profile.createdAt.toISOString(),
     streak: { current: profile.currentStreak, best: profile.bestStreak },
     win_streak: { current: profile.currentWinStreak, best: profile.bestWinStreak },

@@ -39,8 +39,14 @@ interface PageProps {
   params: Promise<{ pairingId: string }>;
 }
 
-function fallbackSide(profileId: string, handle: string, slug: string): PairingSide {
-  return { profile_id: profileId, handle, slug, rating: null };
+function fallbackSide(ref: {
+  profile_id: string;
+  handle: string;
+  slug: string;
+  is_cpu?: boolean;
+  cpu_persona_label?: string | null;
+}): PairingSide {
+  return { ...ref, rating: null };
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -75,8 +81,8 @@ export default async function PairingPage({ params }: PageProps) {
       <NemesisMatchupCard
         pairing={pairing}
         sides={{
-          a: aRef ?? fallbackSide(pairing.a.profile_id, pairing.a.handle, pairing.a.slug),
-          b: bRef ?? fallbackSide(pairing.b.profile_id, pairing.b.handle, pairing.b.slug),
+          a: aRef ?? fallbackSide(pairing.a),
+          b: bRef ?? fallbackSide(pairing.b),
         }}
         viewerProfileId={null}
       />

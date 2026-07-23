@@ -52,5 +52,8 @@ export interface PairingSide {
   profile_id: string;
   handle: string;
   slug: string;
+  /** WS26-T6: present (true) only for house CPU rivals — drives the mandatory badge. */
+  is_cpu?: boolean;
+  cpu_persona_label?: string | null;
   rating: RatingSummary | null;
 }
