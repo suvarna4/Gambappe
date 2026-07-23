@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-23T03:54:30.807Z",
+  "updated_at": "2026-07-23T03:54:34.249Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2438,6 +2438,22 @@
       "pr": null,
       "claimed_at": null,
       "updated_at": "2026-07-23T03:54:30.807Z"
+    },
+    "WS26-T6": {
+      "title": "CPU badge in UI: opponent_is_cpu + persona label, e2e-enforced",
+      "phase": "X1",
+      "depends_on": [
+        "WS26-T3",
+        "WS26-T4"
+      ],
+      "mock_start_ok": false,
+      "note": "[contract-change] web. Matchup/assignment/profile payloads expose opponent_is_cpu + persona label; NemesisMatchupCard, NemesisAssignmentCard, profile header render a CPU chip. e2e asserts a CPU opponent ALWAYS shows the badge. Integrity: users must always know the rival is a bot.",
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-23T03:54:34.249Z"
     }
   }
 }
