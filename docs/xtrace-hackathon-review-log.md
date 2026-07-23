@@ -1,10 +1,11 @@
 # xTrace hackathon tasks — review log & process
 
 Status: NOT strictly converged; loop running (operator-approved
-run-until-clean, 2026-07-23). 76 fixes total across five full panel
-rounds (30 + 22 + 8 + 8 + 3 + 2) and a main-session pass (3).
-Finding counts are decaying (30 → 22 → 8 → 8 → 3 → 2); the loop continues
-until a panel round returns zero findings.
+run-until-clean, 2026-07-23). 80 fixes total across six full panel
+rounds (30 + 22 + 8 + 8 + 3 + 2 + 4) and a main-session pass (3).
+Finding trajectory: 30 → 22 → 8 → 8 → 3 → 2 → 4 (round 6's uptick is all
+XH-T7, two of them consequences of round 3's drafts-slot and wrapper
+fixes); the loop continues until a panel round returns zero findings.
 
 This file is the durable state of the adversarial review process for
 `docs/xtrace-hackathon-tasks.md`. It exists so the process can be resumed by
@@ -65,7 +66,18 @@ reviewers for a clean round):
 
 ## Round history
 
-### Round 6 — PENDING, 4 findings, 0 lenses failed
+### Round 6 — 4 applied, 0 rejected
+
+All 4 lenses ran (2 empty); all findings in XH-T7. Applied: [blocker]
+`shareCalloutLink` is module-private in `CalloutButton.tsx` with no `text`
+param — T7 now extracts it to `apps/web/lib/callout-share.ts` with an
+optional `text` argument (nav.share + clipboard fallback), both buttons
+import it, and both files joined T7's Files list; [major] T7's memory
+`query` literal was never defined (T6/T8 pin theirs) — pinned as
+'<targetHandle> rivalry trash talk grudges history'; [minor] artifact row
+columns pinned (profileId = challenger, pairingId/seasonId null); [minor]
+`include: ['fact','episode']` added to both T7 searches, matching T6/T8.
+Raw findings below (PENDING-committed pre-application):
 
 ```json
 [

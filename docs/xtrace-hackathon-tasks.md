@@ -911,6 +911,17 @@ in-app callout contract (stamps-only, no message field) is untouched.
   new prop — server-reads-flag, passes-prop pattern).
 - `apps/web/lib/copy.ts` — extend `calloutsCopy` with
   `draftButtonLabel`, `draftPickerHint`, `draftFailed` strings.
+- `apps/web/lib/callout-share.ts` (new) + `apps/web/components/callouts/CalloutButton.tsx`
+  (edited) — the existing `shareCalloutLink` helper is module-PRIVATE
+  inside `CalloutButton.tsx` and its `nav.share({ url, title })` call has
+  no `text` field, so "call the same share path with text" is impossible
+  without this refactor: EXTRACT it to `lib/callout-share.ts` as
+  `export function shareCalloutLink(url: string, title: string, text?: string)`,
+  passing `text` through to `nav.share({ url, title, text })` when
+  provided (and to the clipboard fallback as `"${text} ${url}"`);
+  `CalloutButton.tsx` switches to importing it (behavior unchanged —
+  it passes no `text`), and `CalloutDraftButton.tsx` imports the same
+  function. No other `CalloutButton` behavior changes in this task.
 
 **Route spec (`POST /api/v1/callouts/draft`, body
 `draftCalloutBodySchema`):**
@@ -941,13 +952,19 @@ in-app callout contract (stamps-only, no message field) is untouched.
 7. RECORD: lifetime W-L-D vs target via T4's `lifetimeRecordBetween` (the
    same helper T6 uses — T7 does not depend on T6 and must not wait for
    it; the shared aggregate lives in T4 precisely so neither route
-   reimplements it). MEMORY: reuse `priorPairingIds` from step 4, then
-   run two searches: (a) user-scoped `{ query, userId: profileId }` — the
+   reimplements it). MEMORY: reuse `priorPairingIds` from step 4, with
+   the pinned query literal
+   `query = '<targetHandle> rivalry trash talk grudges history'`
+   (same phrasing pattern as T6/T8's pinned literals), then
+   run two searches: (a) user-scoped
+   `{ query, userId: profileId, include: ['fact','episode'] }` — the
    challenger's own memory; (b) if any prior pairings exist, ONE
    group-scoped call
-   `{ query, groupIds: priorPairingIds.map(pairingGroupId) }`
+   `{ query, groupIds: priorPairingIds.map(pairingGroupId), include: ['fact','episode'] }`
    (Appendix A: `group_ids` are OR'd, so one call covers every past
-   rivalry week). Concatenate group results first, then user results,
+   rivalry week; `include` matches T6/T8 — artifact-type memories are
+   deliberately excluded on all three surfaces). Concatenate group
+   results first, then user results,
    de-dupe by memory `id`, truncate to `COMPANION_SEARCH_LIMIT`.
 8. Generate via `generator.calloutDrafts`; null →
    `ApiError('COMPANION_UNAVAILABLE', 'draft generation unavailable')`.
@@ -963,8 +980,12 @@ in-app callout contract (stamps-only, no message field) is untouched.
 9. Store the artifact with `content: { drafts, model, promptVersion }` —
    the `drafts` key is T4's pinned slot for this kind (NOT `lines`, which
    is banter's; a mismatched key would make the step-6 cache hit read
-   `undefined` and silently regenerate forever) — and return the
-   `draftCalloutResponseSchema` shape.
+   `undefined` and silently regenerate forever). Row columns:
+   `profileId` = the CHALLENGER's profileId (the rate-limited, cache-key
+   subject — the target is identified only inside the cache key),
+   `pairingId: null`, `seasonId: null` (drafts belong to the
+   challenger-target relationship, not to any single pairing or season).
+   Return the `draftCalloutResponseSchema` shape.
 
 **Button spec:** click → POST → on success unwrap the §9.1 envelope —
 drafts live at `json.data.drafts` (parse with `draftCalloutResponseSchema`
@@ -978,9 +999,11 @@ the callout via the existing `POST /api/v1/callouts` (unchanged), sending
 `target_profile_id` stays unused — the draft targets only the share TEXT,
 not the callout row; keep the created row identical to the non-draft
 flow), then
-shares link + draft together via `navigator.share`/clipboard fallback
-(`copyShareLink` in `lib/share-client.ts` — add a sibling `copyShareText`
-if it only takes URLs). On draft failure: toast `calloutsCopy.draftFailed`,
+shares link + draft together via the extracted
+`shareCalloutLink(url, title, selectedDraft)` from `lib/callout-share.ts`
+(see Files above — the pre-existing private helper had no `text`
+parameter; the extraction is what makes this line implementable). On
+draft failure: toast `calloutsCopy.draftFailed`,
 and the plain share flow still works.
 
 **Acceptance criteria:**
