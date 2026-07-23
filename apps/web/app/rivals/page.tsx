@@ -94,6 +94,7 @@ export default async function RivalsPage({ searchParams }: PageProps) {
   const duoEnabled = isFlagEnabled('duo_queue');
   const calloutsEnabled = isFlagEnabled('callouts');
   const companionEnabled = isFlagEnabled('companion');
+  const draftEnabled = isFlagEnabled('callout_draft');
   const activeTab: RivalsTab = tab === 'duo' ? 'duo' : 'nemesis';
 
   const session = await auth();
@@ -141,7 +142,7 @@ export default async function RivalsPage({ searchParams }: PageProps) {
         {calloutsEnabled ? (
           <>
             <AcceptedCalloutCard views={acceptedViews} />
-            <CalloutPanel candidates={candidates} />
+            <CalloutPanel candidates={candidates} draftEnabled={draftEnabled} />
             <section data-testid="grudge-book-section" className="space-y-3">
               <h2 className="text-lg font-bold">{calloutsCopy.grudgeHeading}</h2>
               <NemesisHistoryList entries={historyPage?.data ?? []} variant="grudges" viewerProfileId={profile.id} />

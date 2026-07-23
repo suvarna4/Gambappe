@@ -10,10 +10,14 @@
  *
  * The raw token rides only the `share_url` the POST returns; it is never persisted or logged here.
  * A device without `navigator.share` silently falls back to copying the link and confirming.
+ *
+ * `shareCalloutLink` itself now lives in `@/lib/callout-share` (XH-T7) so `CalloutDraftButton`
+ * can reuse the same share path with drafted text riding alongside the link; this button's own
+ * behavior (no `text` passed) is unchanged.
  */
 import { useState } from 'react';
 import { calloutsCopy } from '@/lib/copy';
-import { copyShareLink } from '@/lib/share-client';
+import { shareCalloutLink } from '@/lib/callout-share';
 
 interface CalloutCreateResponseWire {
   data?: { share_url?: string };
@@ -73,24 +77,4 @@ export function CalloutButton({ candidateHandle }: CalloutButtonProps) {
       ) : null}
     </div>
   );
-}
-
-/**
- * Native share (URL only) where available, else the shared clipboard fallback. Returns true when
- * the clipboard path was taken (so the caller shows the "link copied" confirmation) and false when
- * the OS share sheet handled it. A user dismissing the native sheet (AbortError) or any native
- * failure falls back to clipboard rather than surfacing an error.
- */
-async function shareCalloutLink(url: string, title: string): Promise<boolean> {
-  const nav = typeof navigator !== 'undefined' ? (navigator as Navigator & { share?: (d: ShareData) => Promise<void> }) : undefined;
-  if (nav?.share) {
-    try {
-      await nav.share({ url, title });
-      return false;
-    } catch {
-      // fall through to clipboard
-    }
-  }
-  await copyShareLink(url);
-  return true;
 }

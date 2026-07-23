@@ -2,14 +2,24 @@ import Link from 'next/link';
 import { calloutsCopy } from '@/lib/copy';
 import type { CalloutCandidate } from '@/lib/callouts-view';
 import { CalloutButton } from './CalloutButton';
+import { CalloutDraftButton } from './CalloutDraftButton';
 
 /**
  * WS20-T4 (journeys plan §5, D-J5) · "Call someone out" panel in the `/rivals` hub. Lists the
  * viewer's past rivals (nemesis-history candidates, deduped upstream by `getCalloutCandidates`),
  * each with a `CalloutButton` that mints + shares a challenge link. Server component — the only
  * interactive bit is the client `CalloutButton`. Empty state when the viewer has no history yet.
+ *
+ * `draftEnabled` (XH-T7, server-reads-flag-passes-prop) additionally renders a `CalloutDraftButton`
+ * beside each candidate's `CalloutButton` — an independent sibling control, never a replacement.
  */
-export function CalloutPanel({ candidates }: { candidates: CalloutCandidate[] }) {
+export function CalloutPanel({
+  candidates,
+  draftEnabled = false,
+}: {
+  candidates: CalloutCandidate[];
+  draftEnabled?: boolean;
+}) {
   return (
     <section data-testid="callout-panel" className="border-surface space-y-4 rounded-lg border p-4">
       <div className="space-y-1">
@@ -28,7 +38,15 @@ export function CalloutPanel({ candidates }: { candidates: CalloutCandidate[] })
               <Link href={`/p/${candidate.slug}`} className="font-medium underline underline-offset-2">
                 {candidate.handle}
               </Link>
-              <CalloutButton candidateHandle={candidate.handle} />
+              <div className="flex items-center gap-2">
+                {draftEnabled ? (
+                  <CalloutDraftButton
+                    candidateHandle={candidate.handle}
+                    targetProfileId={candidate.profileId}
+                  />
+                ) : null}
+                <CalloutButton candidateHandle={candidate.handle} />
+              </div>
             </li>
           ))}
         </ul>

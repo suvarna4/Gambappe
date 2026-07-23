@@ -683,6 +683,11 @@ export const calloutsCopy = {
   notFoundLine: 'This call-out link is no longer valid.',
   respondError: 'Could not respond to the call-out — try again.',
 
+  // --- AI-drafted callout text (docs/xtrace-hackathon-tasks.md XH-T7) --------------------------
+  draftButtonLabel: 'Draft it',
+  draftPickerHint: 'Pick a line to send with your challenge.',
+  draftFailed: 'Could not draft a line — you can still share the plain link.',
+
   // --- Locked-in confirmation (both sides' /rivals hubs after accept) --------------------------
   lockedInTapeLabel: 'LOCKED IN',
   lockedInLine: (opponentHandle: string) => `You face ${opponentHandle} next week — call-out accepted.`,

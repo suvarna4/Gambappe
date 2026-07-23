@@ -5,6 +5,7 @@
  */
 import {
   RL_AUTH_EMAIL_H,
+  RL_CALLOUT_DRAFT_PROFILE_D,
   RL_CLAIM_IP_H,
   RL_COMPANION_BANTER_PROFILE_D,
   RL_EVENTS_IP_H,
@@ -80,6 +81,14 @@ export const RATE_LIMIT_RULES = {
   companion_banter: {
     keyType: 'profile',
     limit: RL_COMPANION_BANTER_PROFILE_D,
+    windowSeconds: DAY,
+  },
+  // Callout draft generation (docs/xtrace-hackathon-tasks.md XH-T7): same MISS-path-only budget
+  // shape as companion_banter — the route's cache check happens before this, so a same-day
+  // repeat request for the same target never consumes it.
+  callout_draft: {
+    keyType: 'profile',
+    limit: RL_CALLOUT_DRAFT_PROFILE_D,
     windowSeconds: DAY,
   },
 } as const satisfies Record<string, RateLimitRule>;
