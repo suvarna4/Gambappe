@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-24T00:24:37.397Z",
+  "updated_at": "2026-07-24T00:24:43.172Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2756,6 +2756,24 @@
       "pr": null,
       "claimed_at": null,
       "updated_at": "2026-07-24T00:24:37.396Z"
+    },
+    "XH-T11": {
+      "title": "Fix: wire real group ids into ingest + search",
+      "phase": "XH",
+      "depends_on": [
+        "XH-T5",
+        "XH-T6",
+        "XH-T7",
+        "XH-T10"
+      ],
+      "mock_start_ok": false,
+      "note": null,
+      "status": "available",
+      "owner": null,
+      "branch": null,
+      "pr": null,
+      "claimed_at": null,
+      "updated_at": "2026-07-24T00:24:43.172Z"
     }
   }
 }
