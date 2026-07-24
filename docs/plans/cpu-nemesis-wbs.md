@@ -18,6 +18,7 @@ Related design-doc sections: §8.4 (nemesis matchmaking), §8.8 (nemesis surface
 | 2026-07-22 | Flag name canonicalized to `FLAG_CPU_NEMESIS` (the RFC draft's `FLAG_NEMESIS_CPU` is superseded).                                                                                                                                                                                                                                         |
 | 2026-07-22 | Review pass accepted in full (see "Review corrections" below), T12 pinned→drift excepted.                                                                                                                                                                                                                                                 |
 | 2026-07-23 | Owner: Phase X2 goes **simulator-first** — too few humans to train against, so personas train on historical market data and sit a held-out **World Cup 2026** exam (see §6). **Football-only for v1.** Owner provisioned an xTrace account; `XTRACE_API_KEY` stored as a Fly secret, never in the repo, on the rotate-before-launch list. |
+| 2026-07-24 | Owner: **T10 and T16 withdrawn** — the Phase X2 continuation (xTrace wiring for football personas, WC 2026 exam) is superseded by WS27 (`docs/plans/ws27-rumor-radar.md`). Shipped X2 code (T9 memory, T14 sim harness, T15 ingest) stays and is reused by WS27. Revive by re-adding the tasks to the registry.                           |
 
 ## 1. Problem
 
