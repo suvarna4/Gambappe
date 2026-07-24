@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-24T01:13:11.162Z",
+  "updated_at": "2026-07-24T01:18:50.932Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2768,12 +2768,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "in_review",
+      "status": "done",
       "owner": "claude-session-xtrace-companion",
       "branch": "fix/xh-t11-wire-group-search",
       "pr": "https://github.com/Gambappe/Gambappe/pull/179",
       "claimed_at": "2026-07-24T00:45:37.855Z",
-      "updated_at": "2026-07-24T01:13:11.161Z"
+      "updated_at": "2026-07-24T01:18:50.932Z"
     }
   }
 }
