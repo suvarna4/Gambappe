@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-24T00:24:43.172Z",
+  "updated_at": "2026-07-24T00:25:25.738Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2750,12 +2750,12 @@
       ],
       "mock_start_ok": false,
       "note": null,
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-session-xtrace-companion",
+      "branch": "fix/xh-t10-xtrace-groups",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-24T00:24:37.396Z"
+      "claimed_at": "2026-07-24T00:25:25.738Z",
+      "updated_at": "2026-07-24T00:25:25.738Z"
     },
     "XH-T11": {
       "title": "Fix: wire real group ids into ingest + search",
