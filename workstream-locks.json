@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-24T05:08:30.191Z",
+  "updated_at": "2026-07-24T05:17:19.204Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2870,13 +2870,13 @@
         "WS27-T6"
       ],
       "mock_start_ok": false,
-      "note": "Owner request 2026-07-24 (Murray thread: Lakers officially announced LeBron's departure while crowd read LAL at 9.2% vs market 0.3%). Sentiment aggregation cannot represent 'this candidate is eliminated' — a fact ledger can: committed data/live/fact-ledger.json entries {team, capAt, reason, source, addedAt}, validated + applied AFTER aggregation as a pure cap-and-renormalize step (raw mass untouched — audit trail intact), recorded per history row. First entry: LAL capped at 0.005.",
-      "status": "claimed",
+      "note": "Merged PR #194: fact ledger (applyFactLedger cap-and-renormalize, cited entries, per-row facts record) + Murray corpus; LAL 9.2%→0.5%, KL 0.616→0.414",
+      "status": "done",
       "owner": "claude-code-web-session-54bb90dd",
       "branch": "claude/ws27-t9-fact-ledger",
       "pr": null,
       "claimed_at": "2026-07-24T05:08:30.191Z",
-      "updated_at": "2026-07-24T05:08:30.191Z"
+      "updated_at": "2026-07-24T05:17:19.204Z"
     }
   }
 }
