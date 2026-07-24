@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-24T04:12:56.596Z",
+  "updated_at": "2026-07-24T04:34:26.017Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2855,13 +2855,13 @@
         "WS27-T6"
       ],
       "mock_start_ok": false,
-      "note": "Owner request 2026-07-24: surface the live crowd-vs-market read inside the app for the hackathon presentation. Placement: /crowd (crowd-vs-money is the room's thesis; viewer-free SSR preserved). Two PRs: (1) contract-change FLAG_RUMOR_RADAR default false; (2) apps/web lib + static data JSON (latest committed odds-history row) + RumorRadar server component above CrowdBoards, side-a/side-b tokens. Rollout = FLAG_RUMOR_RADAR=true in the prod env, never a code default flip.",
-      "status": "claimed",
+      "note": "Merged PRs #192 (flag) + #193 (panel); FLAG_RUMOR_RADAR=true set in Vercel production; verified live — /crowd renders the panel with real crowd-vs-market data",
+      "status": "done",
       "owner": "claude-code-web-session-54bb90dd",
       "branch": "claude/ws27-t8-flag",
       "pr": null,
       "claimed_at": "2026-07-24T04:12:56.595Z",
-      "updated_at": "2026-07-24T04:12:56.595Z"
+      "updated_at": "2026-07-24T04:34:26.016Z"
     }
   }
 }
