@@ -1,4 +1,5 @@
 # Raw corpus is re-fetchable and large — never committed. Derived tiny artifacts
-# (trained skills, training report) ARE committed, per plan §6 data hygiene.
+# (trained skills, training report, the odds history) ARE committed, per plan §6.
 data/*
 !data/skills/
+!data/live/

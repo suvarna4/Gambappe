@@ -15,3 +15,6 @@ export * from './skill.js';
 export * from './aggregate.js';
 export * from './backtest.js';
 export * from './train.js';
+export * from './polymarket.js';
+export * from './reddit-oauth.js';
+export * from './live.js';

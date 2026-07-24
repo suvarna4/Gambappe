@@ -1,0 +1,183 @@
+[
+  {
+    "slug": "nba-lebron-james-next-team",
+    "title": "NBA: LeBron James Next Team",
+    "endDate": "2026-10-31T03:59:00Z",
+    "markets": [
+      {
+        "question": "Will LeBron James play for the Atlanta Hawks in 2026-27?",
+        "outcomePrices": "[\"0.0005\", \"0.9995\"]",
+        "volumeNum": 766042.7479999999
+      },
+      {
+        "question": "Will LeBron James play for the Boston Celtics in 2026-27?",
+        "outcomePrices": "[\"0.0015\", \"0.9985\"]",
+        "volumeNum": 1338567.295440998
+      },
+      {
+        "question": "Will LeBron James play for the Brooklyn Nets in 2026-27?",
+        "outcomePrices": "[\"0.0005\", \"0.9995\"]",
+        "volumeNum": 475010.62048799987
+      },
+      {
+        "question": "Will LeBron James play for the Charlotte Hornets in 2026-27?",
+        "outcomePrices": "[\"0.0005\", \"0.9995\"]",
+        "volumeNum": 351888.1600000002
+      },
+      {
+        "question": "Will LeBron James play for the Chicago Bulls in 2026-27?",
+        "outcomePrices": "[\"0.0005\", \"0.9995\"]",
+        "volumeNum": 1321276.3254969998
+      },
+      {
+        "question": "Will LeBron James play for the Cleveland Cavaliers in 2026-27?",
+        "outcomePrices": "[\"0.2665\", \"0.7335\"]",
+        "volumeNum": 3817917.3234279808
+      },
+      {
+        "question": "Will LeBron James play for the Dallas Mavericks in 2026-27?",
+        "outcomePrices": "[\"0.0015\", \"0.9985\"]",
+        "volumeNum": 1184229.922270999
+      },
+      {
+        "question": "Will LeBron James play for the Denver Nuggets in 2026-27?",
+        "outcomePrices": "[\"0.005\", \"0.995\"]",
+        "volumeNum": 1325581.6196240007
+      },
+      {
+        "question": "Will LeBron James play for the Detroit Pistons in 2026-27?",
+        "outcomePrices": "[\"0.0005\", \"0.9995\"]",
+        "volumeNum": 955758.6097360003
+      },
+      {
+        "question": "Will LeBron James play for the Golden State Warriors in 2026-27?",
+        "outcomePrices": "[\"0.159\", \"0.841\"]",
+        "volumeNum": 4431584.793960999
+      },
+      {
+        "question": "Will LeBron James play for the Houston Rockets in 2026-27?",
+        "outcomePrices": "[\"0.0005\", \"0.9995\"]",
+        "volumeNum": 1277040.619603999
+      },
+      {
+        "question": "Will LeBron James play for the Indiana Pacers in 2026-27?",
+        "outcomePrices": "[\"0.0005\", \"0.9995\"]",
+        "volumeNum": 837281.4625379998
+      },
+      {
+        "question": "Will LeBron James play for the Los Angeles Clippers in 2026-27?",
+        "outcomePrices": "[\"0.005\", \"0.995\"]",
+        "volumeNum": 1501712.1889549966
+      },
+      {
+        "question": "Will LeBron James play for the Los Angeles Lakers in 2026-27?",
+        "outcomePrices": "[\"0.0045\", \"0.9955\"]",
+        "volumeNum": 2571857.3444941174
+      },
+      {
+        "question": "Will LeBron James play for the Memphis Grizzlies in 2026-27?",
+        "outcomePrices": "[\"0.0005\", \"0.9995\"]",
+        "volumeNum": 286027.307888
+      },
+      {
+        "question": "Will LeBron James play for the Miami Heat in 2026-27?",
+        "outcomePrices": "[\"0.4435\", \"0.5565\"]",
+        "volumeNum": 4465741.998657987
+      },
+      {
+        "question": "Will LeBron James play for the Milwaukee Bucks in 2026-27?",
+        "outcomePrices": "[\"0.0005\", \"0.9995\"]",
+        "volumeNum": 300369.47533299995
+      },
+      {
+        "question": "Will LeBron James play for the Minnesota Timberwolves in 2026-27?",
+        "outcomePrices": "[\"0.0245\", \"0.9755\"]",
+        "volumeNum": 1508703.998111
+      },
+      {
+        "question": "Will LeBron James play for the New Orleans Pelicans in 2026-27?",
+        "outcomePrices": "[\"0.0005\", \"0.9995\"]",
+        "volumeNum": 272968.39344400004
+      },
+      {
+        "question": "Will LeBron James play for the New York Knicks in 2026-27?",
+        "outcomePrices": "[\"0.008\", \"0.992\"]",
+        "volumeNum": 1640815.7716320036
+      },
+      {
+        "question": "Will LeBron James play for the Oklahoma City Thunder in 2026-27?",
+        "outcomePrices": "[\"0.0015\", \"0.9985\"]",
+        "volumeNum": 963015.3435689998
+      },
+      {
+        "question": "Will LeBron James play for the Orlando Magic in 2026-27?",
+        "outcomePrices": "[\"0.0005\", \"0.9995\"]",
+        "volumeNum": 701916.9932840003
+      },
+      {
+        "question": "Will LeBron James play for the Philadelphia 76ers in 2026-27?",
+        "outcomePrices": "[\"0.089\", \"0.911\"]",
+        "volumeNum": 2321431.3958419957
+      },
+      {
+        "question": "Will LeBron James play for the Phoenix Suns in 2026-27?",
+        "outcomePrices": "[\"0.0005\", \"0.9995\"]",
+        "volumeNum": 540798.9658500003
+      },
+      {
+        "question": "Will LeBron James play for the Portland Trail Blazers in 2026-27?",
+        "outcomePrices": "[\"0.0005\", \"0.9995\"]",
+        "volumeNum": 341685.70139200013
+      },
+      {
+        "question": "Will LeBron James play for the Sacramento Kings in 2026-27?",
+        "outcomePrices": "[\"0.0005\", \"0.9995\"]",
+        "volumeNum": 330051.8670000001
+      },
+      {
+        "question": "Will LeBron James play for the San Antonio Spurs in 2026-27?",
+        "outcomePrices": "[\"0.0055\", \"0.9945\"]",
+        "volumeNum": 1779961.2334629984
+      },
+      {
+        "question": "Will LeBron James play for the Toronto Raptors in 2026-27?",
+        "outcomePrices": "[\"0.0005\", \"0.9995\"]",
+        "volumeNum": 692638.3181590001
+      },
+      {
+        "question": "Will LeBron James play for the Utah Jazz in 2026-27?",
+        "outcomePrices": "[\"0.0005\", \"0.9995\"]",
+        "volumeNum": 296830.4925
+      },
+      {
+        "question": "Will LeBron James play for the Washington Wizards in 2026-27?",
+        "outcomePrices": "[\"0.0025\", \"0.9975\"]",
+        "volumeNum": 1538299.5061089974
+      },
+      {
+        "question": "Will LeBron James play for the Team A in 2026-27?",
+        "volumeNum": 0
+      },
+      {
+        "question": "Will LeBron James play for the Team B in 2026-27?",
+        "volumeNum": 0
+      },
+      {
+        "question": "Will LeBron James play for the Team C in 2026-27?",
+        "volumeNum": 0
+      },
+      {
+        "question": "Will LeBron James play for the Team D in 2026-27?",
+        "volumeNum": 0
+      },
+      {
+        "question": "Will LeBron James play for the Team E in 2026-27?",
+        "volumeNum": 0
+      },
+      {
+        "question": "Will LeBron James play for another team in 2026-27?",
+        "volumeNum": 0
+      }
+    ]
+  }
+]
