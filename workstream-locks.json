@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-24T01:50:13.280Z",
+  "updated_at": "2026-07-24T01:50:14.916Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2534,21 +2534,6 @@
       "pr": "165",
       "claimed_at": "2026-07-23T07:37:19.733Z",
       "updated_at": "2026-07-23T07:54:04.612Z"
-    },
-    "WS26-T10": {
-      "title": "xTrace wiring: personas as cloud-stored procedural skills",
-      "phase": "X2",
-      "depends_on": [
-        "WS26-T9"
-      ],
-      "mock_start_ok": false,
-      "note": "REVISED: xTrace wiring — each persona's memory {params, calibration table, training cutoff metadata} is one cloud-stored skill; sim writes, cpu:pick reads (cached refresh), production grades keep refining. Owner provided an xTrace account; XTRACE_API_KEY already stored as a Fly app secret (2026-07-23) — never in the repo; on the rotate-before-launch list.",
-      "status": "available",
-      "owner": null,
-      "branch": null,
-      "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-23T07:19:27.593Z"
     },
     "WS26-T14": {
       "title": "Training simulator harness (packages/sim): replay engine + metrics",
