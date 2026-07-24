@@ -178,12 +178,21 @@ async function xtraceCreateGroup(name: string, prompt?: string): Promise<string>
   return json.id as string;
 }
 
+// v2: name-agnostic. v1 named "dex and mo" explicitly, but xTrace's own extraction writes
+// every fact in third person ("User...", never a name) — a classifier comparing an anonymous
+// fact against a prompt demanding two NAMED people has no way to confirm a match, and
+// (correctly, per its instructions) erred toward not tagging. Result: only 3 of ~15 planted
+// facts got tagged, and every one of "dex"'s facts (attributed to a different anonymized
+// "User" than mo's) was excluded outright. This version describes the SHAPE of what belongs
+// instead of naming specific people, so it can match regardless of how extraction anonymizes.
 const RIVALRY_PROMPT =
-  'Betting rivalry between two people, dex and mo: their head-to-head win/loss record, ' +
-  'winning or losing streaks, betting strategy or strategy changes (e.g. favorites vs ' +
-  'underdogs), callout challenges and their stakes, and direct trash talk about the rivalry ' +
-  'itself. Exclude anything not about their head-to-head rivalry: general sports commentary, ' +
-  'food, sleep, refs, other games or players, or unrelated jokes.';
+  'A two-person head-to-head betting rivalry — whichever two people are speaking in this ' +
+  'thread, regardless of whether they are named or referred to generically (e.g. "User"). ' +
+  'Facts and episodes about: their win/loss record against EACH OTHER, winning or losing ' +
+  'streaks, betting strategy or strategy changes (e.g. favorites vs underdogs), callout ' +
+  'challenges and their stakes, and direct trash talk about the rivalry itself. Exclude ' +
+  'anything not about the rivalry between these two specifically: generic sports commentary, ' +
+  'food, sleep, refs, other games/players/teams, or unrelated jokes.';
 
 async function ingestXtrace(
   runId: string,
@@ -266,7 +275,7 @@ async function relevanceRate(retrieved: string[]): Promise<number | null> {
       model: JUDGE_MODEL,
       max_tokens: 200,
       system:
-        'For each numbered item, answer whether it is substantively about a betting rivalry between two named people — their head-to-head record, streaks, strategy, callouts, or direct trash talk about the rivalry. Generic sports/food/sleep/ref/other-game commentary is NOT on-topic even if it mentions the same people incidentally. Reply with ONLY a strict JSON array of booleans, one per item, in order, e.g. [true,false,true].',
+        'For each numbered item, answer whether it is substantively about a two-person head-to-head betting rivalry — their record, streaks, strategy, callouts, or direct trash talk about the rivalry itself. The people may be named OR referred to generically (e.g. "User") — do NOT require a name, judge on content alone. Generic sports/food/sleep/ref/other-game commentary is NOT on-topic even if it mentions a rivalry incidentally. Reply with ONLY a strict JSON array of booleans, one per item, in order, e.g. [true,false,true].',
       messages: [
         { role: 'user', content: retrieved.map((t, i) => `${i + 1}. ${t}`).join('\n') },
       ],
