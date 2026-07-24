@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-24T02:18:05.810Z",
+  "updated_at": "2026-07-24T02:22:13.667Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2780,12 +2780,12 @@
       ],
       "mock_start_ok": false,
       "note": "Full spec: docs/plans/ws27-rumor-radar.md §2C, §3. w = log1p(ups)^α · homerDiscount · recencyDecay; Σ stance·conf·w per team; softmax(τ) → crowd odds. RumorSkill {version, cutoff, lexiconDeltas, stanceCueWeights, upvoteAlpha, homerDiscount, recencyHalfLifeDays, temperature, record} + defaults + isRumorSkill validation. Untrained-baseline pin test (defaults reproduce documented baseline exactly).",
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-code-web-session-54bb90dd",
       "branch": "claude/ws27-t3-aggregation",
-      "pr": null,
+      "pr": "https://github.com/Gambappe/Gambappe/pull/183",
       "claimed_at": "2026-07-24T02:18:05.809Z",
-      "updated_at": "2026-07-24T02:18:05.809Z"
+      "updated_at": "2026-07-24T02:22:13.666Z"
     },
     "WS27-T4": {
       "title": "Rumor Radar: walk-forward backtest harness over resolved sagas",
