@@ -197,6 +197,9 @@ describe('generateAndCacheCalloutDraft — memory scoping (XH-T7 AC)', () => {
       async ingest() {
         return true;
       },
+      async createGroup() {
+        return 'grp_test';
+      },
       async search(args: { groupIds?: string[]; userId?: string }) {
         searchCalls.push(args);
         if (args.groupIds) {
@@ -261,6 +264,9 @@ describe('generateAndCacheCalloutDraft — memory scoping (XH-T7 AC)', () => {
     const xtrace = {
       async ingest() {
         return true;
+      },
+      async createGroup() {
+        return 'grp_test';
       },
       async search(args: unknown) {
         searchCalls.push(args);

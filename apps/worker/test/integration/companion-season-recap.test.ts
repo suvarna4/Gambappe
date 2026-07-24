@@ -105,6 +105,9 @@ function makeFakeXtrace(): { client: XtraceClient; searchCalls: unknown[] } {
         searchCalls.push(args);
         return [];
       },
+      async createGroup() {
+        return 'grp_test';
+      },
     },
   };
 }

@@ -21,6 +21,7 @@ import {
   callouts,
   companionArtifacts,
   companionIngestLog,
+  companionXtraceGroups,
   nemesisPairings,
   posts,
   profiles,
@@ -365,4 +366,60 @@ export async function listSentCalloutsWithPairingOutcome(
     .from(callouts)
     .leftJoin(nemesisPairings, eq(callouts.pairingId, nemesisPairings.id))
     .where(eq(callouts.challengerProfileId, profileId));
+}
+
+// --- xTrace group-id storage (XH-T10) — group_ids sent to xTrace must be ids previously
+// returned by its own POST /v1/groups; a pairing has exactly one group, ever. ---
+
+/** The persisted xTrace group id for `pairingId`, or null if it has never been created
+ * (not yet ingested, or ingested before XH-T11 shipped). */
+export async function getXtraceGroupId(db: Db, pairingId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ xtraceGroupId: companionXtraceGroups.xtraceGroupId })
+    .from(companionXtraceGroups)
+    .where(eq(companionXtraceGroups.pairingId, pairingId))
+    .limit(1);
+  return row?.xtraceGroupId ?? null;
+}
+
+/** The persisted xTrace group ids for whichever of `pairingIds` already have one — pairings
+ * with no row yet are simply absent from the result, never an error. Empty input → empty
+ * output, no query. */
+export async function listXtraceGroupIdsForPairings(
+  db: Db,
+  pairingIds: string[],
+): Promise<string[]> {
+  if (pairingIds.length === 0) return [];
+  const rows = await db
+    .select({ xtraceGroupId: companionXtraceGroups.xtraceGroupId })
+    .from(companionXtraceGroups)
+    .where(inArray(companionXtraceGroups.pairingId, pairingIds));
+  return rows.map((r) => r.xtraceGroupId);
+}
+
+/**
+ * `INSERT ... ON CONFLICT (pairing_id) DO NOTHING`, then `SELECT` and return whatever is NOW
+ * stored for `pairingId` — mirrors `insertArtifactIdempotent`'s idiom. Load-bearing detail: the
+ * returned value may NOT be the `xtraceGroupId` the caller just passed in — if two ingest runs
+ * race to create a group for the same never-before-seen pairing, both successfully call
+ * xTrace's `POST /v1/groups` (two real, valid, but now-orphaned groups exist server-side), and
+ * only one of the two rows wins the DB insert. Callers MUST use the function's return value for
+ * all subsequent tagging, not the id they created — continuing to use a lost race's id would
+ * split one pairing's memory across two groups, permanently.
+ */
+export async function insertXtraceGroupIdIdempotent(
+  db: Db,
+  pairingId: string,
+  xtraceGroupId: string,
+): Promise<string> {
+  await db
+    .insert(companionXtraceGroups)
+    .values({ pairingId, xtraceGroupId })
+    .onConflictDoNothing({ target: companionXtraceGroups.pairingId });
+
+  const winning = await getXtraceGroupId(db, pairingId);
+  if (winning === null) {
+    throw new Error('insertXtraceGroupIdIdempotent: no row after insert');
+  }
+  return winning;
 }

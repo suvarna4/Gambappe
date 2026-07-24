@@ -62,3 +62,18 @@ export const companionIngestLog = pgTable(
   },
   (t) => [primaryKey({ columns: [t.sourceKind, t.sourceId] })],
 );
+
+/**
+ * One row per pairing, mapping to the server-issued xTrace group id used to tag its rivalry
+ * memory (docs/xtrace-hackathon-tasks.md XH-T10). `group_ids` sent to xTrace must be ids
+ * previously returned by `POST /v1/groups` — a pairing has exactly one group, ever, so
+ * `pairing_id` is the primary key (no composite key needed, unlike `companion_ingest_log`'s
+ * two-source-kind shape).
+ */
+export const companionXtraceGroups = pgTable('companion_xtrace_groups', {
+  pairingId: uuid('pairing_id')
+    .primaryKey()
+    .references(() => nemesisPairings.id),
+  xtraceGroupId: text('xtrace_group_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});

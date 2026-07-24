@@ -213,6 +213,90 @@ describe('createXtraceClient — search', () => {
   });
 });
 
+describe('createXtraceClient — createGroup', () => {
+  it('sends the documented body shape and returns the parsed id on 2xx', async () => {
+    let captured: RequestInit | undefined;
+    const fetchImpl = vi.fn(async (_url: string | URL, init?: RequestInit) => {
+      captured = init;
+      return jsonResponse(200, {
+        object: 'group',
+        id: 'grp_abc123',
+        name: 'pairing:p1',
+        prompt: null,
+        status: 'active',
+        created_at: '2026-07-24T00:00:00Z',
+        updated_at: '2026-07-24T00:00:00Z',
+      });
+    });
+
+    const client = createXtraceClient({ ...OPTS, fetchImpl: fetchImpl as unknown as typeof fetch });
+    const groupId = await client.createGroup({ name: 'pairing:p1' });
+
+    expect(groupId).toBe('grp_abc123');
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const [url] = fetchImpl.mock.calls[0]!;
+    expect(url).toBe('https://xtrace.test/v1/groups');
+    expect(JSON.parse(captured!.body as string)).toEqual({
+      name: 'pairing:p1',
+      app_id: 'receipts-test',
+    });
+  });
+
+  it('retries 500s up to maxRetries then returns null', async () => {
+    let calls = 0;
+    const fetchImpl = vi.fn(async () => {
+      calls++;
+      return jsonResponse(500, { detail: { code: 'boom', message: 'boom' } });
+    });
+
+    const client = createXtraceClient({ ...OPTS, fetchImpl: fetchImpl as unknown as typeof fetch });
+    const groupId = await client.createGroup({ name: 'pairing:p1' });
+
+    expect(groupId).toBeNull();
+    expect(calls).toBe(XTRACE_MAX_RETRIES + 1);
+  });
+
+  it('does not retry a non-retryable 400', async () => {
+    let calls = 0;
+    const fetchImpl = vi.fn(async () => {
+      calls++;
+      return jsonResponse(400, { detail: { code: 'bad_request', message: 'nope' } });
+    });
+
+    const client = createXtraceClient({ ...OPTS, fetchImpl: fetchImpl as unknown as typeof fetch });
+    const groupId = await client.createGroup({ name: 'pairing:p1' });
+
+    expect(groupId).toBeNull();
+    expect(calls).toBe(1);
+  });
+
+  it('returns null without retrying on malformed JSON', async () => {
+    let calls = 0;
+    const fetchImpl = vi.fn(async () => {
+      calls++;
+      return new Response('{not json', {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+
+    const client = createXtraceClient({ ...OPTS, fetchImpl: fetchImpl as unknown as typeof fetch });
+    const groupId = await client.createGroup({ name: 'pairing:p1' });
+
+    expect(groupId).toBeNull();
+    expect(calls).toBe(1);
+  });
+
+  it('never throws — a network error degrades to null', async () => {
+    const fetchImpl = vi.fn(async () => {
+      throw new Error('network down');
+    });
+
+    const client = createXtraceClient({ ...OPTS, fetchImpl: fetchImpl as unknown as typeof fetch });
+    await expect(client.createGroup({ name: 'pairing:p1' })).resolves.toBeNull();
+  });
+});
+
 describe('xtraceClientFromEnv', () => {
   it('returns null when required env vars are missing', () => {
     expect(xtraceClientFromEnv({})).toBeNull();

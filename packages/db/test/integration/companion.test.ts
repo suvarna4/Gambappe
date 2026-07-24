@@ -16,13 +16,22 @@ import {
   completedPairingIdsBetween,
   filterUningested,
   getArtifactByCacheKey,
+  getXtraceGroupId,
   insertArtifactIdempotent,
+  insertXtraceGroupIdIdempotent,
   latestRecapForProfile,
   lifetimeRecordBetween,
+  listXtraceGroupIdsForPairings,
   markIngested,
   recapCacheKey,
 } from '../../src/repositories/companion.js';
-import { companionArtifacts, nemesisPairings, profiles, seasons } from '../../src/schema/index.js';
+import {
+  companionArtifacts,
+  companionXtraceGroups,
+  nemesisPairings,
+  profiles,
+  seasons,
+} from '../../src/schema/index.js';
 import {
   buildCompanionArtifact,
   buildNemesisPairing,
@@ -52,7 +61,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await db.execute(
-    sql`TRUNCATE companion_artifacts, companion_ingest_log, nemesis_pairings, seasons, profiles RESTART IDENTITY CASCADE`,
+    sql`TRUNCATE companion_artifacts, companion_ingest_log, companion_xtrace_groups, nemesis_pairings, seasons, profiles RESTART IDENTITY CASCADE`,
   );
 });
 
@@ -262,5 +271,77 @@ describe('lifetimeRecordBetween / completedPairingIdsBetween', () => {
     const b = await seedProfile();
     expect(await lifetimeRecordBetween(db, a, b)).toEqual({ wins: 0, losses: 0, draws: 0 });
     expect(await completedPairingIdsBetween(db, a, b)).toEqual([]);
+  });
+});
+
+async function seedPairing(): Promise<string> {
+  const a = await seedProfile();
+  const b = await seedProfile();
+  const season = buildSeason();
+  await db.insert(seasons).values(season);
+  const pairing = buildNemesisPairing(season.id as string, a, b);
+  await db.insert(nemesisPairings).values(pairing);
+  return pairing.id as string;
+}
+
+describe('xTrace group-id storage (XH-T10)', () => {
+  describe('getXtraceGroupId / listXtraceGroupIdsForPairings', () => {
+    it('returns null / excludes an unknown pairing', async () => {
+      const pairingId = await seedPairing();
+      expect(await getXtraceGroupId(db, pairingId)).toBeNull();
+      expect(await listXtraceGroupIdsForPairings(db, [pairingId])).toEqual([]);
+    });
+
+    it('returns [] for an empty input array without querying', async () => {
+      expect(await listXtraceGroupIdsForPairings(db, [])).toEqual([]);
+    });
+
+    it('a mix of known/unknown pairing ids returns only the known ones\' group ids', async () => {
+      const known = await seedPairing();
+      const unknown = await seedPairing();
+      await insertXtraceGroupIdIdempotent(db, known, 'grp_known');
+
+      const result = await listXtraceGroupIdsForPairings(db, [known, unknown]);
+      expect(result).toEqual(['grp_known']);
+    });
+  });
+
+  describe('insertXtraceGroupIdIdempotent', () => {
+    it('concurrent inserts for the same pairing with DIFFERENT group ids yield one row, and both calls return that one stored value', async () => {
+      const pairingId = await seedPairing();
+
+      const [a, b] = await Promise.all([
+        insertXtraceGroupIdIdempotent(db, pairingId, 'grp_from_call_a'),
+        insertXtraceGroupIdIdempotent(db, pairingId, 'grp_from_call_b'),
+      ]);
+
+      // Both callers must agree on the SAME winning id — whichever insert actually landed —
+      // not each see their own passed-in value. This is the race-safety property that matters:
+      // if it broke, the loser would keep using its own (unpersisted, orphaned) group id for
+      // the rest of its run and split the pairing's memory across two xTrace groups.
+      expect(a).toBe(b);
+      expect(['grp_from_call_a', 'grp_from_call_b']).toContain(a);
+
+      const stored = await db
+        .select()
+        .from(companionXtraceGroups)
+        .where(eq(companionXtraceGroups.pairingId, pairingId));
+      expect(stored).toHaveLength(1); // exactly one row survived the race, not two
+      expect(await getXtraceGroupId(db, pairingId)).toBe(a);
+    });
+
+    it('called twice sequentially with the same group id is a no-op the second time', async () => {
+      const pairingId = await seedPairing();
+      const first = await insertXtraceGroupIdIdempotent(db, pairingId, 'grp_stable');
+      const second = await insertXtraceGroupIdIdempotent(db, pairingId, 'grp_stable');
+      expect(first).toBe('grp_stable');
+      expect(second).toBe('grp_stable');
+    });
+
+    it('rejects a bogus pairingId (FK cascade sanity)', async () => {
+      await expect(
+        insertXtraceGroupIdIdempotent(db, '00000000-0000-0000-0000-000000000000', 'grp_x'),
+      ).rejects.toThrow();
+    });
   });
 });

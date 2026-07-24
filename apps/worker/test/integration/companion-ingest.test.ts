@@ -108,6 +108,9 @@ function makeCapturingXtrace(behavior: (args: IngestArgs) => boolean = () => tru
       async search() {
         return [];
       },
+      async createGroup() {
+        return 'grp_test';
+      },
     },
   };
 }
@@ -126,6 +129,9 @@ function makeScriptedXtrace(results: boolean[]): { client: XtraceClient; calls: 
       },
       async search() {
         return [];
+      },
+      async createGroup() {
+        return 'grp_test';
       },
     },
   };
@@ -431,6 +437,9 @@ describe('deadline abort', () => {
       },
       async search() {
         return [];
+      },
+      async createGroup() {
+        return 'grp_test';
       },
     };
 
