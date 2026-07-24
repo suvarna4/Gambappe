@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-24T02:27:34.702Z",
+  "updated_at": "2026-07-24T02:30:51.682Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2795,12 +2795,12 @@
       ],
       "mock_start_ok": false,
       "note": "Full spec: docs/plans/ws27-rumor-radar.md §2D. Replay a saga day-by-day: odds from comments dated ≤ D only; outcome reaches tuning only via observe AFTER the day's odds are recorded (structural leakage discipline, as @receipts/sim). Log-loss/Brier per day, trained-vs-untrained report. Runs on T1 historical corpus.",
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-code-web-session-54bb90dd",
       "branch": "claude/ws27-t4-backtest",
-      "pr": null,
+      "pr": "https://github.com/Gambappe/Gambappe/pull/184",
       "claimed_at": "2026-07-24T02:27:34.702Z",
-      "updated_at": "2026-07-24T02:27:34.702Z"
+      "updated_at": "2026-07-24T02:30:51.682Z"
     },
     "WS27-T5": {
       "title": "Rumor Radar: training + xTrace skill versioning (lineage upload)",
