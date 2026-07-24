@@ -2,71 +2,71 @@
   "date": "2026-07-24",
   "question": "Which team will LeBron James join?",
   "resolvesBy": "2026-10-31",
-  "threads": 16,
-  "comments": 4643,
-  "entriesUsed": 630,
-  "kl": 0.4136266117976637,
+  "threads": 21,
+  "comments": 6732,
+  "entriesUsed": 996,
+  "kl": 0.4470708168501431,
   "skillCutoff": "2021-01-13",
   "rows": [
     {
       "team": "MIA",
       "name": "Miami Heat",
-      "crowd": 0.21635822983526692,
-      "market": 0.41855969067182214
+      "crowd": 0.20788144651292542,
+      "market": 0.4172313649564375
     },
     {
       "team": "CLE",
       "name": "Cleveland Cavaliers",
-      "crowd": 0.18284012434582272,
-      "market": 0.2484291928467859
+      "crowd": 0.17945915891760006,
+      "market": 0.24443368828654402
     },
     {
       "team": "GSW",
       "name": "Golden State Warriors",
-      "crowd": 0.17868742302533203,
-      "market": 0.17544707588206862
+      "crowd": 0.17521081731815416,
+      "market": 0.17763794772507258
     },
     {
       "team": "PHI",
       "name": "Philadelphia 76ers",
-      "crowd": 0.13466947165000553,
-      "market": 0.08893185113581441
+      "crowd": 0.1406918678961523,
+      "market": 0.09341723136495643
     },
     {
       "team": "MIN",
       "name": "Minnesota Timberwolves",
-      "crowd": 0.06589288335730653,
-      "market": 0.04349927501208313
+      "crowd": 0.06479860652053937,
+      "market": 0.04114230396902226
     },
     {
       "team": "LAC",
       "name": "LA Clippers",
-      "crowd": 0.041109467763066176,
-      "market": 0.006766553890768487
+      "crowd": 0.039351460987319294,
+      "market": 0.006776379477250725
     },
     {
       "team": "SAS",
       "name": "San Antonio Spurs",
-      "crowd": 0.046698310135238494,
-      "market": 0.005316578057032383
+      "crowd": 0.05611488443999644,
+      "market": 0.005324298160696998
     },
     {
       "team": "DEN",
       "name": "Denver Nuggets",
-      "crowd": 0.06569444784068382,
-      "market": 0.005316578057032383
+      "crowd": 0.06287525618102033,
+      "market": 0.005324298160696998
     },
     {
       "team": "LAL",
       "name": "Los Angeles Lakers",
       "crowd": 0.005,
-      "market": 0.004349927501208313
+      "market": 0.005324298160696998
     },
     {
       "team": "NYK",
       "name": "New York Knicks",
-      "crowd": 0.06304964204727774,
-      "market": 0.0033832769453842437
+      "crowd": 0.06861650122629245,
+      "market": 0.0033881897386253625
     }
   ]
 }
