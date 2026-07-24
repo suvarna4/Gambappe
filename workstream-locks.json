@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-24T02:58:01.763Z",
+  "updated_at": "2026-07-24T02:58:03.343Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2841,12 +2841,12 @@
       ],
       "mock_start_ok": false,
       "note": "Full spec: docs/plans/ws27-rumor-radar.md §5. Crowd odds vs Polymarket over time, per-team gap chart, annotated example comments with weights, skill-lineage panel. Follows the existing hackathon demo page's receipt-paper design system.",
-      "status": "available",
-      "owner": null,
-      "branch": null,
+      "status": "claimed",
+      "owner": "claude-code-web-session-54bb90dd",
+      "branch": "claude/ws27-t7-demo",
       "pr": null,
-      "claimed_at": null,
-      "updated_at": "2026-07-24T01:50:11.719Z"
+      "claimed_at": "2026-07-24T02:58:03.343Z",
+      "updated_at": "2026-07-24T02:58:03.343Z"
     }
   }
 }
