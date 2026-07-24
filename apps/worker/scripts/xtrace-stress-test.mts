@@ -285,7 +285,7 @@ async function judge(q: Query, retrieved: string[]): Promise<boolean> {
     model: JUDGE_MODEL,
     max_tokens: 150,
     system:
-      'You are a strict retrieval evaluator. Given a query, a ground-truth fact, and a list of retrieved text items, decide whether ANY retrieved item states or clearly entails the ground-truth fact. Paraphrase counts. Topical similarity without the actual fact does NOT count. Reply with ONLY strict JSON: {"hit": true|false, "item": <1-based index or null>}',
+      'You are a strict retrieval evaluator. Given a query, a ground-truth fact, and a list of retrieved text items, decide whether ANY retrieved item states or clearly entails the ground-truth fact. Paraphrase counts. Retrieved items may refer to the speaker generically ("User", "the user", or a name) — a content match counts even if the ground truth names a specific person and the item does not; do NOT require exact name attribution. Topical similarity without the actual fact does NOT count. Reply with ONLY strict JSON: {"hit": true|false, "item": <1-based index or null>}',
     messages: [
       {
         role: 'user',
