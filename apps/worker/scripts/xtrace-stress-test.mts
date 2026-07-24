@@ -178,43 +178,35 @@ async function xtraceCreateGroup(name: string, prompt?: string): Promise<string>
   return json.id as string;
 }
 
-// v2: name-agnostic. v1 named "dex and mo" explicitly, but xTrace's own extraction writes
-// every fact in third person ("User...", never a name) — a classifier comparing an anonymous
-// fact against a prompt demanding two NAMED people has no way to confirm a match, and
-// (correctly, per its instructions) erred toward not tagging. Result: only 3 of ~15 planted
-// facts got tagged, and every one of "dex"'s facts (attributed to a different anonymized
-// "User" than mo's) was excluded outright. This version describes the SHAPE of what belongs
-// instead of naming specific people, so it can match regardless of how extraction anonymizes.
-const RIVALRY_PROMPT =
-  'A two-person head-to-head betting rivalry — whichever two people are speaking in this ' +
-  'thread, regardless of whether they are named or referred to generically (e.g. "User"). ' +
-  'Facts and episodes about: their win/loss record against EACH OTHER, winning or losing ' +
-  'streaks, betting strategy or strategy changes (e.g. favorites vs underdogs), callout ' +
-  'challenges and their stakes, and direct trash talk about the rivalry itself. Exclude ' +
-  'anything not about the rivalry between these two specifically: generic sports commentary, ' +
-  'food, sleep, refs, other games/players/teams, or unrelated jokes.';
+// Group-prompt tagging experiment (v3/v4 of this harness) concluded: prompted tagging traded
+// away recall (under-tagged even after fixing a naming-dependency bug in both the prompt and
+// the relevance judge) for a precision gain too small to be worth it on this corpus. Not
+// pursued further here — see git history for the RIVALRY_PROMPT wording and results if
+// revisiting. v5 tests a different lever: cleaning the raw input BEFORE ingestion instead of
+// filtering AFTER extraction (see `cleanConversationBatch`/`ingestXtraceCleaned` below).
 
-async function ingestXtrace(
-  runId: string,
-  corpus: Msg[],
-  grpId: string,
-  promptedGrpId: string,
-): Promise<void> {
-  const xtrace = xtraceClientFromEnv();
-  if (!xtrace) throw new Error('XTRACE_API_KEY / XTRACE_APP_ID not set');
-  // One conv per author-week, mirroring how the real job batches thread posts.
+/** Groups the corpus the same way `ingestXtrace`/`ingestXtraceCleaned` do — one batch per
+ * author-week — without ingesting anything, so both ingest paths iterate identical batches. */
+function batchByAuthorWeek(corpus: Msg[]): Map<string, Msg[]> {
   const byConv = new Map<string, Msg[]>();
   for (const m of corpus) {
     const key = `${m.author}:w${m.week}`;
     (byConv.get(key) ?? byConv.set(key, []).get(key)!).push(m);
   }
+  return byConv;
+}
+
+async function ingestXtrace(runId: string, corpus: Msg[], grpId: string): Promise<void> {
+  const xtrace = xtraceClientFromEnv();
+  if (!xtrace) throw new Error('XTRACE_API_KEY / XTRACE_APP_ID not set');
+  const byConv = batchByAuthorWeek(corpus);
   let sent = 0;
   for (const [key, msgs] of byConv) {
     const [author, week] = key.split(':') as [string, string];
     const ok = await xtrace.ingest({
       userId: `stress:${runId}:${author}`,
       convId: `stress:${runId}:${author}:${week}`,
-      groupIds: [grpId, promptedGrpId],
+      groupIds: [grpId],
       messages: msgs.map((m) => ({
         role: 'user' as const,
         content: `${m.author}: ${m.body}`,
@@ -224,7 +216,98 @@ async function ingestXtrace(
     if (!ok) console.warn(`xtrace ingest failed for conv ${key}`);
     else sent += msgs.length;
   }
-  console.log(`xtrace: ingested ${sent}/${corpus.length} messages across ${byConv.size} convs`);
+  console.log(`xtrace (raw): ingested ${sent}/${corpus.length} messages across ${byConv.size} convs`);
+}
+
+/**
+ * Pre-ingestion cleaning: an LLM reads one author-week batch of raw, noisy chat and returns
+ * ONLY the statements that reveal genuine rivalry information (results, streaks, strategy
+ * changes, callout stakes, direct rivalry trash talk), rewritten as clear, self-contained,
+ * named declarative sentences — dropping filler entirely rather than letting xTrace's own
+ * extraction sift signal from noise after the fact. Fail-open: a bad response yields [],
+ * meaning that batch contributes nothing to the cleaned lane rather than crashing the run.
+ */
+async function cleanConversationBatch(author: string, week: number, msgs: Msg[]): Promise<string[]> {
+  const apiKey = process.env.ANTHROPIC_API_KEY!;
+  const raw = msgs.map((m) => m.body).join('\n');
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: JUDGE_MODEL,
+      max_tokens: 500,
+      system:
+        'You are cleaning a noisy sports-betting rivalry chat thread before it is stored in a ' +
+        'long-term memory system. You will be given several messages, all posted by the SAME ' +
+        'person, from one week of a two-person betting rivalry thread. Extract ONLY the parts ' +
+        'that reveal genuine information: results (scores, wins, losses), winning or losing ' +
+        'streaks, betting strategy or a strategy change, callout challenges and their stakes, ' +
+        'or a direct claim about the rivalry itself. Rewrite each as ONE clear, self-contained ' +
+        'declarative sentence, STARTING WITH THE SPEAKER\'S NAME so it stays unambiguous once ' +
+        'separated from context — e.g. "mo lost 5-0 this week and called it embarrassing." or ' +
+        '"dex is on a 7-game winning streak." DROP everything else: jokes about refs, food, ' +
+        'sleep, other games, or unrelated banter, even if playful or mentioning the person\'s ' +
+        'name. If nothing in this batch reveals genuine information, return an empty array. ' +
+        'Reply with ONLY a strict JSON array of strings.',
+      messages: [{ role: 'user', content: `Speaker: ${author}\nWeek: ${week}\n\n${raw}` }],
+    }),
+  });
+  if (!res.ok) {
+    console.warn(`clean: status ${res.status} for ${author} week ${week}`);
+    return [];
+  }
+  const json: any = await res.json();
+  const text: string = json.content?.[0]?.text ?? '';
+  const match = text.match(/\[[\s\S]*\]/);
+  if (!match) return [];
+  try {
+    return JSON.parse(match[0]);
+  } catch {
+    return [];
+  }
+}
+
+async function ingestXtraceCleaned(runId: string, corpus: Msg[], cleanedGrpId: string): Promise<void> {
+  const xtrace = xtraceClientFromEnv();
+  if (!xtrace) throw new Error('XTRACE_API_KEY / XTRACE_APP_ID not set');
+  const byConv = batchByAuthorWeek(corpus);
+  let sentStatements = 0;
+  let sentConvs = 0;
+  let droppedConvs = 0;
+  for (const [key, msgs] of byConv) {
+    const [author, weekTag] = key.split(':') as [string, string];
+    const week = Number(weekTag.slice(1));
+    const cleaned = await cleanConversationBatch(author, week, msgs);
+    if (cleaned.length === 0) {
+      droppedConvs += 1;
+      continue;
+    }
+    // Separate user/conv namespace from the raw lane's — this is a distinct memory channel,
+    // not a second copy of the same conversation, so it must not merge with the raw ingest.
+    const ok = await xtrace.ingest({
+      userId: `stress:${runId}:${author}:cleaned`,
+      convId: `stress:${runId}:${author}:${weekTag}:cleaned`,
+      groupIds: [cleanedGrpId],
+      messages: cleaned.map((stmt) => ({
+        role: 'user' as const,
+        content: stmt,
+        date: new Date(Date.UTC(2026, 4, 4 + (week - 1) * 7, 18)).toISOString(),
+      })),
+    });
+    if (!ok) console.warn(`xtrace cleaned-ingest failed for conv ${key}`);
+    else {
+      sentStatements += cleaned.length;
+      sentConvs += 1;
+    }
+  }
+  console.log(
+    `xtrace (cleaned): ${sentStatements} cleaned statements from ${corpus.length} raw messages ` +
+      `across ${sentConvs}/${byConv.size} convs (${droppedConvs} batches had nothing worth keeping)`,
+  );
 }
 
 async function ingestFts(pool: any, runId: string, corpus: Msg[]): Promise<void> {
@@ -397,15 +480,16 @@ async function runIngest(runId: string): Promise<void> {
   const planted = corpus.filter((m) => m.fact).length;
   console.log(`corpus: ${corpus.length} messages (${planted} planted across 10 facts)`);
   const grpId = await xtraceCreateGroup(`stress ${runId} catchall`);
-  const promptedGrpId = await xtraceCreateGroup(`stress ${runId} prompted`, RIVALRY_PROMPT);
-  console.log(`xtrace catch-all group: ${grpId}`);
-  console.log(`xtrace prompted group:  ${promptedGrpId}`);
+  const cleanedGrpId = await xtraceCreateGroup(`stress ${runId} cleaned`);
+  console.log(`xtrace catch-all group (raw ingest):     ${grpId}`);
+  console.log(`xtrace cleaned group (pre-cleaned ingest): ${cleanedGrpId}`);
   const { writeFileSync } = await import('node:fs');
-  writeFileSync(statePath(runId), JSON.stringify({ runId, grpId, promptedGrpId }));
+  writeFileSync(statePath(runId), JSON.stringify({ runId, grpId, cleanedGrpId }));
   const { pool } = connect();
   try {
     await ingestFts(pool, runId, corpus);
-    await ingestXtrace(runId, corpus, grpId, promptedGrpId);
+    await ingestXtrace(runId, corpus, grpId);
+    await ingestXtraceCleaned(runId, corpus, cleanedGrpId);
   } finally {
     await pool.end();
   }
@@ -414,9 +498,9 @@ async function runIngest(runId: string): Promise<void> {
 
 async function runSearch(runId: string): Promise<void> {
   const { readFileSync, writeFileSync } = await import('node:fs');
-  const { grpId, promptedGrpId } = JSON.parse(readFileSync(statePath(runId), 'utf8')) as {
+  const { grpId, cleanedGrpId } = JSON.parse(readFileSync(statePath(runId), 'utf8')) as {
     grpId: string;
-    promptedGrpId: string;
+    cleanedGrpId: string;
   };
   const { pool } = connect();
   const results: Array<{
@@ -426,42 +510,42 @@ async function runSearch(runId: string): Promise<void> {
     hits: Record<string, boolean>;
     retrieved: Record<string, string[]>;
   }> = [];
-  const LANES = ['xtrace-group', 'xtrace-group-prompted', 'xtrace-user', 'fts'] as const;
-  const relevance: Record<string, number[]> = { 'xtrace-group': [], 'xtrace-group-prompted': [] };
+  const LANES = ['xtrace-group', 'xtrace-cleaned', 'xtrace-user', 'fts'] as const;
+  const relevance: Record<string, number[]> = { 'xtrace-group': [], 'xtrace-cleaned': [] };
   try {
     for (const q of QUERIES) {
-      const [gr, pgr, ur, fr] = await Promise.all([
+      const [gr, cgr, ur, fr] = await Promise.all([
         searchXtraceGroup(grpId, q),
-        searchXtraceGroup(promptedGrpId, q),
+        searchXtraceGroup(cleanedGrpId, q),
         searchXtraceUser(runId, q),
         searchFts(pool, runId, q),
       ]);
       const retrieved = {
         'xtrace-group': gr,
-        'xtrace-group-prompted': pgr,
+        'xtrace-cleaned': cgr,
         'xtrace-user': ur,
         fts: fr,
       };
-      const [gHit, pgHit, uHit, fHit, gRel, pgRel] = await Promise.all([
+      const [gHit, cgHit, uHit, fHit, gRel, cgRel] = await Promise.all([
         judge(q, gr),
-        judge(q, pgr),
+        judge(q, cgr),
         judge(q, ur),
         judge(q, fr),
         relevanceRate(gr),
-        relevanceRate(pgr),
+        relevanceRate(cgr),
       ]);
       const hits = {
         'xtrace-group': gHit,
-        'xtrace-group-prompted': pgHit,
+        'xtrace-cleaned': cgHit,
         'xtrace-user': uHit,
         fts: fHit,
       };
       if (gRel !== null) relevance['xtrace-group']!.push(gRel);
-      if (pgRel !== null) relevance['xtrace-group-prompted']!.push(pgRel);
+      if (cgRel !== null) relevance['xtrace-cleaned']!.push(cgRel);
       results.push({ id: q.id, tier: q.tier, query: q.query, hits, retrieved });
       console.log(
         `${q.id} (${q.tier}) "${q.query}" → ${LANES.map((l) => `${l}:${hits[l] ? 'HIT' : 'miss'}`).join(' ')}` +
-          ` | relevance group=${gRel?.toFixed(2) ?? 'n/a'} prompted=${pgRel?.toFixed(2) ?? 'n/a'}`,
+          ` | relevance raw=${gRel?.toFixed(2) ?? 'n/a'} cleaned=${cgRel?.toFixed(2) ?? 'n/a'}`,
       );
     }
   } finally {
@@ -481,15 +565,15 @@ async function runSearch(runId: string): Promise<void> {
   const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
   console.log(
     `\n=== mean top-5 on-topic rate (precision proxy) ===\n` +
-      `catch-all: ${avg(relevance['xtrace-group']!)?.toFixed(2) ?? 'n/a'}  |  ` +
-      `prompted: ${avg(relevance['xtrace-group-prompted']!)?.toFixed(2) ?? 'n/a'}`,
+      `raw catch-all: ${avg(relevance['xtrace-group']!)?.toFixed(2) ?? 'n/a'}  |  ` +
+      `cleaned: ${avg(relevance['xtrace-cleaned']!)?.toFixed(2) ?? 'n/a'}`,
   );
 
   const reportPath = `${REPORT_DIR}/xtrace-stress-${runId}.json`;
   writeFileSync(
     reportPath,
     JSON.stringify(
-      { runId, grpId, promptedGrpId, topK: TOP_K, judgeModel: JUDGE_MODEL, results, relevance },
+      { runId, grpId, cleanedGrpId, topK: TOP_K, judgeModel: JUDGE_MODEL, results, relevance },
       null,
       2,
     ),
