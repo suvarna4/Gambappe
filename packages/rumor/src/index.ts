@@ -9,3 +9,5 @@ export * from './teams.js';
 export * from './snapshot.js';
 export * from './sagas.js';
 export * from './arctic-shift.js';
+export * from './lexicon.js';
+export * from './extract.js';
