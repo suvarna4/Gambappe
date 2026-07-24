@@ -142,10 +142,18 @@ describe('save-ask copy (WS21-T2)', () => {
   });
 });
 
-/** WS22-T2 (§5 D-J7) `/crowd` boards copy — the same INV-8 money-word rule on this task's block. */
-describe('crowd boards copy (WS22-T2)', () => {
+/** WS22-T2 (§5 D-J7) `/crowd` boards copy — the same INV-8 money-word rule on this task's block.
+ * WS27-T8 added function entries (rumor radar), so this follows the sweatCopy pattern above:
+ * call the functions with sample args and join the string entries — never stringify a function
+ * (its source contains `${…}`, a false-positive `$`). */
+describe('crowd boards copy (WS22-T2 + WS27-T8)', () => {
   it('no copy references money words (§10.6/INV-8 review rule: bet|stake|wager|$)', () => {
-    const allCopy = Object.values(crowdCopy).join(' ');
+    const allCopy = [
+      crowdCopy.rumorRadarMethod(15, 4447),
+      crowdCopy.rumorRadarFolded(4),
+      crowdCopy.rumorRadarResolves('2026-10-31'),
+      ...Object.values(crowdCopy).filter((v: unknown): v is string => typeof v === 'string'),
+    ].join(' ');
     expect(allCopy).not.toMatch(/\bbet\b|\bstake\b|\bwager\b|\$/i);
   });
 });

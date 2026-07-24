@@ -85,7 +85,8 @@ export const CLAIM_CONFIRM_NOT_ME_LABEL = "This isn't me";
 export const CLAIM_SIGNIN_ADMIT_LEFT = 'GAMBAPPE';
 export const CLAIM_SIGNIN_ADMIT_RIGHT = 'SAVE YOUR RECORD';
 export const CLAIM_SIGNIN_HEADING = "Nothing to buy. Just don't lose your record.";
-export const CLAIM_SIGNIN_SUBHEADING = 'Free — email, Google, or passkey. Nothing here ever costs money.';
+export const CLAIM_SIGNIN_SUBHEADING =
+  'Free — email, Google, or passkey. Nothing here ever costs money.';
 export const CLAIM_SIGNIN_GOOGLE_LABEL = 'Continue with Google';
 export const CLAIM_SIGNIN_X_LABEL = 'Continue with X';
 export const CLAIM_SIGNIN_EMAIL_LABEL = 'Continue with email';
@@ -657,7 +658,8 @@ export const calloutsCopy = {
   panelBody:
     'Challenge a past rival to a head-to-head week. Share the link — whoever opens it and accepts becomes your nemesis next week.',
   /** Shown when the viewer has no nemesis history yet to draw rival candidates from. */
-  candidatesEmpty: 'No past rivals yet — call-out candidates show up once you have a nemesis history.',
+  candidatesEmpty:
+    'No past rivals yet — call-out candidates show up once you have a nemesis history.',
   /** Per-candidate share button. `navigator.share` on capable devices, clipboard copy otherwise. */
   shareCta: 'Call out',
   sharing: 'Preparing link…',
@@ -690,7 +692,8 @@ export const calloutsCopy = {
 
   // --- Locked-in confirmation (both sides' /rivals hubs after accept) --------------------------
   lockedInTapeLabel: 'LOCKED IN',
-  lockedInLine: (opponentHandle: string) => `You face ${opponentHandle} next week — call-out accepted.`,
+  lockedInLine: (opponentHandle: string) =>
+    `You face ${opponentHandle} next week — call-out accepted.`,
 
   // --- Grudge book (lifetime per-rival aggregate) ---------------------------------------------
   grudgeHeading: 'Grudge book',
@@ -707,7 +710,8 @@ export const calloutsCopy = {
   /** The existing rematch affordance, surfaced in the grudge book as a stamp (§5). */
   rematchCta: 'REMATCH',
   rematchSending: 'Requesting…',
-  rematchPendingLine: (opponentHandle: string) => `Rematch requested — waiting on ${opponentHandle}`,
+  rematchPendingLine: (opponentHandle: string) =>
+    `Rematch requested — waiting on ${opponentHandle}`,
   rematchIncomingLine: (opponentHandle: string) => `${opponentHandle} wants to run it back`,
   rematchAcceptedLine: "Rematch on — you're paired starting next week",
   rematchError: 'Could not request the rematch — try again.',
@@ -786,6 +790,16 @@ export const crowdCopy = {
   emptyWeek: 'No qualifying calls yet this week. The board fills as questions settle.',
   /** a11y label for the viewer's own highlighted row (hydrated client-side, INV-10). */
   youRowLabel: 'Your row',
+  /** WS27-T8 · Rumor Radar panel (docs/plans/ws27-rumor-radar.md) — no money words (INV-8). */
+  rumorRadarHeading: 'Rumor radar',
+  rumorRadarMarketKey: 'Market price',
+  rumorRadarCrowdKey: 'Reddit crowd',
+  rumorRadarAgree: 'The crowd and the market agree on the favorite.',
+  rumorRadarDisagree: 'The crowd and the market disagree on the favorite.',
+  rumorRadarMethod: (threads: number, comments: number) =>
+    `Crowd read: ${threads} top threads, ${comments.toLocaleString('en-US')} comments, weighted by upvotes through a trained, versioned skill.`,
+  rumorRadarFolded: (n: number) => `${n} more teams under 1%.`,
+  rumorRadarResolves: (date: string) => `Reality settles it by ${date}.`,
 } as const;
 
 /**
