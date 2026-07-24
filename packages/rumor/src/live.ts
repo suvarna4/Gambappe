@@ -74,6 +74,8 @@ export interface OddsHistoryRow {
   kl: number | null;
   entriesUsed: number;
   posts: number;
+  /** Teams whose fact-ledger caps bound on this snapshot (WS27-T9); absent pre-ledger. */
+  facts?: string[];
 }
 
 export function isOddsHistoryRow(value: unknown): value is OddsHistoryRow {
@@ -89,6 +91,8 @@ export function isOddsHistoryRow(value: unknown): value is OddsHistoryRow {
     typeof r['vig'] === 'number' &&
     (r['kl'] === null || typeof r['kl'] === 'number') &&
     typeof r['entriesUsed'] === 'number' &&
-    typeof r['posts'] === 'number'
+    typeof r['posts'] === 'number' &&
+    (r['facts'] === undefined ||
+      (Array.isArray(r['facts']) && r['facts'].every((f: unknown) => typeof f === 'string')))
   );
 }

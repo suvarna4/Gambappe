@@ -2,71 +2,71 @@
   "date": "2026-07-24",
   "question": "Which team will LeBron James join?",
   "resolvesBy": "2026-10-31",
-  "threads": 15,
-  "comments": 4447,
-  "entriesUsed": 587,
-  "kl": 0.6156640468683429,
+  "threads": 16,
+  "comments": 4643,
+  "entriesUsed": 630,
+  "kl": 0.4136266117976637,
   "skillCutoff": "2021-01-13",
   "rows": [
     {
       "team": "MIA",
       "name": "Miami Heat",
-      "crowd": 0.19710671573497565,
-      "market": 0.4239881539980256
+      "crowd": 0.21635822983526692,
+      "market": 0.41855969067182214
     },
     {
       "team": "CLE",
       "name": "Cleveland Cavaliers",
-      "crowd": 0.16677041931436212,
-      "market": 0.2660414610069102
+      "crowd": 0.18284012434582272,
+      "market": 0.2484291928467859
     },
     {
       "team": "GSW",
       "name": "Golden State Warriors",
-      "crowd": 0.16384408262983066,
-      "market": 0.17818361303060215
+      "crowd": 0.17868742302533203,
+      "market": 0.17544707588206862
     },
     {
       "team": "PHI",
       "name": "Philadelphia 76ers",
-      "crowd": 0.1237899065481166,
-      "market": 0.07255676209279367
+      "crowd": 0.13466947165000553,
+      "market": 0.08893185113581441
     },
     {
       "team": "MIN",
       "name": "Minnesota Timberwolves",
-      "crowd": 0.060040381999033096,
-      "market": 0.036031589338598215
-    },
-    {
-      "team": "SAS",
-      "name": "San Antonio Spurs",
-      "crowd": 0.04141979769075782,
-      "market": 0.00592300098716683
-    },
-    {
-      "team": "DEN",
-      "name": "Denver Nuggets",
-      "crowd": 0.060387179509128475,
-      "market": 0.005429417571569594
+      "crowd": 0.06589288335730653,
+      "market": 0.04349927501208313
     },
     {
       "team": "LAC",
       "name": "LA Clippers",
-      "crowd": 0.036477311739533835,
-      "market": 0.004442250740375122
+      "crowd": 0.041109467763066176,
+      "market": 0.006766553890768487
     },
     {
-      "team": "NYK",
-      "name": "New York Knicks",
-      "crowd": 0.05772994135286959,
-      "market": 0.003948667324777887
+      "team": "SAS",
+      "name": "San Antonio Spurs",
+      "crowd": 0.046698310135238494,
+      "market": 0.005316578057032383
+    },
+    {
+      "team": "DEN",
+      "name": "Denver Nuggets",
+      "crowd": 0.06569444784068382,
+      "market": 0.005316578057032383
     },
     {
       "team": "LAL",
       "name": "Los Angeles Lakers",
-      "crowd": 0.0924342634813921,
-      "market": 0.003455083909180651
+      "crowd": 0.005,
+      "market": 0.004349927501208313
+    },
+    {
+      "team": "NYK",
+      "name": "New York Knicks",
+      "crowd": 0.06304964204727774,
+      "market": 0.0033832769453842437
     }
   ]
 }
