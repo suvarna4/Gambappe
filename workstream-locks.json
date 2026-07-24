@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-24T02:42:35.657Z",
+  "updated_at": "2026-07-24T02:48:00.667Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2809,13 +2809,13 @@
         "WS27-T4"
       ],
       "mock_start_ok": false,
-      "note": "Full spec: docs/plans/ws27-rumor-radar.md §4. Bounded tuning (RUMOR_TUNE_MAX_STEP) across sagas in chronological order; upload each skill version via @receipts/companion createXtraceClient (group rumor:lebron-2026, conv_id rumor:skill:<version>, agentId rumor-radar); lineage list/export script. Needs XTRACE_API_KEY + XTRACE_APP_ID in env.",
-      "status": "in_review",
+      "note": "Merged PR #185: tuneSkill (one bounded knob/saga) + trainSkill walk-forward + xTrace lineage upload; real run: Σ logLoss 9.690 vs 9.924 untrained, 7/7 versions in xTrace group grp_8a3e68ec",
+      "status": "done",
       "owner": "claude-code-web-session-54bb90dd",
       "branch": "claude/ws27-t5-training",
       "pr": "https://github.com/Gambappe/Gambappe/pull/185",
       "claimed_at": "2026-07-24T02:36:33.067Z",
-      "updated_at": "2026-07-24T02:42:35.657Z"
+      "updated_at": "2026-07-24T02:48:00.667Z"
     },
     "WS27-T6": {
       "title": "Rumor Radar: live pipeline — Reddit OAuth capture-once fetcher + daily odds vs Polymarket",
