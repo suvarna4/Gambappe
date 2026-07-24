@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-24T01:50:21.880Z",
+  "updated_at": "2026-07-24T01:57:14.132Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2750,12 +2750,12 @@
       "depends_on": [],
       "mock_start_ok": true,
       "note": "Full spec: docs/plans/ws27-rumor-radar.md §2A, §5. New Node-only workspace package packages/rumor (@receipts/rumor), modeled on @receipts/sim. JSONL snapshot format (one file per post, fetchedAt audit stamp, author hashed), saga manifest with outcomes (LeBron 2014→CLE, KD 2016→GSW, LeBron 2018→LAL, Kawhi 2019→LAC, Kyrie 2019→BKN, Harden 2021→BKN), Arctic Shift fetch script (undici EnvHttpProxyAgent), fixture corpus checked in for tests. Corpus data/ gitignored.",
-      "status": "claimed",
+      "status": "in_review",
       "owner": "claude-code-web-session-54bb90dd",
       "branch": "claude/ws27-t1-corpus-scaffold",
-      "pr": null,
+      "pr": "https://github.com/Gambappe/Gambappe/pull/181",
       "claimed_at": "2026-07-24T01:50:21.879Z",
-      "updated_at": "2026-07-24T01:50:21.879Z"
+      "updated_at": "2026-07-24T01:57:14.132Z"
     },
     "WS27-T2": {
       "title": "Rumor Radar: deterministic extractor — team lexicon + negation + stance cues",
