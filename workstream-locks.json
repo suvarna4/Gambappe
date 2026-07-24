@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-24T02:07:01.314Z",
+  "updated_at": "2026-07-24T02:18:04.181Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2764,13 +2764,13 @@
         "WS27-T1"
       ],
       "mock_start_ok": false,
-      "note": "Full spec: docs/plans/ws27-rumor-radar.md §2B. Pure function per comment → {team, stance ∈ [−1,1], confidence}[]. 30-team alias lexicon incl. nicknames/cities/indirect refs (homecoming→CLE, south beach→MIA), negation/hypothetical windows, stance cues. One comment may emit opposite stances for two teams; most comments emit nothing. Unit-tested against hand-annotated real comments from T1 fixtures.",
-      "status": "in_review",
+      "note": "Merged PR #182: extractTeamStances — 30-team lexicon, sentence-scoped signed cues, negation/hypothetical/sarcasm handling, skill injection points",
+      "status": "done",
       "owner": "claude-code-web-session-54bb90dd",
       "branch": "claude/ws27-t2-extractor",
       "pr": "https://github.com/Gambappe/Gambappe/pull/182",
       "claimed_at": "2026-07-24T02:02:48.691Z",
-      "updated_at": "2026-07-24T02:07:01.314Z"
+      "updated_at": "2026-07-24T02:18:04.180Z"
     },
     "WS27-T3": {
       "title": "Rumor Radar: weighting + aggregation + RumorSkill schema",
