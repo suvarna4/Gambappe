@@ -1,0 +1,28 @@
+{
+  "name": "@receipts/rumor",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Rumor Radar corpus + sentiment-odds pipeline (docs/plans/ws27-rumor-radar.md): upvote-weighted Reddit comment sentiment over player-destination sagas, compared against real-money market odds. Node-only tooling — never bundled into web or worker.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "@receipts/config": "workspace:*",
+    "@types/node": "^22.20.1",
+    "typescript": "^5.8.0",
+    "undici": "^8.8.0",
+    "vitest": "^3.2.0"
+  }
+}

@@ -312,6 +312,24 @@ importers:
         specifier: ^3.2.0
         version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
 
+  packages/rumor:
+    devDependencies:
+      '@receipts/config':
+        specifier: workspace:*
+        version: link:../config
+      '@types/node':
+        specifier: ^22.20.1
+        version: 22.20.1
+      typescript:
+        specifier: ^5.8.0
+        version: 5.9.3
+      undici:
+        specifier: ^8.8.0
+        version: 8.8.0
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
+
   packages/sim:
     dependencies:
       '@receipts/core':
