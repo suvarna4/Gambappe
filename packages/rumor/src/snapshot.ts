@@ -37,7 +37,12 @@ export interface SnapshotComment {
   createdUtc: number;
 }
 
-export type SnapshotSource = 'arctic-shift' | 'reddit-oauth';
+/**
+ * 'reddit-json' = the manual fallback: the owner saves public `/comments/<id>.json`
+ * pages from their own browser (residential IPs aren't blocked the way this sandbox's
+ * datacenter egress is) and drops them into scripts/ingest-reddit-json.mjs.
+ */
+export type SnapshotSource = 'arctic-shift' | 'reddit-oauth' | 'reddit-json';
 
 export interface PostSnapshot {
   version: 1;
@@ -78,7 +83,13 @@ export function isPostSnapshot(value: unknown): value is PostSnapshot {
   if (typeof value !== 'object' || value === null) return false;
   const s = value as Record<string, unknown>;
   if (s['version'] !== 1) return false;
-  if (s['source'] !== 'arctic-shift' && s['source'] !== 'reddit-oauth') return false;
+  if (
+    s['source'] !== 'arctic-shift' &&
+    s['source'] !== 'reddit-oauth' &&
+    s['source'] !== 'reddit-json'
+  ) {
+    return false;
+  }
   if (s['sagaId'] !== null && typeof s['sagaId'] !== 'string') return false;
   if (typeof s['fetchedAt'] !== 'string') return false;
   const post = s['post'] as Record<string, unknown> | null;

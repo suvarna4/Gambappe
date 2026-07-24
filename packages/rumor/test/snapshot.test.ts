@@ -63,6 +63,17 @@ describe('snapshot round-trip', () => {
     expect(isPostSnapshot(snapshot)).toBe(true);
   });
 
+  it('accepts the reddit-json manual-fallback source', () => {
+    const snapshot = assembleSnapshot({
+      source: 'reddit-json',
+      sagaId: 'lebron-2026',
+      fetchedAt: '2026-07-24T00:00:00.000Z',
+      post,
+      comments: [],
+    });
+    expect(isPostSnapshot(snapshot)).toBe(true);
+  });
+
   it('rejects structural corruption', () => {
     const good = assembleSnapshot({
       source: 'arctic-shift',
