@@ -894,6 +894,51 @@
   </section>
 
   <section class="slip">
+    <p class="eyebrow">The correction</p>
+    <h2>The day the owner beat the model</h2>
+    <p>
+      The raw crowd read carried the Lakers at <strong>9.2%</strong> — thirty times the market's
+      0.3%. It looked like the model's biggest edge. It was its biggest error: the Lakers had
+      <strong>officially announced LeBron's exit</strong> on June&nbsp;30, and the corpus never saw
+      it, because the announcement thread's title never says "LeBron"-as-rumor — a discovery gap,
+      found not by us but by the owner, with a link.
+    </p>
+    <p>
+      Two mechanisms absorbed the blow, both auditable. The thread itself entered the corpus through
+      the capture-once fallback. And the elimination became a
+      <strong>fact ledger</strong> entry — team, cap, reason, citation, date — applied
+      <em>after</em> aggregation, so the raw crowd signal survives underneath as the record of what
+      people actually said. Every snapshot row names the facts that bound.
+    </p>
+    <div class="tablewrap">
+      <table class="lineage">
+        <tr>
+          <th>Metric</th>
+          <th>Before</th>
+          <th>After</th>
+        </tr>
+        <tr>
+          <td>LAL crowd odds</td>
+          <td>9.2%</td>
+          <td>0.5% (market: 0.4%)</td>
+        </tr>
+        <tr>
+          <td>KL(crowd‖market)</td>
+          <td>0.616 nats</td>
+          <td>0.414 nats</td>
+        </tr>
+      </table>
+    </div>
+    <p class="sub">
+      A third of the crowd-market divergence was that single artifact. The point isn't that the
+      model was wrong — it's that the correction is explicit, cited, and reviewable, instead of
+      laundered through sentiment. Sentiment measures what the room believes; facts eliminate what
+      reality forbids; the ledger keeps those two kinds of knowledge separate. Discovery now sweeps
+      insider-news and fan-sub queries so the next announcement doesn't slip past the radar.
+    </p>
+  </section>
+
+  <section class="slip">
     <p class="eyebrow">The honest card</p>
     <h2>What this does and doesn't prove</h2>
     <div class="honest">
