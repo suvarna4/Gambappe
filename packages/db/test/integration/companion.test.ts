@@ -296,7 +296,7 @@ describe('xTrace group-id storage (XH-T10)', () => {
       expect(await listXtraceGroupIdsForPairings(db, [])).toEqual([]);
     });
 
-    it('a mix of known/unknown pairing ids returns only the known ones’ group ids', async () => {
+    it('a mix of known/unknown pairing ids returns only the known ones\' group ids', async () => {
       const known = await seedPairing();
       const unknown = await seedPairing();
       await insertXtraceGroupIdIdempotent(db, known, 'grp_known');
