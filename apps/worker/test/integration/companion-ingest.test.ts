@@ -536,4 +536,43 @@ describe('xTrace group id resolution (XH-T11)', () => {
     expect(await db.select().from(companionIngestLog)).toHaveLength(0);
     expect(await db.select().from(companionXtraceGroups)).toHaveLength(0);
   });
+
+  it('a cache-hit skip (repeat posts on the SAME already-failed pairing) does NOT re-count toward the circuit breaker', async () => {
+    // Regression: resolveGroupId's failure bookkeeping must fire only on the fresh
+    // createGroup() attempt, not on every later cache-hit skip for the same pairing — otherwise
+    // one pairing with many posts trips MAX_CONSECUTIVE_FAILURES (5) almost immediately, on
+    // cost-free cache hits that never touched xTrace, aborting the whole run and starving
+    // unrelated, perfectly healthy pairings later in the candidate list.
+    const seasonId = await seedSeason();
+    const host = await seedActivePairingHost(seasonId, '2026-02-02');
+    await seedManyPosts(host.id, host.profileAId, 8, AT); // 8 posts, all on the ONE bad pairing
+    const healthyHost = await seedActivePairingHost(seasonId, '2026-02-09');
+    await seedPost(healthyHost.id, healthyHost.profileAId, 'this one should still go through', AT);
+
+    let createGroupCalls = 0;
+    const ingestCalls: IngestArgs[] = [];
+    const client: XtraceClient = {
+      async ingest(args) {
+        ingestCalls.push(args);
+        return true;
+      },
+      async search() {
+        return [];
+      },
+      async createGroup(args) {
+        createGroupCalls += 1;
+        return args.name.includes(host.id) ? null : 'grp_healthy'; // only the bad pairing fails
+      },
+    };
+
+    const report = await runCompanionIngest(makeCtx(), client, AT);
+
+    // Exactly ONE real createGroup attempt for the bad pairing (the rest were cache hits) plus
+    // one for the healthy pairing — never re-attempted, never re-counted.
+    expect(createGroupCalls).toBe(2);
+    expect(report.aborted).toBe(false); // 1 real failure, nowhere near MAX_CONSECUTIVE_FAILURES
+    expect(report.postsSkipped).toBe(8); // all 8 bad-pairing posts skipped
+    expect(report.postsIngested).toBe(1); // the healthy pairing's post still went through
+    expect(ingestCalls).toHaveLength(1);
+  });
 });

@@ -115,12 +115,23 @@ async function attemptIngest(
  * whichever one actually got stored, and this function always returns THAT value, never the one
  * it just asked xTrace to create). `cache` is shared across one `runCompanionIngest` call so a
  * pairing hit by both the verdict loop and the post loop resolves its group exactly once.
+ *
+ * `recordIngestFailure` fires HERE, not at each call site, and only on the `createGroup` branch
+ * — the one place an actual (possibly slow, possibly outage-signaling) xTrace HTTP call just
+ * failed. A pairing whose group creation fails is cached as `null` so a LATER source hitting the
+ * same already-known-bad pairing this run gets an instant, free skip — that second (third,
+ * fourth, ...) skip must NOT count toward the circuit breaker again: it made no HTTP call and
+ * reveals nothing new about xTrace's health, so counting it would let a single bad pairing with
+ * many posts trip `MAX_CONSECUTIVE_FAILURES` and abort the ENTIRE run (including unrelated,
+ * perfectly healthy later pairings) after a handful of cost-free cache hits, defeating the
+ * breaker's actual purpose (bounding wall-clock time under a SUSTAINED, REAL outage).
  */
 async function resolveGroupId(
   db: Db,
   xtrace: XtraceClient,
   pairingId: string,
   cache: Map<string, string | null>,
+  state: RunState,
 ): Promise<string | null> {
   if (cache.has(pairingId)) return cache.get(pairingId)!;
 
@@ -133,6 +144,7 @@ async function resolveGroupId(
   const created = await xtrace.createGroup({ name: `pairing:${pairingId}` });
   if (!created) {
     cache.set(pairingId, null);
+    recordIngestFailure(state);
     return null;
   }
 
@@ -206,11 +218,8 @@ async function ingestOnePairingVerdict(
   state: RunState,
   groupCache: Map<string, string | null>,
 ): Promise<boolean> {
-  const groupId = await resolveGroupId(db, xtrace, pairing.id, groupCache);
-  if (groupId === null) {
-    recordIngestFailure(state);
-    return false;
-  }
+  const groupId = await resolveGroupId(db, xtrace, pairing.id, groupCache, state);
+  if (groupId === null) return false; // failure already recorded inside resolveGroupId
 
   const [profileA, profileB] = await Promise.all([
     getProfileById(db, pairing.profileAId),
@@ -269,11 +278,8 @@ async function ingestOnePost(
   state: RunState,
   groupCache: Map<string, string | null>,
 ): Promise<boolean> {
-  const groupId = await resolveGroupId(db, xtrace, post.pairingId, groupCache);
-  if (groupId === null) {
-    recordIngestFailure(state);
-    return false;
-  }
+  const groupId = await resolveGroupId(db, xtrace, post.pairingId, groupCache, state);
+  if (groupId === null) return false; // failure already recorded inside resolveGroupId
 
   const ok = await attemptIngest(xtrace, buildPostIngestArgs(post, at, groupId), state);
   if (ok) {
