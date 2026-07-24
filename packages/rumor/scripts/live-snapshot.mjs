@@ -17,9 +17,11 @@ import {
   LIVE_SAGA,
   POLYMARKET_GAMMA_BASE,
   aggregateCrowdOdds,
+  applyFactLedger,
   defaultRumorSkill,
   devigMarket,
   divergence,
+  isFactLedger,
   isRumorSkill,
   parseGammaEvent,
 } from '../dist/index.js';
@@ -44,10 +46,23 @@ if (existsSync(skillPath)) {
 const liveCorpusDir = join(DATA_DIR, LIVE_SAGA.id);
 const posts = existsSync(liveCorpusDir) ? readdirSync(liveCorpusDir).length : 0;
 const entries = loadSagaEntries(LIVE_SAGA.id);
-const crowd =
+const aggregated =
   entries !== null && entries.length > 0
     ? aggregateCrowdOdds(entries, skill, LIVE_SAGA.candidates, now)
     : null;
+
+// ---- fact ledger (WS27-T9): citation-backed caps, applied after aggregation ----------
+const ledgerPath = join(LIVE_DIR, 'fact-ledger.json');
+let ledger = null;
+if (existsSync(ledgerPath)) {
+  const loaded = JSON.parse(readFileSync(ledgerPath, 'utf8'));
+  if (isFactLedger(loaded)) ledger = loaded;
+  else console.warn('fact-ledger.json failed validation — ignored');
+}
+const application =
+  aggregated && ledger ? applyFactLedger(aggregated, ledger, LIVE_SAGA.candidates) : null;
+const crowd = application ? application.odds : aggregated;
+const appliedFacts = application ? application.applied : [];
 
 // ---- market side ---------------------------------------------------------------------
 const res = await fetch(`${POLYMARKET_GAMMA_BASE}/events?slug=${LIVE_SAGA.marketSlug}`);
@@ -66,6 +81,7 @@ const row = {
   kl: div ? div.kl : null,
   entriesUsed: crowd ? crowd.entriesUsed : 0,
   posts,
+  ...(appliedFacts.length > 0 ? { facts: appliedFacts.map((f) => `${f.team}≤${f.capAt}`) } : {}),
 };
 mkdirSync(LIVE_DIR, { recursive: true });
 appendFileSync(HISTORY, `${JSON.stringify(row)}\n`);
@@ -94,5 +110,10 @@ if (div) {
   console.log(
     `\nKL(crowd‖market) ${div.kl.toFixed(4)} nats · crowd top ${div.topCrowd} vs market top ${div.topMarket}${div.agree ? ' (agree)' : ' (DISAGREE)'}`,
   );
+}
+if (appliedFacts.length > 0) {
+  for (const f of appliedFacts) {
+    console.log(`fact ledger: ${f.team} capped at ${(100 * f.capAt).toFixed(1)}% — ${f.source}`);
+  }
 }
 console.log(`appended to ${HISTORY}`);

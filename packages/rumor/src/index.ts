@@ -18,3 +18,4 @@ export * from './train.js';
 export * from './polymarket.js';
 export * from './reddit-oauth.js';
 export * from './live.js';
+export * from './facts.js';

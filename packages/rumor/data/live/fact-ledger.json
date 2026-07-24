@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "facts": [
+    {
+      "team": "LAL",
+      "capAt": 0.005,
+      "reason": "The Lakers officially announced LeBron's exit on 2026-06-30 — a return is off the table; residual crowd mass is mention-not-belief.",
+      "source": "https://old.reddit.com/r/nba/comments/1ujutud/murray_the_lakers_have_officially_announced/",
+      "addedAt": "2026-07-24"
+    }
+  ]
+}
