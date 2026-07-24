@@ -1,0 +1,926 @@
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rumor Radar — LeBron 2026</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #f7f4ed;
+    --slip: #fffdf7;
+    --ink: #26231c;
+    --ink-2: #5d574a;
+    --muted: #8a8272;
+    --court: #b0521c;
+    --tear: #c9c2b0;
+    --crowd: #2a78d6;
+    --market: #e34948;
+    --neutral: #a6a49b;
+    --track: #edeadf;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --paper: #181611;
+      --slip: #201d16;
+      --ink: #ece6d8;
+      --ink-2: #b3ab98;
+      --muted: #7d7666;
+      --court: #d97a3d;
+      --tear: #3a362b;
+      --crowd: #5b96e0;
+      --market: #d85e5d;
+      --neutral: #6e6a5e;
+      --track: #2a271e;
+    }
+  }
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+    --paper: #181611;
+    --slip: #201d16;
+    --ink: #ece6d8;
+    --ink-2: #b3ab98;
+    --muted: #7d7666;
+    --court: #d97a3d;
+    --tear: #3a362b;
+    --crowd: #5b96e0;
+    --market: #d85e5d;
+    --neutral: #6e6a5e;
+    --track: #2a271e;
+  }
+  :root[data-theme='light'] {
+    color-scheme: light;
+    --paper: #f7f4ed;
+    --slip: #fffdf7;
+    --ink: #26231c;
+    --ink-2: #5d574a;
+    --muted: #8a8272;
+    --court: #b0521c;
+    --tear: #c9c2b0;
+    --crowd: #2a78d6;
+    --market: #e34948;
+    --neutral: #a6a49b;
+    --track: #edeadf;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font:
+      15px/1.55 -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      Roboto,
+      sans-serif;
+  }
+  .mono,
+  h1,
+  h2,
+  .eyebrow,
+  .chip,
+  .stat b,
+  table,
+  .lineage,
+  .bar-val,
+  .tm,
+  .legend {
+    font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .slip {
+    background: var(--slip);
+    border: 1px solid var(--tear);
+    border-bottom: none;
+    padding: 28px 30px 30px;
+  }
+  .slip:first-child {
+    border-radius: 8px 8px 0 0;
+  }
+  .slip:last-child {
+    border-bottom: 1px solid var(--tear);
+    border-radius: 0 0 8px 8px;
+  }
+  .slip + .slip {
+    border-top: 1px dashed var(--tear);
+  }
+
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--court);
+    margin: 0 0 10px;
+  }
+  h1 {
+    font-size: 26px;
+    line-height: 1.25;
+    margin: 0 0 8px;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+  h2 {
+    font-size: 17px;
+    margin: 0 0 6px;
+    text-wrap: balance;
+  }
+  p {
+    margin: 10px 0 0;
+    color: var(--ink-2);
+    max-width: 62ch;
+  }
+  p strong,
+  li strong {
+    color: var(--ink);
+  }
+  .sub {
+    color: var(--muted);
+    font-size: 13px;
+    margin-top: 6px;
+  }
+  a {
+    color: var(--court);
+  }
+
+  .statrow {
+    display: flex;
+    gap: 26px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+  }
+  .stat b {
+    display: block;
+    font-size: 21px;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat span {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .legend {
+    display: flex;
+    gap: 18px;
+    font-size: 12px;
+    color: var(--ink-2);
+    margin: 16px 0 10px;
+    flex-wrap: wrap;
+  }
+  .legend i {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    margin-right: 6px;
+    vertical-align: -1px;
+  }
+  .legend .k-market i {
+    background: var(--market);
+  }
+  .legend .k-crowd i {
+    background: none;
+    border: 2px solid var(--crowd);
+    width: 7px;
+    height: 7px;
+  }
+  .legend .k-inc i {
+    background: var(--market);
+  }
+  .legend .k-win i {
+    background: var(--crowd);
+  }
+
+  .chart {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    margin-top: 6px;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 44px 1fr;
+    gap: 10px;
+    align-items: center;
+  }
+  .tm {
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+  /* right margin reserves the value-label gutter so labels never overflow the slip */
+  .pair {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-right: 88px;
+  }
+  .track {
+    position: relative;
+    height: 12px;
+    background: var(--track);
+    border-radius: 4px;
+  }
+  .fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    border-radius: 4px;
+    min-width: 2px;
+    display: flex;
+    align-items: center;
+  }
+  .fill.market {
+    background: var(--market);
+  }
+  .fill.crowd-v0 {
+    background: none;
+    border: 2px solid var(--crowd);
+  }
+  .fill.inc {
+    background: var(--market);
+  }
+  .fill.win {
+    background: var(--crowd);
+  }
+  .bar-val {
+    position: absolute;
+    left: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    color: var(--ink-2);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .fill .bar-val {
+    left: auto;
+  }
+  .none {
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* diverging Δ chart */
+  .dchart {
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .drow {
+    display: grid;
+    grid-template-columns: 96px 1fr 64px;
+    gap: 10px;
+    align-items: center;
+    font-size: 12px;
+  }
+  .drow .lbl {
+    color: var(--ink-2);
+  }
+  .drow .val {
+    color: var(--ink-2);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  .daxis {
+    position: relative;
+    height: 12px;
+  }
+  .daxis::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: -3px;
+    bottom: -3px;
+    width: 1px;
+    background: var(--tear);
+  }
+  .dbar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-radius: 4px;
+    min-width: 2px;
+  }
+  .dbar.pos {
+    left: 50%;
+    background: var(--crowd);
+  }
+  .dbar.neg {
+    right: 50%;
+    background: var(--market);
+  }
+  .dbar.zero {
+    left: 50%;
+    width: 2px;
+    background: var(--neutral);
+  }
+
+  .comment {
+    border-left: 3px solid var(--tear);
+    padding: 8px 0 8px 16px;
+    margin-top: 16px;
+  }
+  .comment q {
+    quotes: '\201C' '\201D';
+    color: var(--ink);
+    display: block;
+    max-width: 60ch;
+  }
+  .comment .meta {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+  .chips {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .chip {
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--tear);
+    color: var(--ink-2);
+    background: var(--paper);
+  }
+  .chip.pos {
+    border-color: var(--crowd);
+    color: var(--crowd);
+  }
+  .chip.neg {
+    border-color: var(--market);
+    color: var(--market);
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 12.5px;
+    margin-top: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  th {
+    text-align: left;
+    font-weight: 600;
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  th,
+  td {
+    padding: 7px 12px 7px 0;
+    border-bottom: 1px dashed var(--tear);
+  }
+  tr:last-child td {
+    border-bottom: none;
+  }
+  td {
+    color: var(--ink-2);
+  }
+  td:first-child {
+    color: var(--ink);
+  }
+  .num {
+    text-align: right;
+  }
+  th.num {
+    text-align: right;
+  }
+  .tablewrap {
+    overflow-x: auto;
+  }
+
+  .formula {
+    background: var(--paper);
+    border: 1px dashed var(--tear);
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin-top: 16px;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 13px;
+    color: var(--ink);
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .formula small {
+    color: var(--muted);
+  }
+
+  .honest {
+    border-left: 3px solid var(--court);
+    padding-left: 16px;
+    margin-top: 16px;
+  }
+  .honest p {
+    margin-top: 6px;
+  }
+
+  ul {
+    margin: 10px 0 0;
+    padding-left: 20px;
+    color: var(--ink-2);
+  }
+  li {
+    margin-top: 6px;
+    max-width: 60ch;
+  }
+  footer {
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    padding-top: 26px;
+  }
+</style>
+
+<main>
+  <section class="slip">
+    <p class="eyebrow">Rumor Radar · Receipts × xTrace · live experiment</p>
+    <h1>Which team will LeBron James join?</h1>
+    <p>
+      Polymarket has <strong>$40M of real money</strong> on the answer. We built a second oracle
+      from a different substance entirely:
+      <strong>every top Reddit thread about the saga, weighted by upvotes</strong>, read by a
+      deterministic extractor whose knobs live in a versioned xTrace skill. When LeBron signs — the
+      market closes by <strong>Oct&nbsp;31,&nbsp;2026</strong> — reality grades both oracles with
+      the same Brier score. Nobody can leak this exam, because nobody on Earth knows the answer.
+    </p>
+    <div class="statrow">
+      <div class="stat"><b>154,893</b><span>archived comments read</span></div>
+      <div class="stat"><b>6</b><span>resolved sagas trained on</span></div>
+      <div class="stat"><b>7</b><span>skill versions in xTrace</span></div>
+      <div class="stat"><b>Oct 31</b><span>the market resolves</span></div>
+    </div>
+  </section>
+
+  <section class="slip">
+    <p class="eyebrow">The scoreboard · 2026-07-24</p>
+    <h2>Money vs mentions, today</h2>
+    <p>
+      Solid bars are Polymarket's de-vigged prices this morning. Outlined bars are the first Reddit
+      read — a naive pass over three days of r/nba post titles weighted by
+      <span class="mono">log1p(upvotes)</span>. No stance detection, no training, and it still lands
+      within ~2 points of the money on four teams.
+    </p>
+    <div class="legend">
+      <span class="k-market"><i></i>Polymarket (de-vigged)</span>
+      <span class="k-crowd"><i></i>Reddit v0 (post titles only)</span>
+    </div>
+    <div class="chart">
+      <div class="row">
+        <span class="tm">MIA</span>
+        <div class="pair">
+          <div class="track">
+            <div class="fill market" style="width: 88%"></div>
+            <span class="bar-val">41.9%</span>
+          </div>
+          <div class="track">
+            <div class="fill crowd-v0" style="width: 90%"></div>
+            <span class="bar-val">42.8%</span>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <span class="tm">CLE</span>
+        <div class="pair">
+          <div class="track">
+            <div class="fill market" style="width: 52%"></div>
+            <span class="bar-val">24.6%</span>
+          </div>
+          <div class="track">
+            <div class="fill crowd-v0" style="width: 36%"></div>
+            <span class="bar-val">17.0%</span>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <span class="tm">GSW</span>
+        <div class="pair">
+          <div class="track">
+            <div class="fill market" style="width: 43%"></div>
+            <span class="bar-val">20.6%</span>
+          </div>
+          <div class="track">
+            <div class="fill crowd-v0" style="width: 50%"></div>
+            <span class="bar-val">24.0%</span>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <span class="tm">PHI</span>
+        <div class="pair">
+          <div class="track">
+            <div class="fill market" style="width: 16%"></div>
+            <span class="bar-val">7.4%</span>
+          </div>
+          <div class="track">
+            <div class="fill crowd-v0" style="width: 17%"></div>
+            <span class="bar-val">8.0%</span>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <span class="tm">MIN</span>
+        <div class="pair">
+          <div class="track">
+            <div class="fill market" style="width: 7%"></div>
+            <span class="bar-val">3.3%</span>
+          </div>
+          <div class="track">
+            <div class="fill crowd-v0" style="width: 6%"></div>
+            <span class="bar-val">2.9%</span>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <span class="tm">LAL</span>
+        <div class="pair">
+          <div class="track">
+            <div class="fill market" style="width: 1%"></div>
+            <span class="bar-val">0.4%</span>
+          </div>
+          <div class="track">
+            <div class="fill crowd-v0" style="width: 10%"></div>
+            <span class="bar-val">4.8%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="sub">
+      The LAL gap is the tell: Reddit mentions the Lakers constantly because he is
+      <em>leaving</em> them. Mention ≠ destination belief — that gap is precisely what the stance
+      extractor below exists to close. The Warriors surged 15.9%&nbsp;→&nbsp;20.6% in the two hours
+      between our first probe and this snapshot; the daily history file records every move from here
+      to resolution.
+    </p>
+  </section>
+
+  <section class="slip">
+    <p class="eyebrow">The mechanism</p>
+    <h2>How a comment becomes a number</h2>
+    <div class="formula">
+      weight = log1p(upvotes)<sup>α</sup> · homerDiscount · ½<sup>(age&nbsp;/&nbsp;halfLife)</sup>
+      &nbsp;&nbsp;<small>— every knob lives in the skill, not the code</small>
+    </div>
+    <p>
+      A deterministic extractor reads each comment sentence by sentence: team aliases (including
+      “homecoming” and “south beach”), signed stance cues, negation windows, sarcasm markers. Every
+      output is reproducible and auditable — here are three real comments from the 8,880-upvote
+      thread about the Miami Heat's accidentally-published “LeBron James Introductory Press
+      Conference” video:
+    </p>
+    <div class="comment">
+      <q
+        >LeBron uses the Warriors as leverage. Miami tanks LeBron's value by leaking that they've
+        already got him.</q
+      >
+      <div class="chips">
+        <span class="chip neg">GSW − “leverage”</span><span class="chip pos">MIA +</span
+        ><span class="chip">one comment, two teams, opposite signs</span>
+      </div>
+    </div>
+    <div class="comment">
+      <q>2nd homecoming is not as dramatic as the 1st. But a ring? that's “hell yeah” anytime</q>
+      <div class="chips">
+        <span class="chip pos">CLE + via “homecoming”</span
+        ><span class="chip">no team named — lexicon work</span>
+      </div>
+    </div>
+    <div class="comment">
+      <q>Shouldn't the league be investigating this?</q>
+      <div class="chips"><span class="chip">no team, no stance → weight 0</span></div>
+    </div>
+    <p class="sub">
+      Most comments emit nothing, and that's correct — dropping noise cleanly matters as much as
+      scoring the signal.
+    </p>
+  </section>
+
+  <section class="slip">
+    <p class="eyebrow">The archive</p>
+    <h2>Six sagas whose endings we already know</h2>
+    <p>
+      The Reddit archive preserves real upvotes for everything before 2023. So the skill trains the
+      honest way: replay each saga day by day, compute odds from only what existed that morning, and
+      grade against how history actually ended.
+    </p>
+    <div class="tablewrap">
+      <table>
+        <tr>
+          <th>Saga</th>
+          <th>Window</th>
+          <th>Went to</th>
+          <th class="num">Posts</th>
+          <th class="num">Eve rank</th>
+        </tr>
+        <tr>
+          <td>LeBron 2014</td>
+          <td>Jun 25 – Jul 11</td>
+          <td>CLE</td>
+          <td class="num">50</td>
+          <td class="num">#2</td>
+        </tr>
+        <tr>
+          <td>Durant 2016</td>
+          <td>Jun 20 – Jul 4</td>
+          <td>GSW</td>
+          <td class="num">50</td>
+          <td class="num">#1</td>
+        </tr>
+        <tr>
+          <td>LeBron 2018</td>
+          <td>Jun 25 – Jul 1</td>
+          <td>LAL</td>
+          <td class="num">50</td>
+          <td class="num">#1</td>
+        </tr>
+        <tr>
+          <td>Kyrie 2019</td>
+          <td>Jun 15 – Jun 30</td>
+          <td>BKN</td>
+          <td class="num">50</td>
+          <td class="num">#2</td>
+        </tr>
+        <tr>
+          <td>Kawhi 2019</td>
+          <td>Jun 25 – Jul 6</td>
+          <td>LAC</td>
+          <td class="num">50</td>
+          <td class="num">#3</td>
+        </tr>
+        <tr>
+          <td>Harden 2021</td>
+          <td>Dec 1 – Jan 13</td>
+          <td>BKN</td>
+          <td class="num">50</td>
+          <td class="num">#4</td>
+        </tr>
+      </table>
+    </div>
+    <p class="sub">
+      “Eve rank” = where the untrained crowd read ranked the true destination on the night before
+      the announcement. Two firsts, and a pattern in every miss ↓
+    </p>
+  </section>
+
+  <section class="slip">
+    <p class="eyebrow">The exam</p>
+    <h2>The crowd's one reliable bias: it loves the incumbent</h2>
+    <p>
+      Eve-of-decision odds, incumbent team vs the eventual destination. When they differ, the
+      incumbent's fan chatter drowns the signal — most brutally in the Harden saga, where Houston
+      still soaked up <strong>75.9%</strong> of weighted stance while he was packing for Brooklyn.
+    </p>
+    <div class="legend">
+      <span class="k-inc"><i></i>incumbent team's odds</span>
+      <span class="k-win"><i></i>actual destination's odds</span>
+    </div>
+    <div class="chart">
+      <div class="row">
+        <span class="tm">2014</span>
+        <div class="pair">
+          <div class="track">
+            <div class="fill inc" style="width: 58%"></div>
+            <span class="bar-val">MIA 46.1%</span>
+          </div>
+          <div class="track">
+            <div class="fill win" style="width: 49%"></div>
+            <span class="bar-val">CLE 39.3% ✓</span>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <span class="tm">2016</span>
+        <div class="pair">
+          <div class="track">
+            <div class="fill inc" style="width: 30%"></div>
+            <span class="bar-val">OKC 24.2%</span>
+          </div>
+          <div class="track">
+            <div class="fill win" style="width: 34%"></div>
+            <span class="bar-val">GSW 27.5% ✓</span>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <span class="tm">2018</span>
+        <div class="pair">
+          <div class="track">
+            <div class="fill inc" style="width: 39%"></div>
+            <span class="bar-val">CLE 31.5%</span>
+          </div>
+          <div class="track">
+            <div class="fill win" style="width: 46%"></div>
+            <span class="bar-val">LAL 37.1% ✓</span>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <span class="tm">Kyrie</span>
+        <div class="pair">
+          <div class="track">
+            <div class="fill inc" style="width: 56%"></div>
+            <span class="bar-val">BOS 44.5%</span>
+          </div>
+          <div class="track">
+            <div class="fill win" style="width: 34%"></div>
+            <span class="bar-val">BKN 27.3% ✓</span>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <span class="tm">Kawhi</span>
+        <div class="pair">
+          <div class="track">
+            <div class="fill inc" style="width: 40%"></div>
+            <span class="bar-val">TOR 32.0%</span>
+          </div>
+          <div class="track">
+            <div class="fill win" style="width: 23%"></div>
+            <span class="bar-val">LAC 18.5% ✓</span>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <span class="tm">Harden</span>
+        <div class="pair">
+          <div class="track">
+            <div class="fill inc" style="width: 95%"></div>
+            <span class="bar-val">HOU 75.9%</span>
+          </div>
+          <div class="track">
+            <div class="fill win" style="width: 7%"></div>
+            <span class="bar-val">BKN 5.5% ✓</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="sub">
+      Kawhi 2019 is the humility case: the crowd's actual leader was the Lakers at 49.5% — reality
+      surprised the real market too. No oracle gets that one.
+    </p>
+  </section>
+
+  <section class="slip">
+    <p class="eyebrow">The training</p>
+    <h2>What six endings taught the skill</h2>
+    <p>
+      Training is deliberately austere: one knob per saga, moved at most 10% of its range, chosen by
+      deterministic grid search — six sagas physically cannot overfit four scalars. Walk-forward
+      honesty throughout: each saga is scored by the skill trained only on <em>earlier</em> sagas,
+      and only then learned from.
+    </p>
+    <div class="dchart">
+      <div class="drow">
+        <span class="lbl">LeBron 2014</span>
+        <div class="daxis"><div class="dbar zero"></div></div>
+        <span class="val">±0.000</span>
+      </div>
+      <div class="drow">
+        <span class="lbl">Durant 2016</span>
+        <div class="daxis"><div class="dbar neg" style="width: 13%"></div></div>
+        <span class="val">−0.103</span>
+      </div>
+      <div class="drow">
+        <span class="lbl">LeBron 2018</span>
+        <div class="daxis"><div class="dbar zero"></div></div>
+        <span class="val">±0.000</span>
+      </div>
+      <div class="drow">
+        <span class="lbl">Kyrie 2019</span>
+        <div class="daxis"><div class="dbar neg" style="width: 3%"></div></div>
+        <span class="val">−0.026</span>
+      </div>
+      <div class="drow">
+        <span class="lbl">Kawhi 2019</span>
+        <div class="daxis"><div class="dbar zero"></div></div>
+        <span class="val">±0.000</span>
+      </div>
+      <div class="drow">
+        <span class="lbl">Harden 2021</span>
+        <div class="daxis"><div class="dbar pos" style="width: 45%"></div></div>
+        <span class="val">+0.363</span>
+      </div>
+    </div>
+    <p class="sub">
+      Mean log-loss vs the untrained twin, per saga (right = trained better). Net:
+      <strong>9.924 → 9.690</strong>. The win lands exactly on the worst incumbent-bias saga.
+    </p>
+    <p>
+      And the headline lesson is legible in one number: final temperature
+      <strong>τ&nbsp;=&nbsp;1.54</strong>. The skill learned to <strong>flatten</strong> — crowd
+      chatter overconcentrates on incumbents, so it shades every distribution toward the field. It
+      learned humility, from data, with an audit trail.
+    </p>
+  </section>
+
+  <section class="slip">
+    <p class="eyebrow">The ledger</p>
+    <h2>Seven versions, in xTrace, each stamped with what it knew</h2>
+    <p>
+      Every training step ships to xTrace as a versioned memory — group
+      <span class="mono">rumor:lebron-2026</span>, agent <span class="mono">rumor-radar</span>. The
+      <span class="mono">cutoff</span> stamp is the audit key: it proves what data each version had
+      seen. A skill isn't a deploy — it's a record you can diff, export, and hand to another agent.
+    </p>
+    <div class="tablewrap">
+      <table class="lineage">
+        <tr>
+          <th>Version</th>
+          <th>Cutoff</th>
+          <th>Knob moved</th>
+        </tr>
+        <tr>
+          <td>skill@lebron-2014</td>
+          <td>2014-07-11</td>
+          <td>temperature 1.00 → 1.27</td>
+        </tr>
+        <tr>
+          <td>skill@kd-2016</td>
+          <td>2016-07-04</td>
+          <td>temperature 1.27 → 1.00</td>
+        </tr>
+        <tr>
+          <td>skill@lebron-2018</td>
+          <td>2018-07-01</td>
+          <td>half-life 7.0d → 5.0d</td>
+        </tr>
+        <tr>
+          <td>skill@kyrie-2019</td>
+          <td>2019-06-30</td>
+          <td>half-life 5.0d → 7.0d</td>
+        </tr>
+        <tr>
+          <td>skill@kawhi-2019</td>
+          <td>2019-07-06</td>
+          <td>temperature 1.00 → 1.27</td>
+        </tr>
+        <tr>
+          <td>skill@harden-2021</td>
+          <td>2021-01-13</td>
+          <td>temperature 1.27 → 1.54</td>
+        </tr>
+        <tr>
+          <td>skill@live</td>
+          <td>2021-01-13</td>
+          <td>— deployed against 2026</td>
+        </tr>
+      </table>
+    </div>
+    <p class="sub">
+      The early oscillation (1.00 → 1.27 → 1.00) is the bounded step doing its job: single sagas
+      tug, only the accumulated record moves the needle.
+    </p>
+  </section>
+
+  <section class="slip">
+    <p class="eyebrow">The honest card</p>
+    <h2>What this does and doesn't prove</h2>
+    <div class="honest">
+      <p>
+        <strong>The exam is sealed by physics, not policy.</strong> Every prior test of a model
+        risks leakage. This one can't leak: the answer doesn't exist yet. On resolution we publish
+        Brier(crowd) next to Brier(market-close), whatever they say.
+      </p>
+      <p>
+        <strong>Capture-once, by decision.</strong> Each live thread is snapshotted exactly once,
+        two hours after posting — no re-crawling, no survivor-editing. The
+        <span class="mono">fetchedAt</span> stamp is an audit mark, not a version axis.
+      </p>
+      <p>
+        <strong>xTrace is load-bearing for the lifecycle, not the math.</strong> The extraction is
+        deterministic code; what xTrace holds is the part that changes — the knobs, their history,
+        and proof of what each version had seen. Improvement without redeploys, lineage without
+        trust.
+      </p>
+      <p>
+        <strong>The crowd will be wrong sometimes.</strong> It ranked Kawhi's destination third. So
+        did nearly everyone with money on the line. The claim isn't omniscience — it's a measured,
+        auditable read of what the loudest room on the internet believes, priced against what the
+        money believes.
+      </p>
+    </div>
+  </section>
+
+  <section class="slip">
+    <footer>
+      Rumor Radar · <span class="mono">packages/rumor</span> · corpus via the public Reddit archive
+      + official API · market via Polymarket gamma · reproduce:
+      <span class="mono">fetch-sagas → train-and-upload → live-snapshot</span>
+    </footer>
+  </section>
+</main>
