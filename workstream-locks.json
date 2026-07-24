@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-24T02:30:51.682Z",
+  "updated_at": "2026-07-24T02:36:31.583Z",
   "tasks": {
     "WS0-T1": {
       "title": "Monorepo scaffold",
@@ -2794,13 +2794,13 @@
         "WS27-T3"
       ],
       "mock_start_ok": false,
-      "note": "Full spec: docs/plans/ws27-rumor-radar.md §2D. Replay a saga day-by-day: odds from comments dated ≤ D only; outcome reaches tuning only via observe AFTER the day's odds are recorded (structural leakage discipline, as @receipts/sim). Log-loss/Brier per day, trained-vs-untrained report. Runs on T1 historical corpus.",
-      "status": "in_review",
+      "note": "Merged PR #184: replaySaga walk-forward harness, structural leakage (outcome-free SagaView, harness-sliced entries, once-per-saga observe); untrained baseline 2/6 rank-1, Σ final logLoss 9.099",
+      "status": "done",
       "owner": "claude-code-web-session-54bb90dd",
       "branch": "claude/ws27-t4-backtest",
       "pr": "https://github.com/Gambappe/Gambappe/pull/184",
       "claimed_at": "2026-07-24T02:27:34.702Z",
-      "updated_at": "2026-07-24T02:30:51.682Z"
+      "updated_at": "2026-07-24T02:36:31.583Z"
     },
     "WS27-T5": {
       "title": "Rumor Radar: training + xTrace skill versioning (lineage upload)",
