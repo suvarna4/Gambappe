@@ -152,11 +152,14 @@ function cueScoreAround(
   start: number,
   end: number,
   cues: Array<{ phrase: string[]; weight: number }>,
-): { score: number; hits: number } {
+): { score: number; hits: number; cueTokens: Set<number> } {
   const lo = Math.max(0, start - CUE_WINDOW);
   const hi = Math.min(tokens.length, end + CUE_WINDOW);
   let score = 0;
   let hits = 0;
+  // Positions consumed by matched cues: a "no" inside the cue "no chance" must not ALSO
+  // fire as a standalone negator and flip the cue's own sign back (double negation bug).
+  const cueTokens = new Set<number>();
   for (const cue of cues) {
     for (let i = lo; i + cue.phrase.length <= hi; i++) {
       // A cue overlapping the alias itself doesn't count.
@@ -164,10 +167,11 @@ function cueScoreAround(
       if (matchesAt(tokens, i, cue.phrase)) {
         score += cue.weight;
         hits += 1;
+        for (let k = i; k < i + cue.phrase.length; k++) cueTokens.add(k);
       }
     }
   }
-  return { score, hits };
+  return { score, hits, cueTokens };
 }
 
 export interface ExtractOptions {
@@ -206,7 +210,7 @@ export function extractTeamStances(text: string, opts: ExtractOptions = {}): Tea
         const end = i + phrase.length;
         for (let k = start; k < end; k++) consumed.add(k);
 
-        const { score, hits } = cueScoreAround(tokens, start, end, cues);
+        const { score, hits, cueTokens } = cueScoreAround(tokens, start, end, cues);
         let stance: number;
         let confidence: number;
         if (hits === 0) {
@@ -218,7 +222,7 @@ export function extractTeamStances(text: string, opts: ExtractOptions = {}): Tea
         }
 
         for (let k = Math.max(0, start - PRE_WINDOW); k < start; k++) {
-          if (NEGATORS.has(tokens[k]!.text)) {
+          if (NEGATORS.has(tokens[k]!.text) && !cueTokens.has(k)) {
             stance = -stance;
             break;
           }

@@ -11,3 +11,5 @@ export * from './sagas.js';
 export * from './arctic-shift.js';
 export * from './lexicon.js';
 export * from './extract.js';
+export * from './skill.js';
+export * from './aggregate.js';
