@@ -11,6 +11,7 @@ import { markets, picks, profiles, questions } from '../schema/index.js';
 import type {
   callouts,
   companionArtifacts,
+  companionXtraceGroups,
   duoMatches,
   duos,
   fingerprints,
@@ -37,6 +38,7 @@ export type DuoMatchRow = typeof duoMatches.$inferInsert;
 export type TopicFollowRow = typeof topicFollows.$inferInsert;
 export type CalloutRow = typeof callouts.$inferInsert;
 export type CompanionArtifactRow = typeof companionArtifacts.$inferInsert;
+export type CompanionXtraceGroupRow = typeof companionXtraceGroups.$inferInsert;
 
 let seq = 0;
 function nextSeq(): number {
@@ -426,6 +428,22 @@ export function buildCompanionArtifact(
     pairingId: null,
     seasonId: null,
     content: { lines: ['test banter line'], model: 'test', promptVersion: 1 },
+    createdAt: T0,
+    ...overrides,
+  };
+}
+
+/** A `companion_xtrace_groups` row (XH-T10). `pairingId` must reference an already-inserted
+ * `nemesis_pairings` row (FK) — unlike `cacheKey`-style defaults, there is no sensible random
+ * default for a foreign key, so it's a required parameter, mirroring `buildCompanionArtifact`'s
+ * `profileId`. Defaults `xtraceGroupId` to a fake-but-realistic `grp_...` id. */
+export function buildCompanionXtraceGroup(
+  pairingId: string,
+  overrides: Partial<CompanionXtraceGroupRow> = {},
+): CompanionXtraceGroupRow {
+  return {
+    pairingId,
+    xtraceGroupId: 'grp_test',
     createdAt: T0,
     ...overrides,
   };

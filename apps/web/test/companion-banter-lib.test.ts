@@ -77,6 +77,9 @@ function fakeXtrace(
         searchCalls.push(args);
         return searchResults;
       },
+      async createGroup() {
+        return 'grp_test';
+      },
     },
   };
 }

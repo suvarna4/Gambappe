@@ -31,3 +31,10 @@ export const xtraceIngestAcceptedSchema = z
   })
   .passthrough();
 export type XtraceIngestAccepted = z.infer<typeof xtraceIngestAcceptedSchema>;
+
+export const xtraceGroupSchema = z
+  .object({
+    id: z.string(),
+  })
+  .passthrough();
+export type XtraceGroupWire = z.infer<typeof xtraceGroupSchema>;

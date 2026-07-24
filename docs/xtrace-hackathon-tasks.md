@@ -1337,10 +1337,38 @@ wires it in.
   //    losing the race would split one pairing's memory across two
   //    groups, permanently.
   ```
-- `packages/db/src/testing/factories.ts` — add `buildCompanionXtraceGroup`
-  (defaults: a fresh `pairingId`, `xtraceGroupId: 'grp_test'`) for T11's
+- `packages/db/src/testing/factories.ts` — add
+  `buildCompanionXtraceGroup(pairingId: string, overrides?)`, defaulting
+  `xtraceGroupId: 'grp_test'`. `pairingId` is a REQUIRED parameter, not a
+  default — it's a foreign key into `nemesis_pairings`, so (unlike
+  `cacheKey`-style string defaults) there is no sensible random value;
+  callers pass an already-inserted pairing's real id, mirroring
+  `buildCompanionArtifact`'s required `profileId` parameter. For T11's
   tests, following the existing `buildCompanionArtifact` pattern right
   above it.
+- **Required here, not deferrable to T11:** adding `createGroup` to
+  `XtraceClient` is a breaking interface change — every fake object
+  implementing the full interface fails to typecheck the moment THIS
+  task's client change lands, regardless of whether T11 has wired
+  anything in yet. `pnpm verify` cannot be green on this task's own PR
+  without also fixing these (found empirically: `pnpm verify` after only
+  the client/schema/db changes above fails at `worker:typecheck` and
+  `web:typecheck`, not at any test assertion — pure compile errors). Add
+  a minimal `async createGroup() { return 'grp_test'; }` alongside each
+  fake's existing `ingest`/`search` methods, with NO other behavior
+  change (T11 later extends these same fakes with real call-counting/
+  scripting for its own new test cases — this task's stub is deliberately
+  inert):
+  - `apps/worker/test/integration/companion-ingest.test.ts` — three object
+    literals: `makeCapturingXtrace` and `makeScriptedXtrace` (two
+    factories), plus one inline `const client: XtraceClient = {...}` in
+    the circuit-breaker deadline test.
+  - `apps/worker/test/integration/companion-season-recap.test.ts` — one
+    object literal, inside `makeFakeXtrace`.
+  - `apps/web/test/companion-banter-lib.test.ts` — one object literal.
+  - `apps/web/test/callout-draft-lib.test.ts` — two object literals (both
+    inline `const xtrace = {...}` in separate `it()` blocks under the
+    "memory scoping" describe).
 
 **Acceptance criteria:**
 - `pnpm --filter @receipts/db db:check` clean; migration applies on a
@@ -1510,35 +1538,33 @@ to fix.
     already there, just gated on the resolved ids instead of the raw
     pairing ids — an empty `groupIds` array in a search call is
     pointless work, not an error, but there's no reason to make it).
-- Test-double updates (adding `createGroup` to `XtraceClient` is a
-  compile-time breaking change for every fake implementing the full
-  interface — all of these currently define only `ingest`/`search`):
-  - `apps/worker/test/integration/companion-ingest.test.ts` —
-    `makeCapturingXtrace` and `makeScriptedXtrace` (two factories) each
-    need `async createGroup() { return 'grp_test'; }` added alongside
-    their existing `ingest`/`search`. This file's own test cases also need
-    new coverage (extend `makeCapturingXtrace`'s captured-calls shape, or
-    add a sibling fake, so `createGroup` calls are counted, not just
-    `ingest` calls): (a) a pairing whose verdict AND whose posts are both
-    candidates in the SAME `runCompanionIngest` call resolves its group id
-    via `xtrace.createGroup` exactly ONCE, not twice — this is what the
+- Test-double coverage: T10 already added a minimal `async createGroup()
+  { return 'grp_test'; }` stub to every fake `XtraceClient` (it's a
+  breaking interface change that had to be fixed on T10's own PR for
+  `pnpm verify` to pass there — see T10's Files list for the exact
+  locations). This task EXTENDS those same fakes with real behavior for
+  its own new test cases; it does not re-add the stub.
+  - `apps/worker/test/integration/companion-ingest.test.ts` — extend
+    `makeCapturingXtrace`'s (or a sibling fake's) `createGroup` so calls
+    are actually counted/scripted, not just stubbed, then add: (a) a
+    pairing whose verdict AND whose posts are both candidates in the SAME
+    `runCompanionIngest` call resolves its group id via
+    `xtrace.createGroup` exactly ONCE, not twice — this is what the
     shared `groupCache` is for; (b) a pairing pre-seeded with an existing
     `companion_xtrace_groups` row (via the new `buildCompanionXtraceGroup`
     factory, inserted before calling `runCompanionIngest`) never calls
     `xtrace.createGroup` at all — `resolveGroupId`'s `getXtraceGroupId`
     read finds it first; (c) a fake whose `createGroup` returns `null`
-    causes that pairing's verdict/post to be skipped (not marked
-    ingested in `companion_ingest_log`) and increments
-    `state.consecutiveFailures` toward the existing
-    `MAX_CONSECUTIVE_FAILURES` abort.
-  - `apps/worker/test/integration/companion-season-recap.test.ts` — its
-    one fake client object needs the same one-line addition (this job
-    doesn't use groups, but the interface is shared).
-  - `apps/web/test/companion-banter-lib.test.ts` — its fake client object
-    needs the `createGroup` addition, BUT this file mocks `@receipts/db`
-    entirely (`vi.mock('@receipts/db', ...)`, no real Postgres — see its
-    own header comment) rather than hitting a real database, unlike
-    `companion-ingest.test.ts` above. Add
+    causes that pairing's verdict/post to be skipped (not marked ingested
+    in `companion_ingest_log`) and increments `state.consecutiveFailures`
+    toward the existing `MAX_CONSECUTIVE_FAILURES` abort.
+  - `apps/worker/test/integration/companion-season-recap.test.ts` — no
+    further change; this job was never broken and stays untouched beyond
+    T10's stub.
+  - `apps/web/test/companion-banter-lib.test.ts` — this file mocks
+    `@receipts/db` entirely (`vi.mock('@receipts/db', ...)`, no real
+    Postgres — see its own header comment) rather than hitting a real
+    database, unlike the worker integration tests above. Add
     `const mockListXtraceGroupIdsForPairings = vi.fn();` alongside the
     file's other `mock*` fns, wire it into the `vi.mock('@receipts/db', ...)`
     factory as `listXtraceGroupIdsForPairings: (...args: unknown[]) =>
@@ -1548,13 +1574,17 @@ to fix.
     call received `groupIds: ['grp_a', 'grp_b']` — i.e., whatever the
     (mocked) repository function returns, verbatim, NOT anything derived
     from the pairing id string.
-  - `apps/web/test/callout-draft-lib.test.ts` — BOTH fake client objects in
-    this file need the `createGroup` addition, and (same reasoning as
-    above) this file also mocks `@receipts/db` entirely — add
-    `mockListXtraceGroupIdsForPairings` the same way, wire it into this
-    file's own `vi.mock('@receipts/db', ...)` factory, and add the
-    equivalent captured-`groupIds`-equals-mock-return-value assertion for
-    `searchDraftMemory`'s call shape.
+  - `apps/web/test/callout-draft-lib.test.ts` — same reasoning: this file
+    also mocks `@receipts/db` entirely. Add `mockListXtraceGroupIdsForPairings`
+    the same way, wire it into this file's own `vi.mock('@receipts/db', ...)`
+    factory. **This file's EXISTING "memory scoping" test currently
+    asserts `groupCall.groupIds).toEqual(['pairing:pairing-1',
+    'pairing:pairing-2'])` — that assertion is pinned to the OLD (broken)
+    `pairingGroupId` string-synthesis behavior and MUST be updated, not
+    left in place alongside a new test.** Change it to configure
+    `mockListXtraceGroupIdsForPairings.mockResolvedValue([...])` with
+    whatever fake group ids the test wants, and assert `groupCall.groupIds`
+    equals that mocked list verbatim.
 - `docs/xtrace-hackathon-tasks.md` Appendix A — see the correction above
   this task's own section; already applied as part of this change, not a
   separate step.

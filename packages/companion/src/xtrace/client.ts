@@ -11,7 +11,7 @@
  */
 import { COMPANION_SEARCH_LIMIT, XTRACE_MAX_RETRIES, XTRACE_TIMEOUT_MS } from '@receipts/core';
 
-import { xtraceIngestAcceptedSchema, xtraceSearchResponseSchema } from './schemas.js';
+import { xtraceGroupSchema, xtraceIngestAcceptedSchema, xtraceSearchResponseSchema } from './schemas.js';
 
 export const XTRACE_DEFAULT_API_BASE = 'https://api.production.xtrace.ai';
 
@@ -62,9 +62,14 @@ export interface XtraceMemory {
   score: number | null;
 }
 
+export interface CreateGroupArgs {
+  name: string;
+}
+
 export interface XtraceClient {
   ingest(args: IngestArgs): Promise<boolean>;
   search(args: SearchArgs): Promise<XtraceMemory[]>;
+  createGroup(args: CreateGroupArgs): Promise<string | null>;
 }
 
 function isRetryableStatus(status: number): boolean {
@@ -188,7 +193,22 @@ export function createXtraceClient(opts: XtraceClientOptions): XtraceClient {
     }));
   }
 
-  return { ingest, search };
+  async function createGroup(args: CreateGroupArgs): Promise<string | null> {
+    const body = await postWithRetry('/v1/groups', {
+      name: args.name,
+      app_id: opts.appId,
+    });
+    if (body === undefined) return null;
+
+    const parsed = xtraceGroupSchema.safeParse(body);
+    if (!parsed.success) {
+      logger('xtrace POST /v1/groups: response failed schema validation', parsed.error);
+      return null;
+    }
+    return parsed.data.id;
+  }
+
+  return { ingest, search, createGroup };
 }
 
 export function xtraceClientFromEnv(env: NodeJS.ProcessEnv = process.env): XtraceClient | null {
