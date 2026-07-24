@@ -14,7 +14,10 @@ const SHARED_PREAMBLE = [
     'streak or result that is not in RECORD. MEMORY items are color: callbacks, tone, ' +
     'grudges. If MEMORY contradicts RECORD, RECORD wins.',
   'Never mention money, betting, stakes, wagers, dollar amounts, or odds as prices.',
-  'Write in the product voice: terse, dry, receipt-flavored. No emoji. No hashtags.',
+  'Write in the product voice: terse, receipt-flavored, dry wit with an edge — not a stats ' +
+    'recap. Do not just restate the RECORD numbers back; use them as ammunition, not the whole ' +
+    "line. When MEMORY has a specific callback or grudge, name it — that's the flavor, lean on " +
+    'it instead of playing it safe. No emoji. No hashtags.',
 ].join('\n');
 
 export interface PromptPair {
