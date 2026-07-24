@@ -90,6 +90,14 @@ Postgres (deterministic stats) ──┤
 | XH-T7 | Callout draft API + share-sheet integration | XH-T2, XH-T3, XH-T4 |
 | XH-T8 | Season wrapped: batch job + `/you` panel | XH-T2, XH-T3, XH-T4, XH-T6 |
 | XH-T9 | Demo seed script + runbook | XH-T5..T8 |
+| XH-T10 | Fix: real xTrace groups (client + DB storage) | XH-T2, XH-T4 |
+| XH-T11 | Fix: wire real group ids into ingest + search | XH-T5, XH-T6, XH-T7, XH-T10 |
+
+XH-T10/T11 are POST-CONVERGENCE fixes, added 2026-07-24 after the round-7
+"CONVERGED" status above — they were never in the reviewed round and do not
+carry that status. See their own Goal sections for the bug they fix
+(group-scoped memory search has been silently returning nothing since T5
+shipped) and Appendix A's corrected groups section for the root cause.
 
 Demo-critical path: T1 → T2 → T3 (T4 in parallel after T1) → T6. T5 is
 NOT a code dependency of T6 (the banter route's memory search is fail-open
@@ -1207,11 +1215,395 @@ stack.
 
 ---
 
-## Appendix A — xTrace API (pinned 2026-07-23, from api.staging.xtrace.ai/openapi.public.json)
+## XH-T10 — Fix: real xTrace groups (client + DB storage)
+
+**Why this exists:** T2's client and T5/T6/T7's callers all pass
+`` `pairing:${pairingId}` `` as a `group_ids` entry, on the assumption
+(baked into the original Appendix A, now corrected below) that group ids
+were caller-chosen free-form strings. They are not: `group_ids` only
+accepts ids previously returned by `POST /v1/groups`; an unrecognized
+string is silently soft-skipped at ingest. The practical effect: every
+group-scoped `search()` call in the shipped app — the banter panel, the
+callout draft assist — has always returned `[]`, in production, since the
+`companion:ingest` job first shipped (XH-T5). Nothing crashed because the
+whole companion feature is deliberately fail-open (ground rule 3): an
+empty memory list looks identical to "xTrace has nothing yet," so this
+went unnoticed through T5–T9 and the post-merge demo. Confirmed empirically
+against the real API (2026-07-24): group-scoped search returns `[]` for a
+made-up group id and non-empty once memories are tagged with a real,
+server-issued `grp_...` id from `POST /v1/groups`.
+
+This task adds the plumbing (xTrace client method + a persisted
+pairing→group-id mapping) with NO caller changes — it is inert on its own,
+so it can merge independently and be reviewed as pure addition. XH-T11
+wires it in.
+
+**Files:**
+- `packages/companion/src/xtrace/schemas.ts` — add:
+  ```ts
+  export const xtraceGroupSchema = z
+    .object({ id: z.string() })
+    .passthrough();
+  export type XtraceGroupWire = z.infer<typeof xtraceGroupSchema>;
+  ```
+  (The real response also carries `object`, `name`, `prompt`, `status`,
+  `created_at`, `updated_at` — `.passthrough()` means we don't need to
+  enumerate them; `id` is the only field any caller reads.)
+- `packages/companion/src/xtrace/client.ts`:
+  - Add to `XtraceClient`:
+    ```ts
+    export interface CreateGroupArgs { name: string }
+    export interface XtraceClient {
+      ingest(args: IngestArgs): Promise<boolean>;
+      search(args: SearchArgs): Promise<XtraceMemory[]>;
+      createGroup(args: CreateGroupArgs): Promise<string | null>;
+      //  ^ fail-open like the other two methods: null on any failure
+      //    (non-2xx, timeout, network error, zod parse failure) — NEVER
+      //    throws. Returns the server-issued group id on success.
+    }
+    ```
+  - Implement inside `createXtraceClient` reusing the existing
+    `postWithRetry` helper (same retry/backoff/timeout/logging behavior as
+    `ingest`/`search` — do not write a second HTTP path):
+    ```ts
+    async function createGroup(args: CreateGroupArgs): Promise<string | null> {
+      const body = await postWithRetry('/v1/groups', {
+        name: args.name,
+        app_id: opts.appId,
+      });
+      if (body === undefined) return null;
+      const parsed = xtraceGroupSchema.safeParse(body);
+      if (!parsed.success) {
+        logger('xtrace POST /v1/groups: response failed schema validation', parsed.error);
+        return null;
+      }
+      return parsed.data.id;
+    }
+    ```
+    Add `createGroup` to the object returned at the bottom of
+    `createXtraceClient` (alongside `ingest`/`search`).
+  - No change to `pairingGroupId`/`pairingConvId`/`seasonConvId` — they
+    still name conversations and (after T11) the group's `name` field for
+    debugging; they are no longer used as the group ID itself.
+- `packages/companion/test/xtrace-client.test.ts` — add cases mirroring the
+  existing `ingest`/`search` coverage: `createGroup` sends `{name, app_id}`
+  and returns the parsed `id` on 2xx; 500 → retried `maxRetries` times then
+  `null`; 400 → not retried, `null`; malformed JSON → `null`, not retried.
+  No test throws.
+- `packages/db/src/schema/companion.ts` — add:
+  ```ts
+  export const companionXtraceGroups = pgTable('companion_xtrace_groups', {
+    pairingId: uuid('pairing_id')
+      .primaryKey()
+      .references(() => nemesisPairings.id),
+    xtraceGroupId: text('xtrace_group_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  });
+  ```
+  One row per pairing, `pairing_id` as the primary key (a pairing has
+  exactly one group, ever — no composite key needed, unlike
+  `companion_ingest_log`'s two-source-kind shape). No change needed to
+  `schema/index.ts` — it already does `export * from './companion.js'`,
+  so the new table is re-exported automatically.
+- Migration: `pnpm --filter @receipts/db db:generate`; commit the generated
+  SQL + meta snapshot. Never hand-edit `0001_init.sql`.
+- `packages/db/src/repositories/companion.ts` — add:
+  ```ts
+  export async function getXtraceGroupId(db: Db, pairingId: string): Promise<string | null>
+  //  ^ SELECT xtrace_group_id WHERE pairing_id = $1, or null.
+
+  export async function listXtraceGroupIdsForPairings(db: Db, pairingIds: string[]): Promise<string[]>
+  //  ^ SELECT xtrace_group_id WHERE pairing_id = ANY($1). Empty input →
+  //    empty output, no query. Pairings with no row yet are simply absent
+  //    from the result — never an error; the caller (T11) just gets fewer
+  //    group ids to search, exactly like memory-not-ingested-yet today.
+
+  export async function insertXtraceGroupIdIdempotent(
+    db: Db,
+    pairingId: string,
+    xtraceGroupId: string,
+  ): Promise<string>
+  //  ^ INSERT ... ON CONFLICT (pairing_id) DO NOTHING, then SELECT and
+  //    return whatever is NOW stored for pairingId — mirrors
+  //    insertArtifactIdempotent's idiom exactly. Load-bearing detail: the
+  //    returned value may NOT be the xtraceGroupId the caller just passed
+  //    in — if two ingest runs race to create a group for the same
+  //    never-before-seen pairing, both successfully call xTrace's
+  //    POST /v1/groups (two real, valid, but now-orphaned groups exist
+  //    server-side), and only one of the two rows wins the DB insert.
+  //    Callers MUST use the function's return value for all subsequent
+  //    tagging, not the id they created — the discarded group is harmless
+  //    (unused, never referenced again) but continuing to use it after
+  //    losing the race would split one pairing's memory across two
+  //    groups, permanently.
+  ```
+- `packages/db/src/testing/factories.ts` — add `buildCompanionXtraceGroup`
+  (defaults: a fresh `pairingId`, `xtraceGroupId: 'grp_test'`) for T11's
+  tests, following the existing `buildCompanionArtifact` pattern right
+  above it.
+
+**Acceptance criteria:**
+- `pnpm --filter @receipts/db db:check` clean; migration applies on a
+  fresh Postgres (integration test in `packages/db/test/integration/`,
+  same inline-setup pattern as T4's: `TEST_DATABASE_URL`, migrate,
+  truncate).
+- Integration tests: `insertXtraceGroupIdIdempotent` called twice
+  concurrently for the same `pairingId` with two DIFFERENT `xtraceGroupId`
+  values yields one row, and BOTH calls' return values equal that one
+  stored value (i.e., the second caller sees the first caller's id, not
+  its own) — this is the race-safety property the "Files" note above
+  describes; a test that only checks "one row exists" would miss it.
+  `getXtraceGroupId` on an unknown pairing → null. `listXtraceGroupIdsForPairings`
+  with a mix of known/unknown/empty pairing ids returns only the known
+  ones' group ids, in any order, and `[]` for an empty input array without
+  querying (assert via a spy or just trust the early return — either way,
+  test the empty-input behavior explicitly).
+- `packages/companion` unit tests above pass.
+- `pnpm verify` green.
+
+**Out of scope:** using any of this from the ingest job or search callers
+(T11); backfilling group tags onto memories already ingested under the
+broken scheme (see T11's note on this — those facts remain user-scoped
+only, permanently, unless someone manually clears
+`companion_ingest_log` rows to force re-ingestion).
+
+---
+
+## XH-T11 — Fix: wire real group ids into ingest + search
+
+**Goal:** Replace every `pairingGroupId(id)` call that's used as an actual
+`group_ids` value with a real, T10-persisted xTrace group id — get-or-create
+in the writer (the ingest job, the only place that tags memory into a
+group), read-only lookup in the two readers (banter, callout draft).
+`companion:season-recap`'s `xtrace.search()` call is `userId`-scoped only
+and untouched by this bug — do not add group logic there; there is nothing
+to fix.
+
+**Files:**
+- `apps/worker/src/jobs/companion-ingest.ts`:
+  - Import `getXtraceGroupId` and `insertXtraceGroupIdIdempotent` from
+    `@receipts/db`.
+  - Add a per-run resolver, keyed so a pairing hit by BOTH the verdict loop
+    and the post loop (its posts and its verdict are ingested in the same
+    run — this happens routinely, since `listCandidatePairingPostsForIngest`
+    covers `active` AND `completed` pairings, independent of which
+    pairings have a freshly-concluded verdict this run) only ever resolves
+    once:
+    ```ts
+    async function resolveGroupId(
+      db: Db,
+      xtrace: XtraceClient,
+      pairingId: string,
+      cache: Map<string, string | null>,
+    ): Promise<string | null> {
+      if (cache.has(pairingId)) return cache.get(pairingId)!;
+      const existing = await getXtraceGroupId(db, pairingId);
+      if (existing) {
+        cache.set(pairingId, existing);
+        return existing;
+      }
+      const created = await xtrace.createGroup({ name: `pairing:${pairingId}` });
+      if (!created) {
+        cache.set(pairingId, null);
+        return null;
+      }
+      const winning = await insertXtraceGroupIdIdempotent(db, pairingId, created);
+      cache.set(pairingId, winning);
+      return winning;
+    }
+    ```
+    `runCompanionIngest` constructs ONE `groupCache = new Map<string,
+    string | null>()` (function-local, not module-level — a fresh map
+    every run; nothing here should survive across runs, unlike the DB row
+    it caches) and passes it down to both loops. This means
+    `ingestOnePairingVerdict` and `ingestOnePost` — which currently do NOT
+    take a cache parameter — each gain one:
+    ```ts
+    async function ingestOnePairingVerdict(
+      db: Db,
+      xtrace: XtraceClient,
+      pairing: ConcludedPairing,
+      at: Date,
+      state: RunState,
+      groupCache: Map<string, string | null>,   // new parameter
+    ): Promise<boolean> { ... }
+
+    async function ingestOnePost(
+      db: Db,
+      xtrace: XtraceClient,
+      post: CompanionPostIngestCandidate,
+      at: Date,
+      state: RunState,
+      groupCache: Map<string, string | null>,   // new parameter
+    ): Promise<boolean> { ... }
+    ```
+    Update both call sites inside `runCompanionIngest`'s two loops to pass
+    `groupCache` through. Each function calls `resolveGroupId(db, xtrace,
+    <pairingId>, groupCache)` ONCE at its own top, before building any
+    ingest args — for `ingestOnePairingVerdict` that's `pairing.id`
+    (resolved once, then reused for BOTH side A's and side B's
+    `buildVerdictIngestArgs` call — they tag the same pairing's group, so
+    there is exactly one resolution per pairing per run even though there
+    are two ingest calls); for `ingestOnePost` that's `post.pairingId`.
+  - `buildVerdictIngestArgs`/`buildPostIngestArgs` currently call
+    `pairingGroupId(pairing.id)` / `pairingGroupId(post.pairingId)`
+    directly to build `groupIds: [...]`. Both gain a `groupId: string`
+    parameter (the caller's already-resolved id) and use `groupIds:
+    [groupId]` instead — keep them synchronous/pure, exactly as today;
+    only the callers (`ingestOnePairingVerdict`/`ingestOnePost`) do the
+    `await`ing.
+  - **If `resolveGroupId` returns `null`** (xTrace's `createGroup` failed,
+    e.g. an outage): treat the source as a failed ingest attempt for this
+    run WITHOUT calling `xtrace.ingest()` at all — there is no group id to
+    tag it with, so there is nothing useful to send. Do NOT call
+    `markIngested` for it (so it retries next run). Add one small helper
+    next to `attemptIngest` to keep the circuit-breaker bookkeeping in
+    exactly one place:
+    ```ts
+    function recordIngestFailure(state: RunState): void {
+      state.consecutiveFailures += 1;
+      if (state.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+        state.aborted = true;
+      }
+    }
+    ```
+    (`attemptIngest`'s existing failure branch — `state.consecutiveFailures
+    += 1; if (...) state.aborted = true;` — becomes a call to this new
+    helper too, so there is one failure-bookkeeping path, not two
+    near-duplicates.) In `ingestOnePairingVerdict`/`ingestOnePost`, when
+    `resolveGroupId` returns `null`: call `recordIngestFailure(state)` and
+    return `false` (verdict) / `false` (post) immediately — same shape as
+    an ingest failure, just skipping the HTTP call. This makes a sustained
+    group-creation outage trip `MAX_CONSECUTIVE_FAILURES` the same way a
+    sustained ingest outage already does, instead of silently skipping all
+    200 sources one-by-one with no abort.
+  - Known, accepted gap (document with a code comment where
+    `companionIngestLog` is checked, not just in this task doc): pairings
+    already marked ingested under the OLD (broken) scheme keep their
+    `companion_ingest_log` row and will never be re-ingested, so their
+    facts remain permanently user-scoped-only in xTrace — they were never
+    actually group-tagged (the old string was silently ignored), so
+    nothing regresses, but they also don't retroactively gain group
+    scoping. This is fine at current (near-zero) production data volume;
+    do not build an automated backfill for this task — if a real backfill
+    is ever wanted, the manual remedy is deleting the relevant
+    `companion_ingest_log` rows so the normal candidate query re-selects
+    them.
+- `apps/web/lib/companion/banter.ts`:
+  - `buildBanterContext` currently does
+    `groupIds: [...pairingIds].map(pairingGroupId)`. Replace with
+    `groupIds: await listXtraceGroupIdsForPairings(db, [...pairingIds])`
+    (import from `@receipts/db`; drop the now-unused `pairingGroupId`
+    import from `@receipts/companion`). Pairings with no persisted group
+    id yet (never ingested, or ingested before T11 shipped) simply
+    contribute nothing to the search — same fail-open shape as today,
+    just for the right reason.
+- `apps/web/lib/companion/callout-draft.ts`:
+  - `searchDraftMemory` currently does
+    `groupIds: priorPairingIds.map(pairingGroupId)`. Replace with a
+    `listXtraceGroupIdsForPairings(db, priorPairingIds)` lookup: add `db:
+    Db` as `searchDraftMemory`'s first parameter, and update its one call
+    site inside `generateAndCacheCalloutDraft` (which already receives
+    `db` as its own first parameter) to pass `db` through as the new first
+    argument. Skip the group-scoped `xtrace.search()` call entirely when the
+    resolved list is empty (same `priorPairingIds.length > 0` guard
+    already there, just gated on the resolved ids instead of the raw
+    pairing ids — an empty `groupIds` array in a search call is
+    pointless work, not an error, but there's no reason to make it).
+- Test-double updates (adding `createGroup` to `XtraceClient` is a
+  compile-time breaking change for every fake implementing the full
+  interface — all of these currently define only `ingest`/`search`):
+  - `apps/worker/test/integration/companion-ingest.test.ts` —
+    `makeCapturingXtrace` and `makeScriptedXtrace` (two factories) each
+    need `async createGroup() { return 'grp_test'; }` added alongside
+    their existing `ingest`/`search`. This file's own test cases also need
+    new coverage (extend `makeCapturingXtrace`'s captured-calls shape, or
+    add a sibling fake, so `createGroup` calls are counted, not just
+    `ingest` calls): (a) a pairing whose verdict AND whose posts are both
+    candidates in the SAME `runCompanionIngest` call resolves its group id
+    via `xtrace.createGroup` exactly ONCE, not twice — this is what the
+    shared `groupCache` is for; (b) a pairing pre-seeded with an existing
+    `companion_xtrace_groups` row (via the new `buildCompanionXtraceGroup`
+    factory, inserted before calling `runCompanionIngest`) never calls
+    `xtrace.createGroup` at all — `resolveGroupId`'s `getXtraceGroupId`
+    read finds it first; (c) a fake whose `createGroup` returns `null`
+    causes that pairing's verdict/post to be skipped (not marked
+    ingested in `companion_ingest_log`) and increments
+    `state.consecutiveFailures` toward the existing
+    `MAX_CONSECUTIVE_FAILURES` abort.
+  - `apps/worker/test/integration/companion-season-recap.test.ts` — its
+    one fake client object needs the same one-line addition (this job
+    doesn't use groups, but the interface is shared).
+  - `apps/web/test/companion-banter-lib.test.ts` — its fake client object
+    needs the `createGroup` addition, BUT this file mocks `@receipts/db`
+    entirely (`vi.mock('@receipts/db', ...)`, no real Postgres — see its
+    own header comment) rather than hitting a real database, unlike
+    `companion-ingest.test.ts` above. Add
+    `const mockListXtraceGroupIdsForPairings = vi.fn();` alongside the
+    file's other `mock*` fns, wire it into the `vi.mock('@receipts/db', ...)`
+    factory as `listXtraceGroupIdsForPairings: (...args: unknown[]) =>
+    mockListXtraceGroupIdsForPairings(...args)`, and add a test that
+    configures `mockListXtraceGroupIdsForPairings.mockResolvedValue(['grp_a',
+    'grp_b'])` then asserts the fake xtrace client's captured `search()`
+    call received `groupIds: ['grp_a', 'grp_b']` — i.e., whatever the
+    (mocked) repository function returns, verbatim, NOT anything derived
+    from the pairing id string.
+  - `apps/web/test/callout-draft-lib.test.ts` — BOTH fake client objects in
+    this file need the `createGroup` addition, and (same reasoning as
+    above) this file also mocks `@receipts/db` entirely — add
+    `mockListXtraceGroupIdsForPairings` the same way, wire it into this
+    file's own `vi.mock('@receipts/db', ...)` factory, and add the
+    equivalent captured-`groupIds`-equals-mock-return-value assertion for
+    `searchDraftMemory`'s call shape.
+- `docs/xtrace-hackathon-tasks.md` Appendix A — see the correction above
+  this task's own section; already applied as part of this change, not a
+  separate step.
+
+**Acceptance criteria:**
+- All test updates above pass; `pnpm verify` green.
+- Manual/integration confirmation (record the result in the PR
+  description, do not just assert it): seed a pairing, run
+  `companion:ingest`, confirm a `companion_xtrace_groups` row exists for
+  it, then confirm a group-scoped `search()` for that pairing's rivalry
+  returns non-empty once xTrace has finished server-side extraction. This
+  is genuinely async server-side and its latency was NOT precisely
+  measured for a single small pairing this session (the closest measured
+  data point — a 159-message stress-test corpus this session's XH-T10/T11
+  investigation ran — needed 2–4 minutes before search reliably found
+  planted facts); poll every ~30s for a few minutes rather than assuming
+  any fixed delay, and do not treat a still-empty result at 30s as a test
+  failure on its own.
+- No change in behavior for anyone who never worked (or breaks) before:
+  the `userId`-scoped searches in `callout-draft.ts` and
+  `companion-season-recap.ts` are untouched.
+
+**Out of scope:** the backfill discussed above; any change to
+`companion:season-recap` (it was never broken); polling xTrace's async
+ingest-job status (`ingest()` stays fire-and-forget, unchanged).
+
+---
+
+## Appendix A — xTrace API (pinned 2026-07-23, from api.staging.xtrace.ai/openapi.public.json;
+groups section corrected 2026-07-24 — see the note below and XH-T10/T11)
 
 Base URL: `https://api.production.xtrace.ai`. Auth: `x-api-key: <key>`
 header (Bearer also supported). Error shape:
 `{ detail: { code, message } }`; 429 carries `Retry-After`.
+
+**Groups are NOT free-form strings (correction — the rest of this
+appendix originally showed `group_ids: ["pairing:{id}"]` as if callers
+could invent their own group ids; they cannot).** A group must be created
+first via `POST /v1/groups` — request `{ name: string, prompt?: string,
+app_id }`, response `{ object:'group', id: 'grp_...', name, prompt,
+status, created_at, updated_at }` (verified empirically against the real
+API 2026-07-24). Passing an unrecognized string in `group_ids` at ingest
+is silently soft-skipped (not an error — this is exactly how the bug XH-T10/
+T11 fix went unnoticed: every group-scoped `search()` in the shipped app
+returned `[]` from day one, indistinguishable from "no memory yet" under
+this app's fail-open design). The original "Not used at hackathon scope"
+line below wrongly cut the groups API as optional — it is required for any
+group-scoped ingest/search to do anything at all; XH-T10 adds client
+support, XH-T11 wires it in.
 
 **POST /v1/memories** (ingest; async — 202 returns
 `{ object:'ingest_job', id, status }`; we never pass `?wait=true`):
@@ -1221,12 +1613,17 @@ header (Bearer also supported). Error shape:
   "user_id": "<profiles.id>",        // required
   "conv_id": "pairing:{id}:{pid}",   // required
   "app_id": "<XTRACE_APP_ID>",
-  "group_ids": ["pairing:{id}"],
+  "group_ids": ["grp_..."],          // server-issued only, from POST /v1/groups — see above
   "agent_id": null
 }
 ```
 Server auto-classifies into facts / artifacts / episodes; no
-pre-classification.
+pre-classification. Note (XH-T10/T11): some memories are classified
+`personal` and are never group-tagged regardless of `group_ids` sent —
+group-scoped search over rivalry memory will not surface everything a
+same-user-scoped search would; this is a real gap in the group lane, not a
+bug in either the client or T11's fix, and is out of scope for T11 to
+close.
 
 **POST /v1/memories/search**:
 ```json
@@ -1234,7 +1631,7 @@ pre-classification.
   "query": "…",                       // 1–4000 chars, required
   "mode": "retrieve",                 // we always use retrieve, not compose
   "user_id": "<profiles.id>" | null,
-  "group_ids": ["pairing:{id}"],      // OR'd
+  "group_ids": ["grp_..."],           // OR'd; server-issued only, see above
   "app_id": "<XTRACE_APP_ID>",
   "include": ["fact", "episode"]
 }
@@ -1245,7 +1642,9 @@ score, created_at, … }], … }` — ranked; `score` may be null.
 Not used at hackathon scope (explicit cut, revisit before any real launch):
 `PATCH /v1/memories/{id}` (group re-tagging, needed for block-revocation),
 `DELETE /v1/memories/{id}` (needed for account-deletion cascade),
-`GET /v1/memories` (list), groups/usage/webhooks APIs.
+`GET /v1/memories` (list), usage/webhooks APIs. (Groups moved OUT of this
+cut list 2026-07-24 — see the correction above; `POST /v1/groups` is now
+in scope via XH-T10.)
 
 ## Appendix B — Claude API notes (pinned)
 
