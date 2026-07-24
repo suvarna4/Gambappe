@@ -15,10 +15,12 @@
  * ghost's cookie never fragments any cache and the server HTML stays byte-identical for every viewer.
  */
 import type { Metadata } from 'next';
-import { PRODUCT_NAME } from '@receipts/core';
+import { isFlagEnabled, PRODUCT_NAME } from '@receipts/core';
 import { getDb } from '@/lib/stores';
 import { getCrowdBoards } from '@/lib/leaderboard-page';
+import { getRumorRadar } from '@/lib/rumor-radar';
 import { CrowdBoards } from '@/components/crowd/CrowdBoards';
+import { RumorRadar } from '@/components/crowd/RumorRadar';
 import { crowdCopy } from '@/lib/copy';
 
 // Rendered per-request (SSR), NOT ISR. §5's AC sketches ISR-60s, but the page reads the DB at
@@ -48,6 +50,9 @@ export default async function CrowdPage() {
         <h1 className="font-display text-2xl font-bold tracking-tight">{crowdCopy.heading}</h1>
         <p className="text-muted mt-1 text-sm">{crowdCopy.subheading}</p>
       </header>
+
+      {/* WS27-T8: committed-snapshot data, no DB, no viewer identity — INV-10 intact. */}
+      {isFlagEnabled('rumor_radar') ? <RumorRadar view={getRumorRadar()} /> : null}
 
       {anyEntries ? (
         <CrowdBoards boards={view.boards} weekStart={view.weekStart} live={view.live} />
