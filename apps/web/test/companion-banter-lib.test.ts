@@ -16,6 +16,7 @@ const mockGetFullPairingSharedQuestionPicks = vi.fn();
 const mockMostRecentCompletedPairingBetween = vi.fn();
 const mockCompletedPairingIdsBetween = vi.fn();
 const mockInsertArtifactIdempotent = vi.fn();
+const mockListXtraceGroupIdsForPairings = vi.fn();
 
 vi.mock('@receipts/db', async (importOriginal) => {
   const actual = await importOriginal<typeof ReceiptsDb>();
@@ -29,6 +30,8 @@ vi.mock('@receipts/db', async (importOriginal) => {
       mockMostRecentCompletedPairingBetween(...args),
     completedPairingIdsBetween: (...args: unknown[]) => mockCompletedPairingIdsBetween(...args),
     insertArtifactIdempotent: (...args: unknown[]) => mockInsertArtifactIdempotent(...args),
+    listXtraceGroupIdsForPairings: (...args: unknown[]) =>
+      mockListXtraceGroupIdsForPairings(...args),
   };
 });
 
@@ -93,6 +96,7 @@ function defaultDbMocks(): void {
   mockGetFullPairingSharedQuestionPicks.mockResolvedValue([]);
   mockMostRecentCompletedPairingBetween.mockResolvedValue(null);
   mockCompletedPairingIdsBetween.mockResolvedValue([]);
+  mockListXtraceGroupIdsForPairings.mockResolvedValue([]);
 }
 
 afterEach(() => {
@@ -170,10 +174,11 @@ describe('generateAndCacheBanter', () => {
 });
 
 describe('generateAndCacheBanter — memory scoping (XH-T6 AC)', () => {
-  it("passes groupIds covering the prior completed pairings' groups as well as the current pairing's", async () => {
+  it('passes groupIds from the DB-resolved lookup, not anything derived from the pairing id string (XH-T11)', async () => {
     defaultDbMocks();
     const priorPairingId = '018f1e2b-0000-7000-8000-000000000099';
     mockCompletedPairingIdsBetween.mockResolvedValue([priorPairingId]);
+    mockListXtraceGroupIdsForPairings.mockResolvedValue(['grp_current', 'grp_prior']);
     const { client: xtrace, searchCalls } = fakeXtrace();
     const generator = {
       banter: vi.fn().mockResolvedValue(['line']),
@@ -187,10 +192,14 @@ describe('generateAndCacheBanter — memory scoping (XH-T6 AC)', () => {
 
     await generateAndCacheBanter({} as never, xtrace, generator, PAIRING, VIEWER_ID, ET_DAY, AT);
 
+    // listXtraceGroupIdsForPairings is called with the current pairing + its prior completed
+    // pairings, as a Set (order not guaranteed) — assert on the resolved set, not call order.
+    const [, calledWithPairingIds] = mockListXtraceGroupIdsForPairings.mock.calls[0]!;
+    expect(new Set(calledWithPairingIds)).toEqual(new Set([PAIRING_ID, priorPairingId]));
+
     expect(searchCalls).toHaveLength(1);
     const call = searchCalls[0] as { groupIds: string[] };
-    expect(call.groupIds).toContain(`pairing:${PAIRING_ID}`);
-    expect(call.groupIds).toContain(`pairing:${priorPairingId}`);
+    expect(call.groupIds).toEqual(['grp_current', 'grp_prior']); // exactly what the (mocked) repo returned
   });
 
   it('MEMORY degrades to [] with a null xTrace client, without skipping generation', async () => {

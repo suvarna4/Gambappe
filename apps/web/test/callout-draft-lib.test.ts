@@ -14,6 +14,7 @@ const mockGetProfileById = vi.fn();
 const mockLifetimeRecordBetween = vi.fn();
 const mockGetArtifactByCacheKey = vi.fn();
 const mockInsertArtifactIdempotent = vi.fn();
+const mockListXtraceGroupIdsForPairings = vi.fn();
 
 vi.mock('@receipts/db', async (importOriginal) => {
   const actual = await importOriginal<typeof ReceiptsDb>();
@@ -24,6 +25,8 @@ vi.mock('@receipts/db', async (importOriginal) => {
     lifetimeRecordBetween: (...args: unknown[]) => mockLifetimeRecordBetween(...args),
     getArtifactByCacheKey: (...args: unknown[]) => mockGetArtifactByCacheKey(...args),
     insertArtifactIdempotent: (...args: unknown[]) => mockInsertArtifactIdempotent(...args),
+    listXtraceGroupIdsForPairings: (...args: unknown[]) =>
+      mockListXtraceGroupIdsForPairings(...args),
   };
 });
 
@@ -192,6 +195,7 @@ describe('generateAndCacheCalloutDraft — memory scoping (XH-T7 AC)', () => {
   it('concatenates group results before user results, de-duped by memory id, and skips the group search with no prior pairings', async () => {
     defaultDbMocks();
     const priorPairingIds = ['pairing-1', 'pairing-2'];
+    mockListXtraceGroupIdsForPairings.mockResolvedValue(['grp_1', 'grp_2']);
     const searchCalls: unknown[] = [];
     const xtrace = {
       async ingest() {
@@ -239,12 +243,16 @@ describe('generateAndCacheCalloutDraft — memory scoping (XH-T7 AC)', () => {
       ET_DAY,
     );
 
+    expect(mockListXtraceGroupIdsForPairings).toHaveBeenCalledWith({}, priorPairingIds);
+
     expect(searchCalls).toHaveLength(2);
     const groupCall = searchCalls.find((c) => (c as { groupIds?: string[] }).groupIds) as {
       groupIds: string[];
       query: string;
     };
-    expect(groupCall.groupIds).toEqual(['pairing:pairing-1', 'pairing:pairing-2']);
+    // Exactly what the (mocked) repository function returned, verbatim — NOT anything derived
+    // from the pairing id strings.
+    expect(groupCall.groupIds).toEqual(['grp_1', 'grp_2']);
     expect(groupCall.query).toBe('Otter #2 rivalry trash talk grudges history');
     const userCall = searchCalls.find((c) => (c as { userId?: string }).userId) as {
       userId: string;

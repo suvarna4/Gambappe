@@ -12,19 +12,25 @@
  *    success resets the counter.
  *  - Deadline: the wall-clock abort fires BETWEEN the two per-side calls of one pairing, not
  *    only between pairings.
+ *  - xTrace group id resolution (XH-T11): a pairing's group is created via `createGroup` at
+ *    most once per run even when both its verdict AND its posts are candidates; a pairing with
+ *    an existing `companion_xtrace_groups` row never calls `createGroup` again; a `createGroup`
+ *    failure skips the source (not marked ingested) and counts toward the circuit breaker.
  *
  * Connects via TEST_DATABASE_URL, same convention as `nemesis-conclude.test.ts`.
  */
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import type pg from 'pg';
 import { setTestClock } from '@receipts/core';
 import {
   companionIngestLog,
+  companionXtraceGroups,
   connect,
+  insertXtraceGroupIdIdempotent,
   nemesisPairings,
   posts,
   profiles,
@@ -33,12 +39,7 @@ import {
   type ProfileRow,
 } from '@receipts/db';
 import { buildNemesisPairing, buildProfile, buildSeason } from '@receipts/db/testing';
-import {
-  pairingConvId,
-  pairingGroupId,
-  type IngestArgs,
-  type XtraceClient,
-} from '@receipts/companion';
+import { pairingConvId, type IngestArgs, type XtraceClient } from '@receipts/companion';
 import { uuidv7 } from 'uuidv7';
 import { runCompanionIngest } from '../../src/jobs/companion-ingest.js';
 import type { JobContext } from '../../src/context.js';
@@ -76,7 +77,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await db.execute(
-    sql`TRUNCATE companion_artifacts, companion_ingest_log, posts, nemesis_pairings, seasons, profiles RESTART IDENTITY CASCADE`,
+    sql`TRUNCATE companion_artifacts, companion_ingest_log, companion_xtrace_groups, posts, nemesis_pairings, seasons, profiles RESTART IDENTITY CASCADE`,
   );
 });
 
@@ -93,7 +94,12 @@ function makeCtx(): JobContext {
   };
 }
 
-function makeCapturingXtrace(behavior: (args: IngestArgs) => boolean = () => true): {
+/** `groupCallsOut`, if provided, records each `createGroup` call's `name` argument (XH-T11) —
+ * lets a test assert HOW MANY TIMES a group was created, not just what `ingest` was tagged with. */
+function makeCapturingXtrace(
+  behavior: (args: IngestArgs) => boolean = () => true,
+  groupCallsOut?: string[],
+): {
   client: XtraceClient;
   calls: IngestArgs[];
 } {
@@ -108,7 +114,8 @@ function makeCapturingXtrace(behavior: (args: IngestArgs) => boolean = () => tru
       async search() {
         return [];
       },
-      async createGroup() {
+      async createGroup(args) {
+        groupCallsOut?.push(args.name);
         return 'grp_test';
       },
     },
@@ -291,20 +298,23 @@ describe('runCompanionIngest — primary ingestion + idempotency', () => {
     });
     expect(calls).toHaveLength(4);
 
+    // groupIds is the fake's createGroup() return value ('grp_test'), NOT a
+    // pairingId-derived string — that's the whole XH-T11 fix (see the
+    // "xTrace group id resolution" describe block below for dedicated coverage).
     expect(calls[0]).toMatchObject({
       userId: pairing.profileAId,
       convId: pairingConvId(pairing.id, pairing.profileAId),
-      groupIds: [pairingGroupId(pairing.id)],
+      groupIds: ['grp_test'],
     });
     expect(calls[1]).toMatchObject({
       userId: pairing.profileBId,
       convId: pairingConvId(pairing.id, pairing.profileBId),
-      groupIds: [pairingGroupId(pairing.id)],
+      groupIds: ['grp_test'],
     });
     expect(calls[2]).toMatchObject({
       userId: pairing.profileAId,
       convId: pairingConvId(pairing.id, pairing.profileAId),
-      groupIds: [pairingGroupId(pairing.id)],
+      groupIds: ['grp_test'],
     });
     expect(calls[2]?.messages[0]?.content).toContain('gg, good week');
     expect(calls[3]).toMatchObject({ userId: pairing.profileBId });
@@ -452,5 +462,78 @@ describe('deadline abort', () => {
     expect(report.pairingsIngested).toBe(0);
     expect(report.pairingsSkipped).toBe(1);
     expect(await db.select().from(companionIngestLog)).toHaveLength(0);
+  });
+});
+
+describe('xTrace group id resolution (XH-T11)', () => {
+  it("resolves a pairing's group via createGroup exactly ONCE even when its verdict AND its posts are both candidates in the same run", async () => {
+    const seasonId = await seedSeason();
+    const pairing = await seedConcludedPairing(seasonId, '2026-01-05');
+    // Posts on the SAME (now completed) pairing — listCandidatePairingPostsForIngest includes
+    // 'completed' pairings, so this pairing is hit by BOTH loops in one runCompanionIngest call.
+    await seedPost(pairing.id, pairing.profileAId, 'gg, good week', AT);
+    await seedPost(pairing.id, pairing.profileBId, 'rematch soon', new Date(AT.getTime() + 1000));
+
+    const groupCalls: string[] = [];
+    const { client, calls } = makeCapturingXtrace(() => true, groupCalls);
+    const report = await runCompanionIngest(makeCtx(), client, AT);
+
+    expect(report).toMatchObject({ pairingsIngested: 1, postsIngested: 2 });
+    expect(calls).toHaveLength(4); // 2 verdict sides + 2 posts, all tagged with the same group
+    expect(calls.every((c) => c.groupIds?.[0] === 'grp_test')).toBe(true);
+    expect(groupCalls).toEqual([`pairing:${pairing.id}`]); // createGroup called exactly once
+
+    const stored = await db
+      .select()
+      .from(companionXtraceGroups)
+      .where(eq(companionXtraceGroups.pairingId, pairing.id));
+    expect(stored).toHaveLength(1);
+    expect(stored[0]?.xtraceGroupId).toBe('grp_test');
+  });
+
+  it('never calls createGroup for a pairing that already has a persisted group id', async () => {
+    const seasonId = await seedSeason();
+    const pairing = await seedConcludedPairing(seasonId, '2026-01-05');
+    await insertXtraceGroupIdIdempotent(db, pairing.id, 'grp_preexisting');
+
+    const groupCalls: string[] = [];
+    const { client, calls } = makeCapturingXtrace(() => true, groupCalls);
+    const report = await runCompanionIngest(makeCtx(), client, AT);
+
+    expect(report.pairingsIngested).toBe(1);
+    expect(groupCalls).toEqual([]); // resolveGroupId's getXtraceGroupId read found it first
+    expect(calls[0]?.groupIds).toEqual(['grp_preexisting']);
+  });
+
+  it('a createGroup failure skips the source (not marked ingested) and counts toward the circuit breaker', async () => {
+    const seasonId = await seedSeason();
+    // 5 distinct pairings so 5 group-creation failures trip MAX_CONSECUTIVE_FAILURES without
+    // relying on any ingest() call ever happening (there is no group id to tag one with).
+    for (let i = 0; i < 5; i++) {
+      await seedConcludedPairing(seasonId, `2026-0${1 + i}-05`);
+    }
+
+    const calls: IngestArgs[] = [];
+    const client: XtraceClient = {
+      async ingest(args) {
+        calls.push(args);
+        return true;
+      },
+      async search() {
+        return [];
+      },
+      async createGroup() {
+        return null; // simulates a sustained xTrace outage on group creation
+      },
+    };
+
+    const report = await runCompanionIngest(makeCtx(), client, AT);
+
+    expect(calls).toHaveLength(0); // never reached — no group id to tag an ingest call with
+    expect(report.pairingsSkipped).toBe(5);
+    expect(report.pairingsIngested).toBe(0);
+    expect(report.aborted).toBe(true); // 5 consecutive group-creation failures tripped the breaker
+    expect(await db.select().from(companionIngestLog)).toHaveLength(0);
+    expect(await db.select().from(companionXtraceGroups)).toHaveLength(0);
   });
 });

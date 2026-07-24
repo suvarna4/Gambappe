@@ -26,6 +26,7 @@ import {
   getProfileById,
   insertArtifactIdempotent,
   lifetimeRecordBetween,
+  listXtraceGroupIdsForPairings,
   mostRecentCompletedPairingBetween,
   type CompanionArtifactContent,
   type Db,
@@ -34,7 +35,6 @@ import {
 import { scoreNemesisWeek } from '@receipts/engine';
 import {
   generatorFromEnv,
-  pairingGroupId,
   xtraceClientFromEnv,
   type BanterContext,
   type Generator,
@@ -173,7 +173,7 @@ async function buildBanterContext(
   const memory = xtrace
     ? await xtrace.search({
         query: `${opponentHandle} rivalry banter grudges history`,
-        groupIds: [...pairingIds].map(pairingGroupId),
+        groupIds: await listXtraceGroupIdsForPairings(db, [...pairingIds]),
         include: ['fact', 'episode'],
       })
     : [];

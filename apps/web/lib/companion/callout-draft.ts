@@ -20,10 +20,11 @@ import {
   getProfileById,
   insertArtifactIdempotent,
   lifetimeRecordBetween,
+  listXtraceGroupIdsForPairings,
   type CompanionArtifactContent,
   type Db,
 } from '@receipts/db';
-import { pairingGroupId, type Generator, type XtraceClient } from '@receipts/companion';
+import { type Generator, type XtraceClient } from '@receipts/companion';
 import { getCalloutCandidates } from '@/lib/callouts-view';
 
 /**
@@ -67,6 +68,7 @@ export async function getDraftCacheHit(
 /** Group results first, then user results (concatenation order), de-duped by memory id,
  * truncated to `COMPANION_SEARCH_LIMIT` — per XH-T7 step 7. */
 async function searchDraftMemory(
+  db: Db,
   xtrace: XtraceClient | null,
   targetHandle: string,
   challengerProfileId: string,
@@ -74,11 +76,13 @@ async function searchDraftMemory(
 ): Promise<string[]> {
   if (!xtrace) return [];
   const query = `${targetHandle} rivalry trash talk grudges history`;
+  const groupIds =
+    priorPairingIds.length > 0 ? await listXtraceGroupIdsForPairings(db, priorPairingIds) : [];
   const [groupResults, userResults] = await Promise.all([
-    priorPairingIds.length > 0
+    groupIds.length > 0
       ? xtrace.search({
           query,
-          groupIds: priorPairingIds.map(pairingGroupId),
+          groupIds,
           include: ['fact', 'episode'],
         })
       : Promise.resolve([]),
@@ -120,7 +124,7 @@ export async function generateAndCacheCalloutDraft(
 
   const [record, memory] = await Promise.all([
     lifetimeRecordBetween(db, challengerProfileId, targetProfileId),
-    searchDraftMemory(xtrace, targetHandle, challengerProfileId, priorPairingIds),
+    searchDraftMemory(db, xtrace, targetHandle, challengerProfileId, priorPairingIds),
   ]);
 
   const drafts = await generator.calloutDrafts({ challengerHandle, targetHandle, record, memory });
